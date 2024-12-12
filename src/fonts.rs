@@ -5,24 +5,40 @@ use vello::skrifa::instance::{Location, Size};
 use vello::skrifa::metrics::GlyphMetrics;
 use vello::skrifa::{AxisCollection, FontRef, MetadataProvider};
 
-const INTER_REGULAR_BYTES: &[u8] = include_bytes!("../assets/Inter-Regular.ttf");
-const INTER_EXTRA_LIGHT_BYTES: &[u8] = include_bytes!("../assets/Inter-ExtraLight.ttf");
+macro_rules! font {
+    ($name:ident, $file:expr, $weight:expr) => {
+        pub fn $name() -> &'static FontResource<'static> {
+            static BYTES: &[u8] = include_bytes!(concat!("../assets/", $file));
+            static FONT: OnceLock<FontResource> = OnceLock::new();
 
-pub fn inter_regular() -> &'static FontResource<'static> {
-    static INTER_REGULAR: OnceLock<FontResource> = OnceLock::new();
-
-    INTER_REGULAR.get_or_init(|| {
-        FontResource::from_bytes(INTER_REGULAR_BYTES, 400.0)
-    })
+            FONT.get_or_init(|| {
+                FontResource::from_bytes(BYTES, $weight)
+            })
+        }
+    };
 }
 
-pub fn inter_extra_light() -> &'static FontResource<'static> {
-    static INTER_EXTRA_LIGHT: OnceLock<FontResource> = OnceLock::new();
+// Regular
+font!(inter_thin, "Inter-Thin.ttf", 100.0);
+font!(inter_extra_light, "Inter-ExtraLight.ttf", 200.0);
+font!(inter_light, "Inter-Light.ttf", 300.0);
+font!(inter_regular, "Inter-Regular.ttf", 400.0);
+font!(inter_medium, "Inter-Medium.ttf", 500.0);
+font!(inter_semi_bold, "Inter-SemiBold.ttf", 600.0);
+font!(inter_bold, "Inter-Bold.ttf", 700.0);
+font!(inter_extra_bold, "Inter-ExtraBold.ttf", 800.0);
+font!(inter_black, "Inter-Black.ttf", 900.0);
 
-    INTER_EXTRA_LIGHT.get_or_init(|| {
-        FontResource::from_bytes(INTER_EXTRA_LIGHT_BYTES, 200.0)
-    })
-}
+// Italic
+font!(inter_thin_italic, "Inter-ThinItalic.ttf", 100.0);
+font!(inter_extra_light_italic, "Inter-ExtraLightItalic.ttf", 200.0);
+font!(inter_light_italic, "Inter-LightItalic.ttf", 300.0);
+font!(inter_regular_italic, "Inter-Italic.ttf", 400.0);
+font!(inter_medium_italic, "Inter-MediumItalic.ttf", 500.0);
+font!(inter_semi_bold_italic, "Inter-SemiBoldItalic.ttf", 600.0);
+font!(inter_bold_italic, "Inter-BoldItalic.ttf", 700.0);
+font!(inter_extra_bold_italic, "Inter-ExtraBoldItalic.ttf", 800.0);
+font!(inter_black_italic, "Inter-BlackItalic.ttf", 900.0);
 
 pub struct FontResource<'a> {
     pub table: FontRef<'a>,

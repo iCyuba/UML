@@ -53,7 +53,7 @@ impl Workspace {
             10.0 * scale,
             10.0 * scale,
             16.0 * scale as f32,
-            fonts::inter_extra_light()
+            fonts::inter_black_italic()
         );
     }
 
