@@ -65,6 +65,15 @@ impl ApplicationHandler for App<'_> {
                 self.renderer.request_redraw();
             }
 
+            WindowEvent::PinchGesture { delta, .. } => {
+                self.workspace.update_zoom(delta);
+                self.renderer.request_redraw();
+            }
+
+            WindowEvent::CursorMoved { position, .. } => {
+                self.workspace.update_cursor(position);
+            }
+
             _ => {}
         }
     }
