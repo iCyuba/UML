@@ -2,6 +2,7 @@ mod fonts;
 mod renderer;
 mod app;
 mod workspace;
+mod colors;
 
 use winit::event_loop::EventLoop;
 

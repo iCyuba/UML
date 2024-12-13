@@ -1,14 +1,15 @@
+use crate::colors::Colors;
 use crate::fonts::FontResource;
 use std::num::NonZeroUsize;
 use std::sync::Arc;
 use vello::kurbo::Affine;
-use vello::peniko::{BrushRef, Color, Fill, StyleRef};
+use vello::peniko::{BrushRef, Fill, StyleRef};
 use vello::util::{RenderContext, RenderSurface};
 use vello::wgpu::{Maintain, PresentMode};
 use vello::{AaConfig, Glyph, Renderer, RendererOptions, Scene};
 use winit::dpi::{LogicalSize, PhysicalSize};
 use winit::event_loop::ActiveEventLoop;
-use winit::window::Window;
+use winit::window::{Theme, Window};
 
 const WIDTH: u32 = 1024;
 const HEIGHT: u32 = 800;
@@ -23,6 +24,8 @@ pub struct WindowRenderer<'s> {
 
     pub window: Option<Arc<Window>>,
     pub scene: Scene,
+
+    pub colors: &'static Colors,
 }
 
 impl Default for WindowRenderer<'_> {
@@ -33,6 +36,7 @@ impl Default for WindowRenderer<'_> {
             surface: None,
             window: None,
             scene: Scene::new(),
+            colors: &Colors::LIGHT,
         }
     }
 }
@@ -72,6 +76,11 @@ impl WindowRenderer<'_> {
             },
         ).unwrap();
 
+        // Set the user theme
+        if let Some(theme) = window.theme() {
+            self.update_theme(theme);
+        }
+
         // Save
         self.window = Some(window);
         self.surface = Some(surface);
@@ -102,7 +111,7 @@ impl WindowRenderer<'_> {
             &self.scene,
             &surface_texture,
             &vello::RenderParams {
-                base_color: Color::WHITE,
+                base_color: self.colors.workspace_background,
                 width,
                 height,
                 antialiasing_method: AaConfig::Msaa16,
@@ -125,15 +134,22 @@ impl WindowRenderer<'_> {
         let window = self.window.as_ref().unwrap();
         window.request_redraw();
     }
+
+    pub fn update_theme(&mut self, theme: Theme) {
+        match theme {
+            Theme::Light => self.colors = &Colors::LIGHT,
+            Theme::Dark => self.colors = &Colors::DARK,
+        }
+    }
 }
 
-pub fn add_text_to_scene(scene: &mut Scene, text: &str, x: f64, y: f64, size: f32, font: &FontResource) {
+pub fn add_text_to_scene<'a>(scene: &'a mut Scene, text: &'a str, x: f64, y: f64, size: f32, font: &'a FontResource, brush: impl Into<BrushRef<'a>>) {
     let metrics = font.metrics(size);
     let mut p_x = 0.0;
 
     scene.draw_glyphs(&font.font)
         .font_size(size)
-        .brush(BrushRef::Solid(Color { r: 0, g: 0, b: 0, a: 255 }))
+        .brush(brush)
         .transform(Affine::translate((x, y + size as f64)))
         .draw(StyleRef::Fill(Fill::NonZero), text.chars().map(|c| {
             let glyph_id = font.char_map.map(c).unwrap_or_default();

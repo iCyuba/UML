@@ -1,7 +1,7 @@
 use crate::fonts;
 use crate::renderer::{add_text_to_scene, WindowRenderer};
 use vello::kurbo::{Affine, Circle};
-use vello::peniko::{Color, Fill};
+use vello::peniko::Fill;
 use winit::dpi::PhysicalPosition;
 
 pub struct Workspace {
@@ -24,6 +24,7 @@ impl Workspace {
     pub fn render(&self, renderer: &mut WindowRenderer) {
         let mut scene = &mut renderer.scene;
         let window = renderer.window.as_ref().unwrap();
+        let colors = renderer.colors;
         let size = window.inner_size();
         let ui_scale = window.scale_factor();
         let scale = ui_scale * self.zoom;
@@ -40,7 +41,7 @@ impl Workspace {
                 scene.fill(
                     Fill::NonZero,
                     Affine::IDENTITY,
-                    Color::rgb8(203, 213, 225),
+                    colors.workspace_dot,
                     None,
                     &Circle::new((x, y), 2.0 * scale),
                 );
@@ -60,6 +61,7 @@ impl Workspace {
             10.0 * ui_scale,
             16.0 * ui_scale as f32,
             fonts::inter_black_italic(),
+            colors.workspace_text,
         );
     }
 

@@ -74,6 +74,11 @@ impl ApplicationHandler for App<'_> {
                 self.workspace.update_cursor(position);
             }
 
+            WindowEvent::ThemeChanged(theme) => {
+                self.renderer.update_theme(theme);
+                self.renderer.request_redraw();
+            }
+
             _ => {}
         }
     }

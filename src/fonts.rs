@@ -1,3 +1,5 @@
+#![allow(dead_code)]
+
 use std::sync::{Arc, OnceLock};
 use vello::peniko::{Blob, Font};
 use vello::skrifa::charmap::Charmap;
