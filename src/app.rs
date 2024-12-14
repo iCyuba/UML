@@ -1,7 +1,8 @@
 use crate::renderer::WindowRenderer;
 use crate::workspace::Workspace;
 use winit::application::ApplicationHandler;
-use winit::event::{MouseScrollDelta, WindowEvent};
+use winit::dpi::PhysicalPosition;
+use winit::event::{ElementState, MouseScrollDelta, WindowEvent};
 use winit::event_loop::ActiveEventLoop;
 
 pub struct App<'s> {
@@ -54,11 +55,11 @@ impl ApplicationHandler for App<'_> {
             WindowEvent::MouseWheel { delta, .. } => {
                 match delta {
                     MouseScrollDelta::LineDelta(x, y) => {
-                        self.workspace.update_position(x as f64 * 32., y as f64 * 32.);
+                        self.workspace.handle_scroll(x, y);
                     }
 
-                    MouseScrollDelta::PixelDelta(position) => {
-                        self.workspace.update_position(position.x, position.y);
+                    MouseScrollDelta::PixelDelta(PhysicalPosition { x, y }) => {
+                        self.workspace.update_position(x, y);
                     }
                 }
 
@@ -71,12 +72,23 @@ impl ApplicationHandler for App<'_> {
             }
 
             WindowEvent::CursorMoved { position, .. } => {
-                self.workspace.update_cursor(position);
+                if self.workspace.handle_mouse_move(position) {
+                    self.renderer.request_redraw();
+                }
             }
 
             WindowEvent::ThemeChanged(theme) => {
                 self.renderer.update_theme(theme);
                 self.renderer.request_redraw();
+            }
+
+            WindowEvent::MouseInput { state, button, .. } => {
+                let pressed = state == ElementState::Pressed;
+                self.workspace.update_mouse_buttons(button, pressed);
+            }
+
+            WindowEvent::KeyboardInput { event, .. } => {
+                self.workspace.update_keys(event.logical_key, event.state.is_pressed());
             }
 
             _ => {}
