@@ -2,7 +2,9 @@ pub trait Interpolate {
     fn interpolate(&self, end_value: &Self, t: f64) -> Self;
 }
 
-pub trait Animatable<T> {
+pub trait Animatable {
+    type Value;
+
     fn is_animating(&self) -> bool;
-    fn update(&mut self) -> T;
+    fn update(&mut self) -> Self::Value;
 }

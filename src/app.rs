@@ -1,9 +1,15 @@
 use crate::renderer::WindowRenderer;
 use crate::workspace::Workspace;
 use winit::application::ApplicationHandler;
-use winit::dpi::PhysicalPosition;
-use winit::event::{ElementState, MouseScrollDelta, WindowEvent};
+use winit::event::{ElementState, WindowEvent};
 use winit::event_loop::ActiveEventLoop;
+use winit::keyboard::NamedKey;
+
+#[cfg(not(target_os = "macos"))]
+pub const MAIN_MODIFIER: NamedKey = NamedKey::Control;
+
+#[cfg(target_os = "macos")]
+pub const MAIN_MODIFIER: NamedKey = NamedKey::Super;
 
 pub struct App<'s> {
     pub renderer: WindowRenderer<'s>,
@@ -53,14 +59,7 @@ impl ApplicationHandler for App<'_> {
             }
 
             WindowEvent::MouseWheel { delta, .. } => {
-                match delta {
-                    MouseScrollDelta::LineDelta(x, y) =>
-                        self.workspace.handle_scroll(x, y),
-
-                    MouseScrollDelta::PixelDelta(PhysicalPosition { x, y }) =>
-                        self.workspace.update_position(x, y),
-                }
-
+                self.workspace.handle_scroll(delta);
                 self.renderer.request_redraw();
             }
 

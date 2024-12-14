@@ -31,7 +31,9 @@ impl DeltaAnimation {
     }
 }
 
-impl Animatable<f64> for DeltaAnimation {
+impl Animatable for DeltaAnimation {
+    type Value = f64;
+
     fn is_animating(&self) -> bool {
         self.animating
     }

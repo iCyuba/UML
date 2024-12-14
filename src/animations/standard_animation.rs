@@ -49,7 +49,9 @@ impl<T: Interpolate + Clone> StandardAnimation<T> {
     }
 }
 
-impl<T: Interpolate + Clone> Animatable<T> for StandardAnimation<T> {
+impl<T: Interpolate + Clone> Animatable for StandardAnimation<T> {
+    type Value = T;
+
     fn is_animating(&self) -> bool {
         self.animating
     }
