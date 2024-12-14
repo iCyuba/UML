@@ -54,13 +54,11 @@ impl ApplicationHandler for App<'_> {
 
             WindowEvent::MouseWheel { delta, .. } => {
                 match delta {
-                    MouseScrollDelta::LineDelta(x, y) => {
-                        self.workspace.handle_scroll(x, y);
-                    }
+                    MouseScrollDelta::LineDelta(x, y) =>
+                        self.workspace.handle_scroll(x, y),
 
-                    MouseScrollDelta::PixelDelta(PhysicalPosition { x, y }) => {
-                        self.workspace.update_position(x, y);
-                    }
+                    MouseScrollDelta::PixelDelta(PhysicalPosition { x, y }) =>
+                        self.workspace.update_position(x, y),
                 }
 
                 self.renderer.request_redraw();
@@ -93,6 +91,8 @@ impl ApplicationHandler for App<'_> {
 
             _ => {}
         }
+
+        self.workspace.animate(&mut event_loop.control_flow(), &self.renderer);
     }
 
     fn suspended(&mut self, _event_loop: &ActiveEventLoop) {

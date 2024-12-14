@@ -6,12 +6,14 @@ use vello::peniko::Fill;
 use winit::dpi::PhysicalPosition;
 
 use winit::event::MouseButton;
+use winit::event_loop::ControlFlow;
 use winit::keyboard::{Key, NamedKey};
+use crate::animations::animated_property::AnimatedProperty;
 
 pub struct Workspace {
-    x: f64,
-    y: f64,
-    zoom: f64,
+    x: AnimatedProperty,
+    y: AnimatedProperty,
+    zoom: AnimatedProperty,
     cursor: PhysicalPosition<f64>,
     mouse_buttons: HashSet<MouseButton>,
     keys: HashSet<Key>,
@@ -20,10 +22,10 @@ pub struct Workspace {
 impl Workspace {
     pub fn new() -> Self {
         Self {
-            x: 0.,
-            y: 0.,
+            x: AnimatedProperty::default(),
+            y: AnimatedProperty::default(),
             cursor: PhysicalPosition::default(),
-            zoom: 1.,
+            zoom: AnimatedProperty::new(1.),
             mouse_buttons: HashSet::new(),
             keys: HashSet::new(),
         }
@@ -35,13 +37,13 @@ impl Workspace {
         let colors = renderer.colors;
         let size = window.inner_size();
         let ui_scale = window.scale_factor();
-        let scale = ui_scale * self.zoom;
+        let scale = ui_scale * self.zoom.get();
 
         // Draw dots
         let gap = 32.0 * scale;
 
-        let mut x = (gap - self.x) % gap;
-        let start_y = (gap - self.y) % gap;
+        let mut x = (gap - self.x.get()) % gap;
+        let start_y = (gap - self.y.get()) % gap;
         let mut y = start_y;
 
         while x < size.width as f64 {
@@ -64,7 +66,7 @@ impl Workspace {
         // Coords
         add_text_to_scene(
             &mut scene,
-            &format!("x: {:.2}, y: {:.2}, zoom: {:.1}", self.x, self.y, self.zoom),
+            &format!("x: {:.2}, y: {:.2}, zoom: {:.1}", self.x.get(), self.y.get(), self.zoom.get()),
             10.0 * ui_scale,
             10.0 * ui_scale,
             16.0 * ui_scale as f32,
@@ -75,9 +77,13 @@ impl Workspace {
 
     pub fn handle_scroll(&mut self, x: f32, y: f32) {
         if self.keys.contains(&Key::Named(NamedKey::Control)) {
-            self.update_zoom(y as f64 * 0.1);
+            let zoom = y as f64 * 0.2 * self.zoom.get();
+            self.update_zoom(zoom);
         } else {
-            self.update_position(x as f64 * 32., y as f64 * 32.);
+            let swap_direction = self.keys.contains(&Key::Named(NamedKey::Shift));
+
+            self.x.update(if swap_direction { y } else { x } as f64 * -64.);
+            self.y.update(if swap_direction { x } else { y } as f64 * -64.);
         }
     }
 
@@ -93,8 +99,8 @@ impl Workspace {
     }
 
     pub fn update_position(&mut self, x: f64, y: f64) {
-        self.x -= x;
-        self.y -= y;
+        self.x = (self.x.get() - x).into();
+        self.y = (self.y.get() - y).into();
     }
 
     pub fn update_cursor(&mut self, cursor: PhysicalPosition<f64>) {
@@ -118,12 +124,27 @@ impl Workspace {
     }
 
     pub fn update_zoom(&mut self, delta: f64) {
-        let point_x = (self.cursor.x + self.x) / self.zoom;
-        let point_y = (self.cursor.y + self.y) / self.zoom;
+        let mut zoom = self.zoom.get();
 
-        self.zoom = (self.zoom + delta).clamp(0.3, 1.5);
+        let point_x = (self.cursor.x + self.x.get()) / zoom;
+        let point_y = (self.cursor.y + self.y.get()) / zoom;
 
-        self.x = point_x * self.zoom - self.cursor.x;
-        self.y = point_y * self.zoom - self.cursor.y;
+        zoom = (zoom + delta).clamp(0.3, 1.5);
+        self.zoom.set(zoom);
+
+        self.x.set(point_x * zoom - self.cursor.x);
+        self.y.set(point_y * zoom - self.cursor.y);
+    }
+
+    pub fn animate(&mut self, control_flow: &mut ControlFlow, renderer: &WindowRenderer) {
+        // TODO: automatically animate all properties
+        let redraw_x = self.x.animate();
+        let redraw_y = self.y.animate();
+        let redraw_zoom = self.zoom.animate();
+
+        if redraw_x || redraw_y || redraw_zoom {
+            *control_flow = ControlFlow::Poll;
+            renderer.request_redraw();
+        }
     }
 }

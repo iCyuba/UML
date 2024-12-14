@@ -3,6 +3,7 @@ mod renderer;
 mod app;
 mod workspace;
 mod colors;
+mod animations;
 
 use winit::event_loop::EventLoop;
 
