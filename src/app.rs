@@ -1,31 +1,46 @@
 use crate::renderer::WindowRenderer;
 use crate::workspace::Workspace;
 use winit::application::ApplicationHandler;
+#[cfg(target_arch = "wasm32")]
+use winit::dpi::PhysicalPosition;
 use winit::event::{ElementState, WindowEvent};
-use winit::event_loop::ActiveEventLoop;
+use winit::event_loop::{ActiveEventLoop, EventLoopProxy};
 use winit::keyboard::NamedKey;
 
-#[cfg(not(target_os = "macos"))]
-pub const MAIN_MODIFIER: NamedKey = NamedKey::Control;
-
-#[cfg(target_os = "macos")]
-pub const MAIN_MODIFIER: NamedKey = NamedKey::Super;
+#[derive(Debug)]
+pub enum AppUserEvent {
+    #[cfg(target_arch = "wasm32")]
+    Scroll { delta: PhysicalPosition<f64>, ctrl_key: bool },
+}
 
 pub struct App<'s> {
+    #[allow(dead_code)] // Unused on the desktop app rn
+    event_loop: EventLoopProxy<AppUserEvent>,
+
+    pub main_modifier: NamedKey,
+
     pub renderer: WindowRenderer<'s>,
     pub workspace: Workspace,
 }
 
 impl App<'_> {
-    pub fn new() -> Self {
+    pub fn new(event_loop: EventLoopProxy<AppUserEvent>) -> Self {
         App {
+            event_loop,
+
+            #[cfg(not(target_os = "macos"))]
+            main_modifier: NamedKey::Control,
+
+            #[cfg(target_os = "macos")]
+            main_modifier: NamedKey::Super,
+
             renderer: WindowRenderer::default(),
             workspace: Workspace::new(),
         }
     }
 }
 
-impl ApplicationHandler for App<'_> {
+impl ApplicationHandler<AppUserEvent> for App<'_> {
     #[cfg(not(target_arch = "wasm32"))]
     fn resumed(&mut self, event_loop: &ActiveEventLoop) {
         if self.renderer.window.is_none() {
@@ -34,7 +49,50 @@ impl ApplicationHandler for App<'_> {
     }
 
     #[cfg(target_arch = "wasm32")]
-    fn resumed(&mut self, _event_loop: &ActiveEventLoop) {}
+    fn resumed(&mut self, _event_loop: &ActiveEventLoop) {
+        use web_sys::wasm_bindgen::closure::Closure;
+        use web_sys::wasm_bindgen::JsCast;
+
+        let window = web_sys::window().unwrap();
+
+        // Set the main modifier key
+        if window.navigator().user_agent().unwrap().to_lowercase().contains("mac") {
+            self.main_modifier = NamedKey::Super;
+        }
+
+        // Setup a better scroll handler
+        let proxy = self.event_loop.clone();
+        let main_modifier = self.main_modifier;
+        let closure = Closure::wrap(Box::new(move |event: web_sys::WheelEvent| {
+            proxy.send_event(AppUserEvent::Scroll {
+                delta: PhysicalPosition {
+                    x: -event.delta_x(),
+                    y: -event.delta_y(),
+                },
+                ctrl_key: event.ctrl_key() ||
+                    (main_modifier == NamedKey::Super && event.meta_key()),
+            }).unwrap();
+        }) as Box<dyn FnMut(_)>);
+
+        window.add_event_listener_with_callback("wheel", &closure.as_ref().unchecked_ref()).unwrap();
+        closure.forget();
+    }
+
+    #[cfg(target_arch = "wasm32")]
+    fn user_event(&mut self, _event_loop: &ActiveEventLoop, event: AppUserEvent) {
+        match event {
+            AppUserEvent::Scroll { delta, ctrl_key } => {
+                use winit::event::MouseScrollDelta;
+
+                if ctrl_key {
+                    self.workspace.update_zoom(delta.y / 32.);
+                } else {
+                    self.workspace.handle_scroll(MouseScrollDelta::PixelDelta(delta), self.main_modifier);
+                }
+                self.renderer.request_redraw();
+            }
+        }
+    }
 
     fn window_event(
         &mut self,
@@ -62,8 +120,10 @@ impl ApplicationHandler for App<'_> {
                 self.renderer.render();
             }
 
+            // This is handled in the user_event method
+            #[cfg(not(target_arch = "wasm32"))]
             WindowEvent::MouseWheel { delta, .. } => {
-                self.workspace.handle_scroll(delta);
+                self.workspace.handle_scroll(delta, self.main_modifier);
                 self.renderer.request_redraw();
             }
 

@@ -13,6 +13,8 @@ use winit::event_loop::ActiveEventLoop;
 #[cfg(target_arch = "wasm32")]
 use winit::event_loop::EventLoop;
 use winit::window::{Theme, Window, WindowAttributes};
+#[cfg(target_arch = "wasm32")]
+use crate::app::AppUserEvent;
 
 const WIDTH: u32 = 1024;
 const HEIGHT: u32 = 800;
@@ -24,6 +26,10 @@ pub struct WindowRenderer<'s> {
 
     renderer: Option<Renderer>,
     surface: Option<RenderSurface<'s>>,
+
+    // This is only needed on the web, because the re-renders are bound to requestAnimationFrame
+    #[cfg(target_arch = "wasm32")]
+    resize_on_next_frame: Option<PhysicalSize<u32>>,
 
     pub window: Option<Arc<Window>>,
     pub scene: Scene,
@@ -40,6 +46,9 @@ impl Default for WindowRenderer<'_> {
             window: None,
             scene: Scene::new(),
             colors: &Colors::LIGHT,
+
+            #[cfg(target_arch = "wasm32")]
+            resize_on_next_frame: None,
         }
     }
 }
@@ -77,7 +86,7 @@ impl WindowRenderer<'_> {
     }
 
     #[cfg(target_arch = "wasm32")]
-    pub async fn init(&mut self, event_loop: &EventLoop<()>) {
+    pub async fn init(&mut self, event_loop: &EventLoop<AppUserEvent>) {
         use web_sys::wasm_bindgen::closure::Closure;
         use web_sys::wasm_bindgen::JsCast;
         use winit::platform::web::{WindowAttributesExtWebSys, WindowExtWebSys};
@@ -139,8 +148,13 @@ impl WindowRenderer<'_> {
     }
 
     pub fn render(&mut self) {
-        let surface = self.surface.as_ref().unwrap();
+        let surface = self.surface.as_mut().unwrap();
         let renderer = self.renderer.as_mut().unwrap();
+
+        #[cfg(target_arch = "wasm32")]
+        if let Some(size) = self.resize_on_next_frame.take() {
+            self.context.resize_surface(surface, size.width, size.height);
+        }
 
         // Get the window size
         let width = surface.config.width;
@@ -174,11 +188,17 @@ impl WindowRenderer<'_> {
         device_handle.device.poll(Maintain::Poll);
     }
 
+    #[cfg(not(target_arch = "wasm32"))]
     pub fn resize(&mut self, size: PhysicalSize<u32>) {
         let surface = self.surface.as_mut().unwrap();
 
         self.context.resize_surface(surface, size.width, size.height);
         self.request_redraw();
+    }
+
+    #[cfg(target_arch = "wasm32")]
+    pub fn resize(&mut self, size: PhysicalSize<u32>) {
+        self.resize_on_next_frame = Some(size);
     }
 
     pub fn request_redraw(&self) {

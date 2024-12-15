@@ -6,7 +6,6 @@ use vello::peniko::Fill;
 use winit::dpi::PhysicalPosition;
 
 use crate::animations::animated_property::AnimatedProperty;
-use crate::app::MAIN_MODIFIER;
 use winit::event::{MouseButton, MouseScrollDelta};
 use winit::event_loop::ControlFlow;
 use winit::keyboard::{Key, NamedKey};
@@ -77,7 +76,12 @@ impl Workspace {
         // Coords
         add_text_to_scene(
             &mut scene,
-            &format!("x: {:.2}, y: {:.2}, zoom: {:.1}", self.x.get(), self.y.get(), self.zoom.get()),
+            &format!(
+                "x: {:.2}, y: {:.2}, zoom: {:.1}",
+                self.x.get(),
+                self.y.get(),
+                self.zoom.get()
+            ),
             10.0 * ui_scale,
             10.0 * ui_scale,
             16.0 * ui_scale as f32,
@@ -86,11 +90,12 @@ impl Workspace {
         );
     }
 
-    pub fn handle_scroll(&mut self, delta: MouseScrollDelta) {
-        if self.keys.contains(&MAIN_MODIFIER.into()) {
+    // TODO: Don't pass main_modifier as a parameter
+    pub fn handle_scroll(&mut self, delta: MouseScrollDelta, main_modifier: NamedKey) {
+        if self.keys.contains(&main_modifier.into()) {
             let zoom = match delta {
-                MouseScrollDelta::LineDelta(_, y) => { y as f64 * 0.2 }
-                MouseScrollDelta::PixelDelta(PhysicalPosition { y, .. }) => { y / 128. }
+                MouseScrollDelta::LineDelta(_, y) => y as f64 * 0.2,
+                MouseScrollDelta::PixelDelta(PhysicalPosition { y, .. }) => y / 128.,
             } * self.zoom.get();
 
             self.update_zoom(zoom);
@@ -101,7 +106,9 @@ impl Workspace {
             };
 
             let swap_direction = self.keys.contains(&NamedKey::Shift.into());
-            if swap_direction { (x, y) = (y, x); }
+            if swap_direction {
+                (x, y) = (y, x);
+            }
 
             match delta {
                 MouseScrollDelta::LineDelta(_, _) => {
@@ -117,8 +124,9 @@ impl Workspace {
     }
 
     pub fn handle_mouse_move(&mut self, cursor: PhysicalPosition<f64>) -> bool {
-        let is_dragging = self.mouse_buttons.contains(&MouseButton::Middle) ||
-            (self.keys.contains(&NamedKey::Space.into()) && self.mouse_buttons.contains(&MouseButton::Left));
+        let is_dragging = self.mouse_buttons.contains(&MouseButton::Middle)
+            || (self.keys.contains(&NamedKey::Space.into())
+                && self.mouse_buttons.contains(&MouseButton::Left));
 
         if is_dragging {
             let x = cursor.x - self.cursor.x;

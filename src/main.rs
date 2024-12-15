@@ -5,13 +5,13 @@ mod fonts;
 mod renderer;
 mod workspace;
 
-use crate::app::App;
+use crate::app::{App, AppUserEvent};
 use winit::event_loop::EventLoop;
 
 #[cfg(not(target_arch = "wasm32"))]
 fn main() {
-    let mut app = App::new();
-    let event_loop = EventLoop::new().unwrap();
+    let event_loop = EventLoop::<AppUserEvent>::with_user_event().build().unwrap();
+    let mut app = App::new(event_loop.create_proxy());
 
     event_loop
         .run_app(&mut app)
@@ -21,8 +21,8 @@ fn main() {
 #[cfg(target_arch = "wasm32")]
 fn main() {
     wasm_bindgen_futures::spawn_local(async {
-        let mut app = App::new();
-        let event_loop = EventLoop::new().unwrap();
+        let event_loop = EventLoop::<AppUserEvent>::with_user_event().build().unwrap();
+        let mut app = App::new(event_loop.create_proxy());
 
         app.renderer.init(&event_loop).await;
 
