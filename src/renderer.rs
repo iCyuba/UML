@@ -8,8 +8,11 @@ use vello::util::{RenderContext, RenderSurface};
 use vello::wgpu::{Maintain, PresentMode};
 use vello::{AaConfig, Glyph, Renderer, RendererOptions, Scene};
 use winit::dpi::{LogicalSize, PhysicalSize};
+#[cfg(not(target_arch = "wasm32"))]
 use winit::event_loop::ActiveEventLoop;
-use winit::window::{Theme, Window};
+#[cfg(target_arch = "wasm32")]
+use winit::event_loop::EventLoop;
+use winit::window::{Theme, Window, WindowAttributes};
 
 const WIDTH: u32 = 1024;
 const HEIGHT: u32 = 800;
@@ -42,20 +45,16 @@ impl Default for WindowRenderer<'_> {
 }
 
 impl WindowRenderer<'_> {
+    #[cfg(not(target_arch = "wasm32"))]
     pub fn init(&mut self, event_loop: &ActiveEventLoop) {
         if self.surface.is_some() {
             return;
         }
 
         // Create a new window
-        let attr = Window::default_attributes()
-            .with_inner_size(LogicalSize::new(WIDTH, HEIGHT))
-            .with_resizable(true)
-            .with_title("UML Editor");
+        let window = Arc::new(event_loop.create_window(Self::window_attributes()).unwrap());
 
-        let window = Arc::new(event_loop.create_window(attr).unwrap());
-
-        // Create a new surface
+        // Create a new surface and renderer
         let size = window.inner_size();
         let surface_future = self.context.create_surface(
             window.clone(),
@@ -64,17 +63,69 @@ impl WindowRenderer<'_> {
             PresentMode::AutoVsync,
         );
         let surface = pollster::block_on(surface_future).unwrap();
+        let renderer = self.create_vello_renderer(&surface);
 
-        // Create a new renderer
-        let renderer = Renderer::new(
-            &self.context.devices[surface.dev_id].device,
-            RendererOptions {
-                surface_format: Some(surface.format),
-                use_cpu: false,
-                antialiasing_support: vello::AaSupport::all(),
-                num_init_threads: NonZeroUsize::new(1),
-            },
-        ).unwrap();
+        // Set the user theme
+        if let Some(theme) = window.theme() {
+            self.update_theme(theme);
+        }
+
+        // Save
+        self.window = Some(window);
+        self.surface = Some(surface);
+        self.renderer = Some(renderer);
+    }
+
+    #[cfg(target_arch = "wasm32")]
+    pub async fn init(&mut self, event_loop: &EventLoop<()>) {
+        use web_sys::wasm_bindgen::closure::Closure;
+        use web_sys::wasm_bindgen::JsCast;
+        use winit::platform::web::{WindowAttributesExtWebSys, WindowExtWebSys};
+
+        // Create a new window
+        let attributes = Self::window_attributes().with_append(true);
+
+        #[allow(deprecated)]
+        let window = Arc::new(event_loop.create_window(attributes).unwrap());
+        window.canvas().unwrap().focus().unwrap();
+
+        // Web setup
+        let web_window = web_sys::window().unwrap();
+        let width = web_window.inner_width().unwrap().as_f64().unwrap();
+        let height = web_window.inner_height().unwrap().as_f64().unwrap();
+        let device_pixel_ratio = web_window.device_pixel_ratio();
+
+        let size = PhysicalSize::from_logical::<_, f64>((width, height), device_pixel_ratio);
+        let _ = window.request_inner_size(size);
+
+        let cloned_window = window.clone();
+
+        // JavaScript resize event
+        let resize_cb = Closure::wrap(Box::new(move |_: web_sys::Event| {
+            let web_window = web_sys::window().unwrap();
+
+            let width = web_window.inner_width().unwrap().as_f64().unwrap();
+            let height = web_window.inner_height().unwrap().as_f64().unwrap();
+            let device_pixel_ratio = web_window.device_pixel_ratio();
+
+            let size = PhysicalSize::<u32>::from_logical::<_, f64>((width, height), device_pixel_ratio);
+            let _ = cloned_window.request_inner_size(size);
+        }) as Box<dyn FnMut(_)>);
+
+        web_window
+            .add_event_listener_with_callback("resize", &resize_cb.as_ref().unchecked_ref())
+            .unwrap();
+
+        resize_cb.forget();
+
+        // Create a new surface and renderer
+        let surface = self.context.create_surface(
+            window.clone(),
+            size.width,
+            size.height,
+            PresentMode::AutoVsync,
+        ).await.unwrap();
+        let renderer = self.create_vello_renderer(&surface);
 
         // Set the user theme
         if let Some(theme) = window.theme() {
@@ -140,6 +191,25 @@ impl WindowRenderer<'_> {
             Theme::Light => self.colors = &Colors::LIGHT,
             Theme::Dark => self.colors = &Colors::DARK,
         }
+    }
+
+    fn window_attributes() -> WindowAttributes {
+        Window::default_attributes()
+            .with_inner_size(LogicalSize::new(WIDTH, HEIGHT))
+            .with_resizable(true)
+            .with_title("UML Editor")
+    }
+
+    fn create_vello_renderer(&self, surface: &RenderSurface) -> Renderer {
+        Renderer::new(
+            &self.context.devices[surface.dev_id].device,
+            RendererOptions {
+                surface_format: Some(surface.format),
+                use_cpu: false,
+                antialiasing_support: vello::AaSupport::all(),
+                num_init_threads: NonZeroUsize::new(1),
+            },
+        ).unwrap()
     }
 }
 

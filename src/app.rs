@@ -26,11 +26,15 @@ impl App<'_> {
 }
 
 impl ApplicationHandler for App<'_> {
+    #[cfg(not(target_arch = "wasm32"))]
     fn resumed(&mut self, event_loop: &ActiveEventLoop) {
         if self.renderer.window.is_none() {
             self.renderer.init(event_loop);
         }
     }
+
+    #[cfg(target_arch = "wasm32")]
+    fn resumed(&mut self, _event_loop: &ActiveEventLoop) {}
 
     fn window_event(
         &mut self,
