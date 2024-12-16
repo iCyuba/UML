@@ -1,7 +1,7 @@
 use crate::fonts;
 use crate::renderer::{add_text_to_scene, WindowRenderer};
 use std::collections::HashSet;
-use vello::kurbo::{Affine, Circle, Rect};
+use vello::kurbo::{Affine, Circle, Rect, Vec2};
 use vello::peniko::Fill;
 use winit::dpi::PhysicalPosition;
 
@@ -11,9 +11,8 @@ use winit::event_loop::ControlFlow;
 use winit::keyboard::{Key, NamedKey};
 
 pub struct Workspace {
-    x: AnimatedProperty,
-    y: AnimatedProperty,
-    zoom: AnimatedProperty,
+    position: AnimatedProperty<Vec2>,
+    zoom: AnimatedProperty<f64>,
     cursor: PhysicalPosition<f64>,
     mouse_buttons: HashSet<MouseButton>,
     keys: HashSet<Key>,
@@ -22,8 +21,7 @@ pub struct Workspace {
 impl Workspace {
     pub fn new() -> Self {
         Self {
-            x: AnimatedProperty::default(),
-            y: AnimatedProperty::default(),
+            position: AnimatedProperty::new(Vec2::ZERO),
             cursor: PhysicalPosition::default(),
             zoom: AnimatedProperty::new(1.),
             mouse_buttons: HashSet::new(),
@@ -37,14 +35,14 @@ impl Workspace {
         let colors = renderer.colors;
         let size = window.inner_size();
         let ui_scale = window.scale_factor();
-        let scale = ui_scale * self.zoom.get();
+        let scale = *self.zoom * ui_scale;
 
         // Draw dots
-        if self.zoom.get() > 0.3 {
+        if *self.zoom > 0.3 {
             let gap = 32.0 * scale;
 
-            let mut x = (gap - self.x.get()) % gap;
-            let start_y = (gap - self.y.get()) % gap;
+            let mut x = (gap - self.position.x) % gap;
+            let start_y = (gap - self.position.y) % gap;
             let mut y = start_y;
 
             while x < size.width as f64 {
@@ -67,7 +65,7 @@ impl Workspace {
 
         scene.fill(
             Fill::NonZero,
-            Affine::translate((-self.x.get(), -self.y.get())),
+            Affine::translate((-self.position.x, -self.position.y)),
             colors.workspace_dot,
             None,
             &Rect::from_origin_size((0.0, 0.0), (64. * scale, 64. * scale)),
@@ -78,9 +76,9 @@ impl Workspace {
             &mut scene,
             &format!(
                 "x: {:.2}, y: {:.2}, zoom: {:.1}",
-                self.x.get(),
-                self.y.get(),
-                self.zoom.get()
+                self.position.x,
+                self.position.y,
+                *self.zoom
             ),
             10.0 * ui_scale,
             10.0 * ui_scale,
@@ -112,12 +110,10 @@ impl Workspace {
 
             match delta {
                 MouseScrollDelta::LineDelta(_, _) => {
-                    self.x.update(-x);
-                    self.y.update(-y);
+                    self.position.update(-Vec2::new(x, y));
                 }
                 MouseScrollDelta::PixelDelta(_) => {
-                    self.x = (self.x.get() - x).into();
-                    self.y = (self.y.get() - y).into();
+                    *self.position -= Vec2::new(x, y);
                 }
             }
         }
@@ -126,14 +122,10 @@ impl Workspace {
     pub fn handle_mouse_move(&mut self, cursor: PhysicalPosition<f64>) -> bool {
         let is_dragging = self.mouse_buttons.contains(&MouseButton::Middle)
             || (self.keys.contains(&NamedKey::Space.into())
-                && self.mouse_buttons.contains(&MouseButton::Left));
+            && self.mouse_buttons.contains(&MouseButton::Left));
 
         if is_dragging {
-            let x = cursor.x - self.cursor.x;
-            let y = cursor.y - self.cursor.y;
-
-            self.x = (self.x.get() - x).into();
-            self.y = (self.y.get() - y).into();
+            *self.position -= Vec2::new(cursor.x - self.cursor.x, cursor.y - self.cursor.y);
         }
 
         self.update_cursor(cursor);
@@ -161,25 +153,28 @@ impl Workspace {
     }
 
     pub fn update_zoom(&mut self, delta: f64) {
-        let mut zoom = self.zoom.get();
+        let mut zoom = *self.zoom;
 
-        let point_x = (self.cursor.x + self.x.get()) / zoom;
-        let point_y = (self.cursor.y + self.y.get()) / zoom;
+        let point_x = (self.cursor.x + self.position.x) / zoom;
+        let point_y = (self.cursor.y + self.position.y) / zoom;
 
         zoom = (zoom + delta).clamp(0.2, 1.5);
         self.zoom.set(zoom);
 
-        self.x.set(point_x * zoom - self.cursor.x);
-        self.y.set(point_y * zoom - self.cursor.y);
+        let pos = Vec2::new(
+            point_x * zoom - self.cursor.x,
+            point_y * zoom - self.cursor.y,
+        );
+
+        self.position.set(pos);
     }
 
     pub fn animate(&mut self, control_flow: &mut ControlFlow, renderer: &WindowRenderer) {
         // TODO: automatically animate all properties
-        let redraw_x = self.x.animate();
-        let redraw_y = self.y.animate();
+        let redraw_pos = self.position.animate();
         let redraw_zoom = self.zoom.animate();
 
-        if redraw_x || redraw_y || redraw_zoom {
+        if redraw_pos || redraw_zoom {
             *control_flow = ControlFlow::Poll;
             renderer.request_redraw();
         }

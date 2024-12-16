@@ -1,24 +1,25 @@
+use std::ops::{Deref, DerefMut};
 use crate::animations::delta_animation::DeltaAnimation;
-use crate::animations::traits::Animatable;
+use crate::animations::traits::{Animatable, Numeric};
 
-pub struct AnimatedProperty {
-    animation: Option<DeltaAnimation>,
-    value: f64,
+pub struct AnimatedProperty<T: Numeric> {
+    animation: Option<DeltaAnimation<T>>,
+    value: T,
 }
 
-impl AnimatedProperty {
-    pub fn new(value: f64) -> Self {
+impl<T: Numeric> AnimatedProperty<T> {
+    pub fn new(value: T) -> Self {
         Self {
             animation: None,
             value,
         }
     }
 
-    pub fn get(&self) -> f64 {
+    pub fn get(&self) -> T {
         self.value
     }
 
-    pub fn set(&mut self, value: f64) {
+    pub fn set(&mut self, value: T) {
         self.animation = if let Some(animation) = &self.animation {
             Some(animation.with_target_value(value))
         } else {
@@ -26,7 +27,7 @@ impl AnimatedProperty {
         }
     }
 
-    pub fn update(&mut self, difference: f64) {
+    pub fn update(&mut self, difference: T) {
         self.set(self.value + difference);
     }
 
@@ -43,14 +44,23 @@ impl AnimatedProperty {
     }
 }
 
-impl From<f64> for AnimatedProperty {
-    fn from(value: f64) -> Self {
+impl<T: Numeric> From<T> for AnimatedProperty<T> {
+    fn from(value: T) -> Self {
         Self::new(value)
     }
 }
 
-impl Default for AnimatedProperty {
-    fn default() -> Self {
-        Self::new(0.)
+impl<T: Numeric> Deref for AnimatedProperty<T> {
+    type Target = T;
+
+    fn deref(&self) -> &Self::Target {
+        &self.value
+    }
+}
+
+impl<T: Numeric> DerefMut for AnimatedProperty<T> {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        self.animation = None;
+        &mut self.value
     }
 }

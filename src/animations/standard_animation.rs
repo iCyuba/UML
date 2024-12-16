@@ -14,7 +14,7 @@ pub enum Easing {
     EaseOutCubic,
 }
 
-pub struct StandardAnimation<T: Interpolate + Clone> {
+pub struct StandardAnimation<T: Interpolate> {
     start_value: T,
     end_value: T,
     duration: Duration,
@@ -23,7 +23,7 @@ pub struct StandardAnimation<T: Interpolate + Clone> {
     easing: Easing,
 }
 
-impl<T: Interpolate + Clone> StandardAnimation<T> {
+impl<T: Interpolate> StandardAnimation<T> {
     pub fn new(start_value: T, end_value: T, duration: Duration, easing: Easing) -> Self {
         Self {
             start_value,
@@ -52,7 +52,7 @@ impl<T: Interpolate + Clone> StandardAnimation<T> {
     }
 }
 
-impl<T: Interpolate + Clone> Animatable for StandardAnimation<T> {
+impl<T: Interpolate> Animatable for StandardAnimation<T> {
     type Value = T;
 
     fn is_animating(&self) -> bool {

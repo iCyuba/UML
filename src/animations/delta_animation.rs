@@ -1,57 +1,62 @@
-use crate::animations::traits::Animatable;
+#[cfg(not(target_arch = "wasm32"))]
+use std::time::Instant;
+#[cfg(target_arch = "wasm32")]
+use web_time::Instant;
+use crate::animations::traits::{Animatable, Numeric};
 
 #[derive(Clone)]
-pub struct DeltaAnimation {
-    current_value: f64,
-    target_value: f64,
-    velocity: f64,
+pub struct DeltaAnimation<T: Numeric> {
+    current_value: T,
+    target_value: T,
     animating: bool,
+    frame_time: Instant,
+    multiplier: f64,
 }
 
-impl DeltaAnimation {
-    pub fn new(current_value: f64, target_value: f64) -> Self {
+impl<T: Numeric> DeltaAnimation<T> {
+    pub fn new(current_value: T, target_value: T) -> Self {
         Self {
             current_value,
             target_value,
-            velocity: 1.,
             animating: true,
+            frame_time: Instant::now(),
+            multiplier: 35.,
         }
     }
 
-    pub fn with_target_value(&self, target_value: f64) -> Self {
-        let prev_direction = (self.target_value - self.current_value).signum();
-        let new_direction = (target_value - self.current_value).signum();
-
+    pub fn with_target_value(&self, target_value: T) -> Self {
         Self {
             target_value,
             animating: true,
-            velocity: if prev_direction == new_direction { self.velocity } else { 1. },
-            current_value: self.current_value,
+            ..*self
         }
     }
 }
 
-impl Animatable for DeltaAnimation {
-    type Value = f64;
+impl<T: Numeric> Animatable for DeltaAnimation<T> {
+    type Value = T;
 
     fn is_animating(&self) -> bool {
         self.animating
     }
 
-    fn update(&mut self) -> f64 {
+    fn update(&mut self) -> T {
         if !self.animating {
             return self.target_value.clone();
         }
 
-        let step = 0.1 * (self.target_value - self.current_value);
-        self.velocity *= 1.01;
+        let elapsed = self.frame_time.elapsed().as_secs_f64();
+        self.frame_time = Instant::now();
 
-        if step.abs() > 0.0 {
-            self.current_value += self.velocity * step;
-            self.current_value
-        } else {
+        let step = (self.target_value - self.current_value)
+            .scalar_mul(elapsed * self.multiplier);
+
+        if step.is_zero() {
             self.animating = false;
             self.target_value.clone()
+        } else {
+            self.current_value = self.current_value + step;
+            self.current_value
         }
     }
 }
