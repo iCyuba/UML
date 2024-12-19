@@ -1,5 +1,5 @@
+use crate::geometry::Vec2;
 use std::ops::{Add, Sub};
-use vello::kurbo::Vec2;
 
 pub trait Interpolate: Copy {
     fn interpolate(&self, end_value: &Self, t: f64) -> Self;

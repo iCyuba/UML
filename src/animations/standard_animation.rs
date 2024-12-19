@@ -1,10 +1,10 @@
 #![allow(dead_code)]
 
+use crate::animations::traits::{Animatable, Interpolate};
 #[cfg(not(target_arch = "wasm32"))]
 use std::time::{Duration, Instant};
 #[cfg(target_arch = "wasm32")]
 use web_time::{Duration, Instant};
-use crate::animations::traits::{Animatable, Interpolate};
 
 pub enum Easing {
     Linear,
@@ -47,7 +47,7 @@ impl<T: Interpolate> StandardAnimation<T> {
                     -1.0 + (4.0 - 2.0 * t) * t
                 }
             }
-            Easing::EaseOutCubic => 1.0 - (1.0 - t).powf(3.0)
+            Easing::EaseOutCubic => 1.0 - (1.0 - t).powf(3.0),
         }
     }
 }

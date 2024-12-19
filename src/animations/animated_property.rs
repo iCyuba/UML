@@ -1,6 +1,6 @@
-use std::ops::{Deref, DerefMut};
 use crate::animations::delta_animation::DeltaAnimation;
 use crate::animations::traits::{Animatable, Numeric};
+use std::ops::{Deref, DerefMut};
 
 pub struct AnimatedProperty<T: Numeric> {
     animation: Option<DeltaAnimation<T>>,
