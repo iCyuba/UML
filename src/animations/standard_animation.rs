@@ -99,6 +99,10 @@ impl<T: Interpolate> Animatable for StandardAnimation<T> {
         self.end_value = value;
     }
 
+    fn get_target(&self) -> Self::Value {
+        self.end_value
+    }
+
     fn current_value(&self) -> Self::Value {
         self.current_value
     }

@@ -13,6 +13,7 @@ pub trait Animatable {
     fn stop_animation(&mut self);
     fn continue_animation(&mut self);
     fn set_target(&mut self, value: Self::Value);
+    fn get_target(&self) -> Self::Value;
     fn current_value(&self) -> Self::Value;
 }
 

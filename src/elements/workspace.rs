@@ -9,7 +9,9 @@ use vello::kurbo::{self, Affine, Circle};
 use vello::peniko::Fill;
 use winit::event::MouseButton;
 use winit::keyboard::NamedKey;
+use derive_macros::AnimatedElement;
 
+#[derive(AnimatedElement)]
 pub struct Workspace {
     position: AnimatedProperty<DeltaAnimation<Vec2>>,
     zoom: AnimatedProperty<DeltaAnimation<f64>>,
@@ -18,17 +20,15 @@ pub struct Workspace {
 impl Workspace {
     pub fn new() -> Self {
         Self {
-            position: AnimatedProperty::new(DeltaAnimation::new(Default::default(), 40.)),
-            zoom: AnimatedProperty::new(DeltaAnimation::new(1., 35.)),
+            position: AnimatedProperty::new(DeltaAnimation::new(Default::default(), 30.)),
+            zoom: AnimatedProperty::new(DeltaAnimation::new(1., 30.)),
         }
     }
 }
 
 impl Element for Workspace {
     fn update(&mut self, state: &mut State) {
-        // TODO: automatically animate all properties
-        state.redraw |= self.position.animate();
-        state.redraw |= self.zoom.animate();
+        state.redraw |= self.animate();
     }
 
     fn render(&self, r: &mut Renderer) {
@@ -89,7 +89,7 @@ impl Element for Workspace {
 
     fn on_scroll(&mut self, state: &mut State, delta: Vec2, mouse: bool, zoom: bool, shift: bool) {
         if zoom {
-            let mut zoom = *self.zoom;
+            let mut zoom = self.zoom.get_target();
 
             let point = (state.cursor + *self.position) / zoom;
 

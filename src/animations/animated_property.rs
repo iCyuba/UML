@@ -19,6 +19,10 @@ impl<A: Animatable> AnimatedProperty<A> {
     pub fn get(&self) -> A::Value {
         self.value
     }
+    
+    pub fn get_target(&self) -> A::Value {
+        self.animation.get_target()
+    }
 
     pub fn set(&mut self, value: A::Value) {
         self.animation.set_target(value);
@@ -28,6 +32,8 @@ impl<A: Animatable> AnimatedProperty<A> {
     pub fn reset(&mut self, value: A::Value) {
         self.animation.stop_animation();
         self.animation.set_target(value);
+        
+        self.value = value;
     }
 
     pub fn animate(&mut self) -> bool {

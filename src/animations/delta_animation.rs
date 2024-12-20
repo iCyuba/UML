@@ -69,6 +69,10 @@ impl<T: Numeric> Animatable for DeltaAnimation<T> {
         self.target_value = value;
     }
 
+    fn get_target(&self) -> Self::Value {
+        self.target_value
+    }
+
     fn current_value(&self) -> Self::Value {
         self.current_value
     }
