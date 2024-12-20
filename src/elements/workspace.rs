@@ -5,11 +5,11 @@ use crate::app::State;
 use crate::elements::Element;
 use crate::geometry::{Point, Vec2};
 use crate::presentation::fonts;
+use derive_macros::AnimatedElement;
 use vello::kurbo::{self, Affine, Circle};
 use vello::peniko::Fill;
 use winit::event::MouseButton;
 use winit::keyboard::NamedKey;
-use derive_macros::AnimatedElement;
 
 #[derive(AnimatedElement)]
 pub struct Workspace {
@@ -89,13 +89,12 @@ impl Element for Workspace {
 
     fn on_scroll(&mut self, state: &mut State, delta: Vec2, mouse: bool, zoom: bool, shift: bool) {
         if zoom {
-            let mut zoom = self.zoom.get_target();
-
+            let zoom = *self.zoom;
             let point = (state.cursor + *self.position) / zoom;
 
-            zoom = (zoom + zoom * delta.y / 192.).clamp(0.2, 1.5);
-            self.zoom.set(zoom);
+            let zoom = (self.zoom.get_target() + zoom * delta.y / 256.).clamp(0.2, 1.5);
 
+            self.zoom.set(zoom);
             self.position.set(point * zoom - state.cursor);
         } else {
             let (mut x, mut y) = delta.into();
@@ -118,7 +117,7 @@ impl Element for Workspace {
     fn on_mousemove(&mut self, state: &mut State, cursor: Point) {
         let is_dragging = state.mouse_buttons.contains(&MouseButton::Middle)
             || (state.keys.contains(&NamedKey::Space.into())
-            && state.mouse_buttons.contains(&MouseButton::Left));
+                && state.mouse_buttons.contains(&MouseButton::Left));
 
         if is_dragging {
             let pos = *self.position - (cursor - state.cursor);

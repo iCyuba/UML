@@ -61,6 +61,11 @@ impl<T: Numeric> Animatable for DeltaAnimation<T> {
     }
 
     fn continue_animation(&mut self) {
+        // Don't reset the frame time if an animation is already running
+        if self.animating {
+            return;
+        }
+
         self.animating = true;
         self.frame_time = Instant::now();
     }
