@@ -43,7 +43,7 @@ pub trait Element {
         }
     }
 
-    fn on_mousemove(&mut self, state: &State, cursor: Point) {
+    fn on_mousemove(&mut self, state: &mut State, cursor: Point) {
         for child in self.children_mut() {
             child.on_mousemove(state, cursor);
         }

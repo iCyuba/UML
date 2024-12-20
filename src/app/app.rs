@@ -121,9 +121,6 @@ impl ApplicationHandler<AppUserEvent> for App<'_> {
 
                 // Render the scene
                 self.renderer.render();
-
-                // Request a new frame
-                self.renderer.request_redraw();
             }
 
             // This is handled in the user_event method
@@ -175,6 +172,7 @@ impl ApplicationHandler<AppUserEvent> for App<'_> {
 
             WindowEvent::ThemeChanged(theme) => {
                 self.renderer.update_theme(theme);
+                self.state.redraw = true;
             }
 
             WindowEvent::MouseInput { state, button, .. } => {
@@ -194,6 +192,12 @@ impl ApplicationHandler<AppUserEvent> for App<'_> {
             }
 
             _ => {}
+        }
+
+        // Request a new frame if needed
+        if self.state.redraw {
+            self.renderer.request_redraw();
+            self.state.redraw = false;
         }
     }
 

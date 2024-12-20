@@ -24,10 +24,10 @@ impl Workspace {
 }
 
 impl Element for Workspace {
-    fn update(&mut self, _state: &mut State) {
+    fn update(&mut self, state: &mut State) {
         // TODO: automatically animate all properties
-        self.position.animate();
-        self.zoom.animate();
+        state.redraw |= self.position.animate();
+        state.redraw |= self.zoom.animate();
     }
 
     fn render(&self, r: &mut Renderer) {
@@ -108,15 +108,18 @@ impl Element for Workspace {
                 *self.position -= Vec2::new(x, y);
             }
         }
+
+        state.redraw = true;
     }
 
-    fn on_mousemove(&mut self, state: &State, cursor: Point) {
+    fn on_mousemove(&mut self, state: &mut State, cursor: Point) {
         let is_dragging = state.mouse_buttons.contains(&MouseButton::Middle)
             || (state.keys.contains(&NamedKey::Space.into())
-            && state.mouse_buttons.contains(&MouseButton::Left));
+                && state.mouse_buttons.contains(&MouseButton::Left));
 
         if is_dragging {
             *self.position -= cursor - state.cursor;
+            state.redraw = true;
         }
     }
 }

@@ -7,6 +7,9 @@ pub struct State {
     #[cfg(target_arch = "wasm32")]
     pub main_modifier: NamedKey,
 
+    // Internal state
+    pub redraw: bool,
+
     // User state
     pub cursor: Point,
     pub keys: HashSet<Key>,
@@ -19,8 +22,9 @@ impl State {
             #[cfg(target_arch = "wasm32")]
             main_modifier: NamedKey::Control,
 
-            cursor: Default::default(),
+            redraw: false,
 
+            cursor: Default::default(),
             keys: Default::default(),
             mouse_buttons: Default::default(),
         }
