@@ -1,66 +1,45 @@
-use crate::animations::delta_animation::DeltaAnimation;
-use crate::animations::traits::{Animatable, Numeric};
-use std::ops::{Deref, DerefMut};
+#![allow(dead_code)]
 
-pub struct AnimatedProperty<T: Numeric> {
-    animation: Option<DeltaAnimation<T>>,
-    value: T,
+use crate::animations::traits::Animatable;
+use std::ops::Deref;
+
+pub struct AnimatedProperty<A: Animatable> {
+    animation: A,
+    value: A::Value,
 }
 
-impl<T: Numeric> AnimatedProperty<T> {
-    pub fn new(value: T) -> Self {
+impl<A: Animatable> AnimatedProperty<A> {
+    pub fn new(animatable: A) -> Self {
         Self {
-            animation: None,
-            value,
+            value: animatable.current_value(),
+            animation: animatable,
         }
     }
 
-    pub fn get(&self) -> T {
+    pub fn get(&self) -> A::Value {
         self.value
     }
 
-    pub fn set(&mut self, value: T) {
-        self.animation = if let Some(animation) = &self.animation {
-            Some(animation.with_target_value(value))
-        } else {
-            Some(DeltaAnimation::new(self.value, value))
-        }
+    pub fn set(&mut self, value: A::Value) {
+        self.animation.set_target(value);
+        self.animation.continue_animation();
     }
 
-    pub fn update(&mut self, difference: T) {
-        self.set(self.value + difference);
+    pub fn reset(&mut self, value: A::Value) {
+        self.animation.stop_animation();
+        self.animation.set_target(value);
     }
 
     pub fn animate(&mut self) -> bool {
-        if let Some(animation) = &mut self.animation {
-            self.value = animation.update();
-
-            if !animation.is_animating() {
-                self.animation = None;
-            }
-        }
-
-        self.animation.is_some()
+        self.value = self.animation.update();
+        self.animation.is_animating()
     }
 }
 
-impl<T: Numeric> From<T> for AnimatedProperty<T> {
-    fn from(value: T) -> Self {
-        Self::new(value)
-    }
-}
-
-impl<T: Numeric> Deref for AnimatedProperty<T> {
-    type Target = T;
+impl<A: Animatable> Deref for AnimatedProperty<A> {
+    type Target = A::Value;
 
     fn deref(&self) -> &Self::Target {
         &self.value
-    }
-}
-
-impl<T: Numeric> DerefMut for AnimatedProperty<T> {
-    fn deref_mut(&mut self) -> &mut Self::Target {
-        self.animation = None;
-        &mut self.value
     }
 }

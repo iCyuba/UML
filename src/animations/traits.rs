@@ -6,10 +6,14 @@ pub trait Interpolate: Copy {
 }
 
 pub trait Animatable {
-    type Value;
+    type Value: Copy;
 
     fn is_animating(&self) -> bool;
     fn update(&mut self) -> Self::Value;
+    fn stop_animation(&mut self);
+    fn continue_animation(&mut self);
+    fn set_target(&mut self, value: Self::Value);
+    fn current_value(&self) -> Self::Value;
 }
 
 pub trait Zero: Sized {

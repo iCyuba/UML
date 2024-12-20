@@ -1,4 +1,5 @@
 use crate::animations::animated_property::AnimatedProperty;
+use crate::animations::delta_animation::DeltaAnimation;
 use crate::app::renderer::{add_text_to_scene, Renderer};
 use crate::app::State;
 use crate::elements::Element;
@@ -10,15 +11,15 @@ use winit::event::MouseButton;
 use winit::keyboard::NamedKey;
 
 pub struct Workspace {
-    position: AnimatedProperty<Vec2>,
-    zoom: AnimatedProperty<f64>,
+    position: AnimatedProperty<DeltaAnimation<Vec2>>,
+    zoom: AnimatedProperty<DeltaAnimation<f64>>,
 }
 
 impl Workspace {
     pub fn new() -> Self {
         Self {
-            position: AnimatedProperty::new(Default::default()),
-            zoom: AnimatedProperty::new(1.),
+            position: AnimatedProperty::new(DeltaAnimation::new(Default::default(), 40.)),
+            zoom: AnimatedProperty::new(DeltaAnimation::new(1., 35.)),
         }
     }
 }
@@ -102,10 +103,12 @@ impl Element for Workspace {
                 (x, y) = (y, x);
             }
 
+            let target = *self.position - Vec2::new(x, y);
+
             if mouse {
-                self.position.update(-Vec2::new(x, y));
+                self.position.set(target);
             } else {
-                *self.position -= Vec2::new(x, y);
+                self.position.reset(target);
             }
         }
 
@@ -115,10 +118,11 @@ impl Element for Workspace {
     fn on_mousemove(&mut self, state: &mut State, cursor: Point) {
         let is_dragging = state.mouse_buttons.contains(&MouseButton::Middle)
             || (state.keys.contains(&NamedKey::Space.into())
-                && state.mouse_buttons.contains(&MouseButton::Left));
+            && state.mouse_buttons.contains(&MouseButton::Left));
 
         if is_dragging {
-            *self.position -= cursor - state.cursor;
+            let pos = *self.position - (cursor - state.cursor);
+            self.position.reset(pos);
             state.redraw = true;
         }
     }

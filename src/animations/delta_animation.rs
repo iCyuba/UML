@@ -1,34 +1,29 @@
+#![allow(dead_code)]
+
 use crate::animations::traits::{Animatable, Numeric};
 #[cfg(not(target_arch = "wasm32"))]
 use std::time::Instant;
 #[cfg(target_arch = "wasm32")]
 use web_time::Instant;
 
-#[derive(Clone)]
 pub struct DeltaAnimation<T: Numeric> {
     current_value: T,
     target_value: T,
-    animating: bool,
+
     frame_time: Instant,
     multiplier: f64,
+
+    animating: bool,
 }
 
 impl<T: Numeric> DeltaAnimation<T> {
-    pub fn new(current_value: T, target_value: T) -> Self {
+    pub fn new(initial_value: T, multiplier: f64) -> Self {
         Self {
-            current_value,
-            target_value,
-            animating: true,
+            current_value: initial_value,
+            target_value: initial_value,
+            animating: false,
             frame_time: Instant::now(),
-            multiplier: 35.,
-        }
-    }
-
-    pub fn with_target_value(&self, target_value: T) -> Self {
-        Self {
-            target_value,
-            animating: true,
-            ..*self
+            multiplier,
         }
     }
 }
@@ -42,7 +37,7 @@ impl<T: Numeric> Animatable for DeltaAnimation<T> {
 
     fn update(&mut self) -> T {
         if !self.animating {
-            return self.target_value.clone();
+            return self.target_value;
         }
 
         let elapsed = self.frame_time.elapsed().as_secs_f64();
@@ -51,11 +46,30 @@ impl<T: Numeric> Animatable for DeltaAnimation<T> {
         let step = (self.target_value - self.current_value).scalar_mul(elapsed * self.multiplier);
 
         if step.is_zero() {
+            self.current_value = self.target_value;
             self.animating = false;
-            self.target_value.clone()
+            self.target_value
         } else {
             self.current_value = self.current_value + step;
             self.current_value
         }
+    }
+
+    fn stop_animation(&mut self) {
+        self.animating = false;
+        self.current_value = self.target_value;
+    }
+
+    fn continue_animation(&mut self) {
+        self.animating = true;
+        self.frame_time = Instant::now();
+    }
+
+    fn set_target(&mut self, value: T) {
+        self.target_value = value;
+    }
+
+    fn current_value(&self) -> Self::Value {
+        self.current_value
     }
 }

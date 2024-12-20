@@ -2,7 +2,7 @@ use vello::kurbo;
 
 use super::{Point, Size, Vec2};
 
-#[derive(Debug, Clone, Copy, PartialEq)]
+#[derive(Debug, Clone, Copy, PartialEq, Default)]
 pub struct Rect {
     origin: Point,
     size: Size,
@@ -11,16 +11,6 @@ pub struct Rect {
 impl Rect {
     pub fn new(origin: Vec2, size: Size) -> Self {
         Self { origin, size }
-    }
-}
-
-// Default
-impl Default for Rect {
-    fn default() -> Self {
-        Self {
-            origin: Default::default(),
-            size: Default::default(),
-        }
     }
 }
 
