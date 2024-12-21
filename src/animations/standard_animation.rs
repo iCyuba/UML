@@ -89,22 +89,30 @@ impl<T: Interpolate> Animatable for StandardAnimation<T> {
     }
 
     fn continue_animation(&mut self) {
-        self.start_time = Instant::now();
+        if !self.animating {
+            self.start_time = Instant::now();
+        }
+
         self.animating = true;
     }
 
     fn set_target(&mut self, value: Self::Value) {
         self.start_time = Instant::now();
+
+        if !self.animating {
+            self.current_value = value;
+        }
+
         self.start_value = self.current_value;
         self.end_value = value;
     }
 
-    fn get_target(&self) -> Self::Value {
-        self.end_value
+    fn get_target(&self) -> &Self::Value {
+        &self.end_value
     }
 
-    fn current_value(&self) -> Self::Value {
-        self.current_value
+    fn current_value(&self) -> &Self::Value {
+        &self.current_value
     }
 }
 

@@ -13,26 +13,33 @@ pub trait Animatable {
     fn stop_animation(&mut self);
     fn continue_animation(&mut self);
     fn set_target(&mut self, value: Self::Value);
-    fn get_target(&self) -> Self::Value;
-    fn current_value(&self) -> Self::Value;
+    fn get_target(&self) -> &Self::Value;
+    fn current_value(&self) -> &Self::Value;
 }
 
-pub trait Zero: Sized {
-    fn is_zero(&self) -> bool;
+pub trait Magnitude {
+    fn magnitude(&self) -> f64;
 }
 
 pub trait ScalarMul {
     fn scalar_mul(self, rhs: f64) -> Self;
 }
 
-pub trait Numeric: Copy + Sub<Output = Self> + Add<Output = Self> + ScalarMul + Zero {}
+pub trait DotMul {
+    fn dot_mul(self, rhs: Self) -> f64;
+}
+
+pub trait Numeric:
+    Copy + Sub<Output = Self> + Add<Output = Self> + Magnitude + DotMul + ScalarMul
+{
+}
 
 macro_rules! numeric_impl {
-    ($t:ty, $v:expr) => {
-        impl Zero for $t {
+    ($t:ty) => {
+        impl Magnitude for $t {
             #[inline]
-            fn is_zero(&self) -> bool {
-                *self == $v
+            fn magnitude(&self) -> f64 {
+                (*self as f64).abs()
             }
         }
         impl ScalarMul for $t {
@@ -41,36 +48,51 @@ macro_rules! numeric_impl {
                 (self as f64 * rhs) as $t
             }
         }
+        impl DotMul for $t {
+            #[inline]
+            fn dot_mul(self, rhs: Self) -> f64 {
+                self as f64 * rhs as f64
+            }
+        }
         impl Numeric for $t {}
     };
 }
 
-numeric_impl!(usize, 0);
-numeric_impl!(u8, 0);
-numeric_impl!(u16, 0);
-numeric_impl!(u32, 0);
-numeric_impl!(u64, 0);
-numeric_impl!(u128, 0);
+numeric_impl!(usize);
+numeric_impl!(u8);
+numeric_impl!(u16);
+numeric_impl!(u32);
+numeric_impl!(u64);
+numeric_impl!(u128);
 
-numeric_impl!(isize, 0);
-numeric_impl!(i8, 0);
-numeric_impl!(i16, 0);
-numeric_impl!(i32, 0);
-numeric_impl!(i64, 0);
-numeric_impl!(i128, 0);
+numeric_impl!(isize);
+numeric_impl!(i8);
+numeric_impl!(i16);
+numeric_impl!(i32);
+numeric_impl!(i64);
+numeric_impl!(i128);
 
-numeric_impl!(f32, 0.0);
-numeric_impl!(f64, 0.0);
+numeric_impl!(f32);
+numeric_impl!(f64);
 
-impl ScalarMul for Vec2 {
-    fn scalar_mul(self, rhs: f64) -> Self {
-        self * rhs
+impl Magnitude for Vec2 {
+    fn magnitude(&self) -> f64 {
+        (self.x.powi(2) + self.y.powi(2)).sqrt()
     }
 }
 
-impl Zero for Vec2 {
-    fn is_zero(&self) -> bool {
-        self.x == 0.0 && self.y == 0.0
+impl DotMul for Vec2 {
+    fn dot_mul(self, rhs: Self) -> f64 {
+        self.x * rhs.x + self.y * rhs.y
+    }
+}
+
+impl ScalarMul for Vec2 {
+    fn scalar_mul(self, rhs: f64) -> Self {
+        Vec2 {
+            x: self.x * rhs,
+            y: self.y * rhs,
+        }
     }
 }
 
