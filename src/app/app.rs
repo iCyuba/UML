@@ -5,7 +5,6 @@ use crate::geometry::{Point, Vec2};
 use winit::application::ApplicationHandler;
 use winit::event::{ElementState, WindowEvent};
 use winit::event_loop::{ActiveEventLoop, EventLoopProxy};
-use winit::keyboard::NamedKey;
 
 #[derive(Debug)]
 pub enum AppUserEvent {
@@ -28,8 +27,8 @@ impl App<'_> {
         App {
             event_loop,
 
-            renderer: Renderer::default(),
-            state: State::new(),
+            renderer: Default::default(),
+            state: Default::default(),
 
             viewport: Viewport::new(),
         }
@@ -52,28 +51,25 @@ impl ApplicationHandler<AppUserEvent> for App<'_> {
         let window = web_sys::window().unwrap();
 
         // Set the main modifier key
-        if window
+        let use_super = window
             .navigator()
             .user_agent()
             .unwrap()
             .to_lowercase()
-            .contains("mac")
-        {
-            self.state.main_modifier = NamedKey::Super;
-        }
+            .contains("mac");
+
+        self.state.use_super = use_super;
 
         // Setup a better scroll handler
         let proxy = self.event_loop.clone();
-        let main_modifier = self.state.main_modifier;
         let closure = Closure::wrap(Box::new(move |event: web_sys::WheelEvent| {
             proxy
                 .send_event(AppUserEvent::Scroll {
-                    delta: Vec2 {
-                        x: -event.delta_x(),
-                        y: -event.delta_y(),
+                    delta: -Vec2 {
+                        x: event.delta_x(),
+                        y: event.delta_y(),
                     },
-                    ctrl_key: event.ctrl_key()
-                        || (main_modifier == NamedKey::Super && event.meta_key()),
+                    ctrl_key: event.ctrl_key() || (use_super && event.meta_key()),
                 })
                 .unwrap();
         }) as Box<dyn FnMut(_)>);
@@ -143,8 +139,8 @@ impl ApplicationHandler<AppUserEvent> for App<'_> {
                     MouseScrollDelta::PixelDelta(PhysicalPosition { x, y }) => Vec2 { x, y },
                 };
 
-                let zoom = self.state.keys.contains(&self.state.main_modifier().into());
-                let reverse = self.state.keys.contains(&NamedKey::Shift.into());
+                let zoom = self.state.main_modifier();
+                let reverse = self.state.modifiers.shift_key();
 
                 self.viewport
                     .on_scroll(&mut self.state, delta, mouse, zoom, reverse);
@@ -190,6 +186,8 @@ impl ApplicationHandler<AppUserEvent> for App<'_> {
                     self.state.keys.remove(&event.logical_key);
                 }
             }
+
+            WindowEvent::ModifiersChanged(modifiers) => self.state.modifiers = modifiers.state(),
 
             _ => {}
         }

@@ -1,47 +1,37 @@
 use crate::geometry::Point;
 use std::collections::HashSet;
 use winit::event::MouseButton;
-use winit::keyboard::{Key, NamedKey};
+use winit::keyboard::{Key, ModifiersState};
 
+#[derive(Debug, Default)]
 pub struct State {
     #[cfg(target_arch = "wasm32")]
-    pub main_modifier: NamedKey,
+    pub use_super: bool,
 
     // Internal state
     pub redraw: bool,
 
     // User state
     pub cursor: Point,
+    pub modifiers: ModifiersState,
     pub keys: HashSet<Key>,
     pub mouse_buttons: HashSet<MouseButton>,
 }
 
 impl State {
-    pub fn new() -> Self {
-        Self {
-            #[cfg(target_arch = "wasm32")]
-            main_modifier: NamedKey::Control,
-
-            redraw: false,
-
-            cursor: Default::default(),
-            keys: Default::default(),
-            mouse_buttons: Default::default(),
-        }
-    }
-
-    #[cfg(target_arch = "wasm32")]
-    pub fn main_modifier(&self) -> NamedKey {
-        self.main_modifier
-    }
-
-    #[cfg(not(target_arch = "wasm32"))]
     #[inline]
-    pub fn main_modifier(&self) -> NamedKey {
+    pub fn main_modifier(&self) -> bool {
         #[cfg(target_os = "macos")]
-        return NamedKey::Super;
+        return self.modifiers.super_key();
 
-        #[cfg(not(target_os = "macos"))]
-        return NamedKey::Control;
+        #[cfg(target_arch = "wasm32")]
+        if self.use_super {
+            self.modifiers.super_key()
+        } else {
+            self.modifiers.ctrl_key()
+        }
+
+        #[cfg(all(not(target_os = "macos"), target_arch = "wasm32"))]
+        return self.modifiers.ctrl_key();
     }
 }
