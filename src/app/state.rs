@@ -25,13 +25,13 @@ impl State {
         return self.modifiers.super_key();
 
         #[cfg(target_arch = "wasm32")]
-        if self.use_super {
+        return if self.use_super {
             self.modifiers.super_key()
         } else {
-            self.modifiers.ctrl_key()
-        }
+            self.modifiers.control_key()
+        };
 
-        #[cfg(all(not(target_os = "macos"), target_arch = "wasm32"))]
-        return self.modifiers.ctrl_key();
+        #[cfg(all(not(target_os = "macos"), not(target_arch = "wasm32")))]
+        return self.modifiers.control_key();
     }
 }
