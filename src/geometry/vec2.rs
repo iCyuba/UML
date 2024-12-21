@@ -1,8 +1,9 @@
 use std::ops::{Add, AddAssign, Div, DivAssign, Mul, MulAssign, Neg, Sub, SubAssign};
+use taffy::AvailableSpace;
 use vello::kurbo;
 use winit::dpi::{PhysicalPosition, PhysicalSize};
 
-#[derive(Debug, Clone, Copy, PartialEq)]
+#[derive(Debug, Clone, Copy, PartialEq, Default)]
 pub struct Vec2 {
     pub x: f64,
     pub y: f64,
@@ -14,13 +15,6 @@ pub type Size = Vec2;
 impl Vec2 {
     pub fn new(x: f64, y: f64) -> Self {
         Self { x, y }
-    }
-}
-
-// Default
-impl Default for Vec2 {
-    fn default() -> Self {
-        Self { x: 0.0, y: 0.0 }
     }
 }
 
@@ -161,6 +155,24 @@ impl From<kurbo::Size> for Vec2 {
     }
 }
 
+impl From<taffy::Point<f32>> for Vec2 {
+    fn from(value: taffy::Point<f32>) -> Self {
+        Self {
+            x: value.x as f64,
+            y: value.y as f64,
+        }
+    }
+}
+
+impl From<taffy::Size<f32>> for Vec2 {
+    fn from(value: taffy::Size<f32>) -> Self {
+        Self {
+            x: value.width as f64,
+            y: value.height as f64,
+        }
+    }
+}
+
 impl From<Vec2> for PhysicalPosition<f64> {
     fn from(point: Vec2) -> Self {
         PhysicalPosition::<f64> {
@@ -193,6 +205,33 @@ impl From<Vec2> for kurbo::Size {
         kurbo::Size {
             width: point.x,
             height: point.y,
+        }
+    }
+}
+
+impl From<Vec2> for taffy::Point<f32> {
+    fn from(point: Vec2) -> Self {
+        taffy::Point::<f32> {
+            x: point.x as f32,
+            y: point.y as f32,
+        }
+    }
+}
+
+impl From<Vec2> for taffy::Size<f32> {
+    fn from(point: Vec2) -> Self {
+        taffy::Size::<f32> {
+            width: point.x as f32,
+            height: point.y as f32,
+        }
+    }
+}
+
+impl From<Vec2> for taffy::Size<AvailableSpace> {
+    fn from(value: Vec2) -> Self {
+        taffy::Size::<AvailableSpace> {
+            width: AvailableSpace::Definite(value.x as f32),
+            height: AvailableSpace::Definite(value.y as f32),
         }
     }
 }

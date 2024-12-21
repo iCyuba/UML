@@ -24,13 +24,16 @@ pub struct App<'s> {
 
 impl App<'_> {
     pub fn new(event_loop: EventLoopProxy<AppUserEvent>) -> Self {
+        let mut state = State::default();
+        let viewport = Viewport::new(&mut state.flex_tree);
+
         App {
             event_loop,
 
             renderer: Default::default(),
-            state: Default::default(),
+            state,
 
-            viewport: Viewport::new(),
+            viewport,
         }
     }
 }
@@ -111,6 +114,9 @@ impl ApplicationHandler<AppUserEvent> for App<'_> {
 
             WindowEvent::RedrawRequested => {
                 self.renderer.scene.reset();
+
+                let size = self.renderer.size();
+                self.state.size = (size.width as f64, size.height as f64).into();
 
                 self.viewport.update(&mut self.state);
                 self.viewport.render(&mut self.renderer);

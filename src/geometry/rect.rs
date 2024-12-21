@@ -1,3 +1,4 @@
+use taffy::Layout;
 use vello::kurbo;
 
 use super::{Point, Size, Vec2};
@@ -20,6 +21,15 @@ impl From<kurbo::Rect> for Rect {
         Self {
             origin: Point::new(value.x0, value.y0),
             size: Point::from(value.size()),
+        }
+    }
+}
+
+impl From<Layout> for Rect {
+    fn from(value: Layout) -> Self {
+        Self {
+            origin: value.location.into(),
+            size: value.size.into(),
         }
     }
 }

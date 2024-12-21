@@ -221,6 +221,10 @@ impl Renderer<'_> {
         }
     }
 
+    pub fn size(&self) -> PhysicalSize<u32> {
+        self.window.as_ref().unwrap().inner_size()
+    }
+
     fn window_attributes() -> WindowAttributes {
         Window::default_attributes()
             .with_inner_size(LogicalSize::new(WIDTH, HEIGHT))

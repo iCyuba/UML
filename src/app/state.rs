@@ -1,5 +1,6 @@
-use crate::geometry::Point;
+use crate::geometry::{Point, Size};
 use std::collections::HashSet;
+use taffy::TaffyTree;
 use winit::event::MouseButton;
 use winit::keyboard::{Key, ModifiersState};
 
@@ -8,8 +9,12 @@ pub struct State {
     #[cfg(target_arch = "wasm32")]
     pub use_super: bool,
 
+    // Shared
+    pub flex_tree: TaffyTree<()>,
+
     // Internal state
     pub redraw: bool,
+    pub size: Size,
 
     // User state
     pub cursor: Point,
