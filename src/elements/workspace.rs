@@ -6,6 +6,7 @@ use crate::elements::Element;
 use crate::geometry::{Point, Vec2};
 use crate::presentation::fonts;
 use derive_macros::AnimatedElement;
+use taffy::NodeId;
 use vello::kurbo::{self, Affine, Circle};
 use vello::peniko::Fill;
 use winit::event::MouseButton;
@@ -27,11 +28,15 @@ impl Workspace {
 }
 
 impl Element for Workspace {
+    fn node_id(&self) -> NodeId {
+        NodeId::new(0)
+    }
+
     fn update(&mut self, state: &mut State) {
         state.redraw |= self.animate();
     }
 
-    fn render(&self, r: &mut Renderer) {
+    fn render(&self, r: &mut Renderer, _: &State, _: Point) {
         let window = r.window.as_ref().unwrap();
         let colors = r.colors;
         let size = window.inner_size();

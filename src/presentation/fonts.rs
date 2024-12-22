@@ -40,6 +40,9 @@ font!(inter_bold_italic, "Inter-BoldItalic", 700.0);
 font!(inter_extra_bold_italic, "Inter-ExtraBoldItalic", 800.0);
 font!(inter_black_italic, "Inter-BlackItalic", 900.0);
 
+// Icons
+font!(icons, "Icons", 100.0);
+
 pub struct FontResource<'a> {
     pub table: FontRef<'a>,
     pub font: Font,

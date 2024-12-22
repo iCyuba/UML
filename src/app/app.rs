@@ -25,7 +25,7 @@ pub struct App<'s> {
 impl App<'_> {
     pub fn new(event_loop: EventLoopProxy<AppUserEvent>) -> Self {
         let mut state = State::default();
-        let viewport = Viewport::new(&mut state.flex_tree);
+        let viewport = Viewport::new(&mut state.flex_tree, &state.size);
 
         App {
             event_loop,
@@ -119,7 +119,8 @@ impl ApplicationHandler<AppUserEvent> for App<'_> {
                 self.state.size = (size.width as f64, size.height as f64).into();
 
                 self.viewport.update(&mut self.state);
-                self.viewport.render(&mut self.renderer);
+                self.viewport
+                    .render(&mut self.renderer, &self.state, Default::default());
 
                 // Render the scene
                 self.renderer.render();

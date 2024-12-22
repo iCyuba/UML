@@ -3,6 +3,7 @@ use std::collections::HashSet;
 use taffy::TaffyTree;
 use winit::event::MouseButton;
 use winit::keyboard::{Key, ModifiersState};
+use crate::elements::toolbox_item::Tool;
 
 #[derive(Debug, Default)]
 pub struct State {
@@ -21,6 +22,7 @@ pub struct State {
     pub modifiers: ModifiersState,
     pub keys: HashSet<Key>,
     pub mouse_buttons: HashSet<MouseButton>,
+    pub tool: Tool,
 }
 
 impl State {

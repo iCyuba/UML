@@ -1,38 +1,52 @@
 use super::{workspace::Workspace, Element};
 use crate::app::State;
-use std::iter;
-use taffy::{NodeId, Size, Style, TaffyTree};
+use crate::elements::toolbox::Toolbox;
+use crate::geometry::Size;
+use taffy::{NodeId, Style, TaffyTree};
 
 const LAYOUT: Style = {
     let mut style = Style::DEFAULT;
-    style.size = Size::from_percent(1., 1.);
+    style.size = taffy::Size::from_percent(1., 1.);
 
     style
 };
 
 pub struct Viewport {
-    pub node_id: NodeId,
+    node_id: NodeId,
 
     workspace: Workspace,
+    toolbox: Toolbox,
 }
 
 impl Viewport {
-    pub fn new(flex_tree: &mut TaffyTree) -> Self {
+    pub fn new(flex_tree: &mut TaffyTree, _: &Size) -> Self {
+        let toolbox = Toolbox::new(flex_tree);
+        let node_id = flex_tree
+            .new_with_children(LAYOUT, &[toolbox.node_id()])
+            .unwrap();
+
         Self {
-            node_id: flex_tree.new_leaf(LAYOUT).unwrap(),
+            node_id,
 
             workspace: Workspace::new(),
+            toolbox,
         }
     }
 }
 
 impl Element for Viewport {
+    fn node_id(&self) -> NodeId {
+        self.node_id
+    }
+
     fn children(&self) -> Box<dyn Iterator<Item = &dyn Element> + '_> {
-        Box::new(iter::once(&self.workspace as &dyn Element))
+        let vec: Vec<&dyn Element> = vec![&self.workspace, &self.toolbox];
+        Box::new(vec.into_iter())
     }
 
     fn children_mut(&mut self) -> Box<dyn Iterator<Item = &mut dyn Element> + '_> {
-        Box::new(iter::once(&mut self.workspace as &mut dyn Element))
+        let vec: Vec<&mut dyn Element> = vec![&mut self.workspace, &mut self.toolbox];
+        Box::new(vec.into_iter())
     }
 
     fn update(&mut self, state: &mut State) {
@@ -42,5 +56,8 @@ impl Element for Viewport {
             .expect("Couldn't compute layout");
 
         self.workspace.update(state);
+        self.toolbox.update(state);
+
+        state.flex_tree.print_tree(self.node_id);
     }
 }
