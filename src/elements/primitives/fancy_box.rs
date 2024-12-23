@@ -1,13 +1,12 @@
 use crate::elements::primitives::simple_box::SimpleBox;
 use crate::elements::primitives::traits::Draw;
-use crate::geometry::rect::Rect;
+use crate::elements::Element;
 use crate::geometry::Point;
-use taffy::{Layout, Style};
 use vello::kurbo::RoundedRectRadii;
 use vello::peniko::Color;
 use vello::Scene;
 
-pub struct BoxElement {
+pub struct FancyBox {
     content: SimpleBox,
     border: Option<SimpleBox>,
     shadow: Option<SimpleBox>,
@@ -22,28 +21,36 @@ pub struct ShadowOptions {
     pub offset: Point,
 }
 
-impl BoxElement {
+#[derive(Clone, Copy)]
+pub struct BorderOptions {
+    pub color: Color,
+}
+
+impl FancyBox {
     pub fn new(
-        hitbox: &Rect,
-        layout: &Layout,
-        style: &Style,
-        radii: RoundedRectRadii,
+        element: &impl Element,
+        radii: impl Into<RoundedRectRadii>,
         color: Color,
-        border_color: Option<Color>,
+        border_options: Option<BorderOptions>,
         shadow_options: Option<ShadowOptions>,
     ) -> Self {
-        let content = SimpleBox::new(hitbox, layout, &radii, color, false);
+        let hitbox = element.get_hitbox();
+        let element_style = element.get_style();
+        let layout = element_style.get_layout();
+        let radii = radii.into();
 
-        let border = border_color.and_then(|border_color| {
-            if style.border != taffy::Rect::zero() {
-                Some(SimpleBox::new(hitbox, layout, &radii, border_color, true))
+        let content = SimpleBox::new(&hitbox, layout, &radii, color, false);
+
+        let border = border_options.and_then(|opts| {
+            if element_style.get_style().border != taffy::Rect::zero() {
+                Some(SimpleBox::new(&hitbox, layout, &radii, opts.color, true))
             } else {
                 None
             }
         });
 
         let shadow = shadow_options
-            .map(|opts| SimpleBox::new(&(*hitbox + opts.offset), layout, &radii, opts.color, true));
+            .map(|opts| SimpleBox::new(&(hitbox + opts.offset), layout, &radii, opts.color, true));
 
         Self {
             content,
@@ -54,7 +61,7 @@ impl BoxElement {
     }
 }
 
-impl Draw for BoxElement {
+impl Draw for FancyBox {
     fn draw(&self, scene: &mut Scene) {
         if let Some(opts) = &self.shadow_options {
             let shadow = self.shadow.as_ref().unwrap();

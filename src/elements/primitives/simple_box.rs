@@ -17,9 +17,9 @@ impl SimpleBox {
         is_border_box: bool,
     ) -> Rect {
         if is_border_box {
-            size.inset(border)
-        } else {
             *size
+        } else {
+            size.inset(border)
         }
     }
 

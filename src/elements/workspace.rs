@@ -2,11 +2,14 @@ use crate::animations::animated_property::AnimatedProperty;
 use crate::animations::delta_animation::DeltaAnimation;
 use crate::app::renderer::{add_text_to_scene, Renderer};
 use crate::app::State;
+use crate::elements::element_style::ElementStyle;
 use crate::elements::Element;
 use crate::geometry::{Point, Vec2};
 use crate::presentation::fonts;
 use derive_macros::AnimatedElement;
-use taffy::NodeId;
+use taffy::prelude::length;
+use taffy::Position::Absolute;
+use taffy::{NodeId, Style, TaffyTree};
 use vello::kurbo::{self, Affine, Circle};
 use vello::peniko::Fill;
 use winit::event::MouseButton;
@@ -14,13 +17,25 @@ use winit::keyboard::NamedKey;
 
 #[derive(AnimatedElement)]
 pub struct Workspace {
+    element_style: ElementStyle,
+    node_id: NodeId,
+
     position: AnimatedProperty<DeltaAnimation<Vec2>>,
     zoom: AnimatedProperty<DeltaAnimation<f64>>,
 }
 
 impl Workspace {
-    pub fn new() -> Self {
+    pub fn new(flex_tree: &mut TaffyTree) -> Self {
         Self {
+            element_style: Default::default(),
+            node_id: flex_tree
+                .new_leaf(Style {
+                    position: Absolute,
+                    inset: length(0.),
+                    ..Default::default()
+                })
+                .unwrap(),
+
             position: AnimatedProperty::new(DeltaAnimation::new(Default::default(), 30.)),
             zoom: AnimatedProperty::new(DeltaAnimation::new(1., 30.)),
         }
@@ -29,14 +44,22 @@ impl Workspace {
 
 impl Element for Workspace {
     fn node_id(&self) -> NodeId {
-        NodeId::new(0)
+        self.node_id
     }
 
-    fn update(&mut self, state: &mut State) {
+    fn get_style(&self) -> &ElementStyle {
+        &self.element_style
+    }
+
+    fn get_mut_style(&mut self) -> &mut ElementStyle {
+        &mut self.element_style
+    }
+
+    fn update(&mut self, state: &mut State, _: Point) {
         state.redraw |= self.animate();
     }
 
-    fn render(&self, r: &mut Renderer, _: &State, _: Point) {
+    fn render(&self, r: &mut Renderer, _: &State) {
         let window = r.window.as_ref().unwrap();
         let colors = r.colors;
         let size = window.inner_size();

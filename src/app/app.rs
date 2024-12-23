@@ -118,9 +118,8 @@ impl ApplicationHandler<AppUserEvent> for App<'_> {
                 let size = self.renderer.size();
                 self.state.size = (size.width as f64, size.height as f64).into();
 
-                self.viewport.update(&mut self.state);
-                self.viewport
-                    .render(&mut self.renderer, &self.state, Default::default());
+                self.viewport.update(&mut self.state, Default::default());
+                self.viewport.render(&mut self.renderer, &self.state);
 
                 // Render the scene
                 self.renderer.render();

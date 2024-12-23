@@ -4,6 +4,7 @@ pub mod workspace;
 pub mod toolbox;
 pub mod primitives;
 pub mod toolbox_item;
-mod toolbox_item_icon;
+pub mod toolbox_item_icon;
+pub mod element_style;
 
 pub use element::Element;

@@ -1,13 +1,12 @@
 use crate::app::{Renderer, State};
-use crate::elements::primitives::box_element::BoxElement;
+use crate::elements::element_style::ElementStyle;
+use crate::elements::primitives::fancy_box::FancyBox;
 use crate::elements::primitives::traits::Draw;
 use crate::elements::toolbox_item_icon::ToolboxItemIcon;
 use crate::elements::Element;
-use crate::geometry::Point;
 use std::iter;
 use taffy::prelude::length;
-use taffy::{NodeId, Style, TaffyTree};
-use vello::kurbo::RoundedRectRadii;
+use taffy::{AlignContent, AlignItems, NodeId, Style, TaffyTree};
 
 #[derive(Eq, PartialEq, Hash, Debug, Default, Copy, Clone)]
 pub enum Tool {
@@ -18,6 +17,7 @@ pub enum Tool {
 }
 
 pub struct ToolboxItem {
+    element_style: ElementStyle,
     node_id: NodeId,
 
     tool_type: Tool,
@@ -26,19 +26,16 @@ pub struct ToolboxItem {
 
 impl ToolboxItem {
     pub fn new(flex_tree: &mut TaffyTree, tool_type: Tool) -> Self {
-        let icon = match tool_type {
-            Tool::Select => 'A',
-            Tool::Entity => 'A',
-            Tool::Relation => 'A',
-        };
-
-        let icon = ToolboxItemIcon::new(flex_tree, tool_type, 20., icon);
+        let icon = ToolboxItemIcon::new(flex_tree, tool_type, 20.);
 
         Self {
+            element_style: Default::default(),
             node_id: flex_tree
                 .new_with_children(
                     Style {
-                        padding: length(6.),
+                        size: length(32.),
+                        justify_content: Some(AlignContent::Center),
+                        align_items: Some(AlignItems::Center),
                         ..Default::default()
                     },
                     &[icon.node_id()],
@@ -55,6 +52,14 @@ impl Element for ToolboxItem {
         self.node_id
     }
 
+    fn get_style(&self) -> &ElementStyle {
+        &self.element_style
+    }
+
+    fn get_mut_style(&mut self) -> &mut ElementStyle {
+        &mut self.element_style
+    }
+
     fn children(&self) -> Box<dyn Iterator<Item = &dyn Element> + '_> {
         Box::new(iter::once(&self.icon as &dyn Element))
     }
@@ -63,12 +68,10 @@ impl Element for ToolboxItem {
         Box::new(iter::once(&mut self.icon as &mut dyn Element))
     }
 
-    fn render(&self, r: &mut Renderer, state: &State, pos: Point) {
-        BoxElement::new(
-            &self.hitbox(state, pos),
-            self.get_layout(state),
-            self.get_style(state),
-            RoundedRectRadii::from(5.),
+    fn render(&self, r: &mut Renderer, state: &State) {
+        FancyBox::new(
+            self,
+            5.,
             if state.tool == self.tool_type {
                 r.colors.accent
             } else {
@@ -79,6 +82,6 @@ impl Element for ToolboxItem {
         )
         .draw(&mut r.scene);
 
-        self.render_children(r, state, pos);
+        self.render_children(r, state);
     }
 }

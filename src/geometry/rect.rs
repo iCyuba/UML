@@ -1,4 +1,4 @@
-use super::{Point, Size, Vec2};
+use super::{Point, Size};
 use std::ops::Add;
 use taffy::Layout;
 use vello::kurbo;
@@ -10,22 +10,15 @@ pub struct Rect {
 }
 
 impl Rect {
-    pub fn new(origin: Vec2, size: Size) -> Self {
-        Self { origin, size }
+    pub fn new(origin: impl Into<Point>, size: impl Into<Size>) -> Self {
+        Self { origin: origin.into(), size: size.into() }
     }
 
     pub fn inset(&self, insets: impl Into<Rect>) -> Self {
         let insets = insets.into();
         Self {
-            origin: self.origin - insets.origin,
-            size: self.size + insets.size,
-        }
-    }
-
-    pub fn from_origin_size(origin: impl Into<Point>, size: impl Into<Size>) -> Self {
-        Self {
-            origin: origin.into(),
-            size: size.into(),
+            origin: self.origin + insets.origin,
+            size: self.size - insets.size,
         }
     }
 }
