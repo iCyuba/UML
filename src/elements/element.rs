@@ -1,22 +1,21 @@
 use crate::app::{Renderer, State};
-use crate::elements::element_style::ElementStyle;
-use crate::geometry::rect::Rect;
 use crate::geometry::{Point, Vec2};
 use std::iter;
-use taffy::NodeId;
+use taffy::{Layout, NodeId};
+use crate::geometry::rect::Rect;
 
 pub trait Element {
     fn node_id(&self) -> NodeId;
 
-    fn get_style(&self) -> &ElementStyle;
-    fn get_mut_style(&mut self) -> &mut ElementStyle;
-
     // Box model
 
+    fn get_layout(&self) -> &Layout;
+
+    fn set_layout(&mut self, layout: Layout);
+
     fn get_hitbox(&self) -> Rect {
-        let pos = self.get_style().get_pos();
-        let size = self.get_style().get_layout().size;
-        Rect::new(pos, size)
+        let layout = self.get_layout();
+        Rect::new(layout.location, layout.size)
     }
 
     // Child elements
@@ -32,16 +31,17 @@ pub trait Element {
     // Lifecycle
 
     fn update(&mut self, state: &mut State, pos: Point) {
-        let new_pos = self.update_element_style(state, pos);
+        let new_pos = self.update_layout(state, pos);
         self.update_children(state, new_pos);
     }
 
-    fn update_element_style(&mut self, state: &mut State, pos: Point) -> Point {
-        let node_id = self.node_id();
-        let style = self.get_mut_style();
-        let pos = pos + style.get_layout().location.into();
+    fn update_layout(&mut self, state: &mut State, pos: Point) -> Point {
+        let mut layout = state.flex_tree.layout(self.node_id()).unwrap().to_owned();
+        let pos = pos + layout.location.into();
         
-        style.update(node_id, state, &pos);
+        layout.location = pos.into();
+        self.set_layout(layout);
+        
         pos
     }
 

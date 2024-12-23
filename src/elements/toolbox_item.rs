@@ -1,12 +1,11 @@
 use crate::app::{Renderer, State};
-use crate::elements::element_style::ElementStyle;
 use crate::elements::primitives::fancy_box::FancyBox;
 use crate::elements::primitives::traits::Draw;
 use crate::elements::toolbox_item_icon::ToolboxItemIcon;
 use crate::elements::Element;
 use std::iter;
 use taffy::prelude::length;
-use taffy::{AlignContent, AlignItems, NodeId, Style, TaffyTree};
+use taffy::{AlignContent, AlignItems, NodeId, Style, TaffyTree, Layout};
 
 #[derive(Eq, PartialEq, Hash, Debug, Default, Copy, Clone)]
 pub enum Tool {
@@ -17,7 +16,7 @@ pub enum Tool {
 }
 
 pub struct ToolboxItem {
-    element_style: ElementStyle,
+    layout: Layout,
     node_id: NodeId,
 
     tool_type: Tool,
@@ -29,7 +28,7 @@ impl ToolboxItem {
         let icon = ToolboxItemIcon::new(flex_tree, tool_type, 20.);
 
         Self {
-            element_style: Default::default(),
+            layout: Default::default(),
             node_id: flex_tree
                 .new_with_children(
                     Style {
@@ -52,12 +51,12 @@ impl Element for ToolboxItem {
         self.node_id
     }
 
-    fn get_style(&self) -> &ElementStyle {
-        &self.element_style
+    fn get_layout(&self) -> &Layout {
+        &self.layout
     }
 
-    fn get_mut_style(&mut self) -> &mut ElementStyle {
-        &mut self.element_style
+    fn set_layout(&mut self, layout: Layout) {
+        self.layout = layout;
     }
 
     fn children(&self) -> Box<dyn Iterator<Item = &dyn Element> + '_> {

@@ -25,7 +25,7 @@ pub struct App<'s> {
 impl App<'_> {
     pub fn new(event_loop: EventLoopProxy<AppUserEvent>) -> Self {
         let mut state = State::default();
-        let viewport = Viewport::new(&mut state.flex_tree, &state.size);
+        let viewport = Viewport::new(&mut state.flex_tree);
 
         App {
             event_loop,

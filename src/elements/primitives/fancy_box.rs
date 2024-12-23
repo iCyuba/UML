@@ -34,15 +34,14 @@ impl FancyBox {
         border_options: Option<BorderOptions>,
         shadow_options: Option<ShadowOptions>,
     ) -> Self {
+        let layout = element.get_layout();
         let hitbox = element.get_hitbox();
-        let element_style = element.get_style();
-        let layout = element_style.get_layout();
         let radii = radii.into();
 
         let content = SimpleBox::new(&hitbox, layout, &radii, color, false);
 
         let border = border_options.and_then(|opts| {
-            if element_style.get_style().border != taffy::Rect::zero() {
+            if layout.border != taffy::Rect::zero() {
                 Some(SimpleBox::new(&hitbox, layout, &radii, opts.color, true))
             } else {
                 None

@@ -1,12 +1,10 @@
 use crate::app::{Renderer, State};
-use crate::elements::element_style::ElementStyle;
 use crate::elements::primitives::icon::Icon;
 use crate::elements::primitives::traits::Draw;
 use crate::elements::toolbox_item::Tool;
 use crate::elements::Element;
-use crate::geometry::rect::Rect;
 use taffy::prelude::length;
-use taffy::{NodeId, Style, TaffyTree};
+use taffy::{Layout, NodeId, Style, TaffyTree};
 
 fn get_icon(tool_type: Tool) -> char {
     match tool_type {
@@ -17,7 +15,7 @@ fn get_icon(tool_type: Tool) -> char {
 }
 
 pub struct ToolboxItemIcon {
-    element_style: ElementStyle,
+    layout: Layout,
     node_id: NodeId,
 
     icon: char,
@@ -27,7 +25,7 @@ pub struct ToolboxItemIcon {
 impl ToolboxItemIcon {
     pub fn new(flex_tree: &mut TaffyTree, tool_type: Tool, size: f32) -> Self {
         Self {
-            element_style: Default::default(),
+            layout: Default::default(),
             node_id: flex_tree
                 .new_leaf(Style {
                     size: length(size),
@@ -45,20 +43,20 @@ impl Element for ToolboxItemIcon {
         self.node_id
     }
 
-    fn get_style(&self) -> &ElementStyle {
-        &self.element_style
+    fn get_layout(&self) -> &Layout {
+        &self.layout
     }
 
-    fn get_mut_style(&mut self) -> &mut ElementStyle {
-        &mut self.element_style
+    fn set_layout(&mut self, layout: Layout) {
+        self.layout = layout;
     }
 
     fn render(&self, r: &mut Renderer, state: &State) {
-        let Rect { size, origin } = self.get_hitbox();
+        let hitbox = self.get_hitbox();
         let icon = Icon::new(
             self.icon,
-            origin,
-            size.x as f32,
+            hitbox.origin,
+            hitbox.size.x as f32,
             if state.tool == self.tool_type {
                 r.colors.icon_active
             } else {

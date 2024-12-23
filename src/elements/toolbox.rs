@@ -1,5 +1,4 @@
 use crate::app::{Renderer, State};
-use crate::elements::element_style::ElementStyle;
 use crate::elements::primitives::fancy_box::{BorderOptions, FancyBox, ShadowOptions};
 use crate::elements::primitives::traits::Draw;
 use crate::elements::toolbox_item::{Tool, ToolboxItem};
@@ -8,10 +7,10 @@ use std::collections::HashMap;
 use taffy::prelude::length;
 use taffy::Display::Flex;
 use taffy::FlexDirection::Column;
-use taffy::{NodeId, Style, TaffyTree};
+use taffy::{Layout, NodeId, Style, TaffyTree};
 
 pub struct Toolbox {
-    element_style: ElementStyle,
+    layout: Layout,
     node_id: NodeId,
 
     tools: HashMap<Tool, ToolboxItem>,
@@ -46,7 +45,7 @@ impl Toolbox {
             .unwrap();
 
         Self {
-            element_style: Default::default(),
+            layout: Default::default(),
             node_id,
             tools: [
                 (Tool::Select, selection_tool),
@@ -64,12 +63,12 @@ impl Element for Toolbox {
         self.node_id
     }
 
-    fn get_style(&self) -> &ElementStyle {
-        &self.element_style
+    fn get_layout(&self) -> &Layout {
+        &self.layout
     }
 
-    fn get_mut_style(&mut self) -> &mut ElementStyle {
-        &mut self.element_style
+    fn set_layout(&mut self, layout: Layout) {
+        self.layout = layout;
     }
 
     fn children(&self) -> Box<dyn Iterator<Item = &dyn Element> + '_> {

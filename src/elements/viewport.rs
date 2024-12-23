@@ -1,9 +1,8 @@
 use super::{workspace::Workspace, Element};
 use crate::app::State;
 use crate::elements::toolbox::Toolbox;
-use crate::geometry::{Point, Size};
-use taffy::{NodeId, Style, TaffyTree};
-use crate::elements::element_style::ElementStyle;
+use crate::geometry::Point;
+use taffy::{Layout, NodeId, Style, TaffyTree};
 
 const LAYOUT: Style = {
     let mut style = Style::DEFAULT;
@@ -14,14 +13,14 @@ const LAYOUT: Style = {
 
 pub struct Viewport {
     node_id: NodeId,
-    element_style: ElementStyle,
+    layout: Layout,
 
     workspace: Workspace,
     toolbox: Toolbox,
 }
 
 impl Viewport {
-    pub fn new(flex_tree: &mut TaffyTree, _: &Size) -> Self {
+    pub fn new(flex_tree: &mut TaffyTree) -> Self {
         let toolbox = Toolbox::new(flex_tree);
         let workspace = Workspace::new(flex_tree);
 
@@ -30,7 +29,7 @@ impl Viewport {
             .unwrap();
 
         Self {
-            element_style: Default::default(),
+            layout: Default::default(),
             node_id,
 
             workspace,
@@ -44,12 +43,12 @@ impl Element for Viewport {
         self.node_id
     }
 
-    fn get_style(&self) -> &ElementStyle {
-        &self.element_style
+    fn get_layout(&self) -> &Layout {
+        &self.layout
     }
 
-    fn get_mut_style(&mut self) -> &mut ElementStyle {
-        &mut self.element_style
+    fn set_layout(&mut self, layout: Layout) {
+        self.layout = layout;
     }
 
     fn children(&self) -> Box<dyn Iterator<Item = &dyn Element> + '_> {
@@ -71,7 +70,7 @@ impl Element for Viewport {
         self.workspace.update(state, pos);
         self.toolbox.update(state, pos);
 
-        let new_pos = self.update_element_style(state, pos);
+        let new_pos = self.update_layout(state, pos);
         self.update_children(state, new_pos);
     }
 }

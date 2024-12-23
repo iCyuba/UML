@@ -2,14 +2,13 @@ use crate::animations::animated_property::AnimatedProperty;
 use crate::animations::delta_animation::DeltaAnimation;
 use crate::app::renderer::{add_text_to_scene, Renderer};
 use crate::app::State;
-use crate::elements::element_style::ElementStyle;
 use crate::elements::Element;
 use crate::geometry::{Point, Vec2};
 use crate::presentation::fonts;
 use derive_macros::AnimatedElement;
 use taffy::prelude::length;
 use taffy::Position::Absolute;
-use taffy::{NodeId, Style, TaffyTree};
+use taffy::{Layout, NodeId, Style, TaffyTree};
 use vello::kurbo::{self, Affine, Circle};
 use vello::peniko::Fill;
 use winit::event::MouseButton;
@@ -17,7 +16,7 @@ use winit::keyboard::NamedKey;
 
 #[derive(AnimatedElement)]
 pub struct Workspace {
-    element_style: ElementStyle,
+    layout: Layout,
     node_id: NodeId,
 
     position: AnimatedProperty<DeltaAnimation<Vec2>>,
@@ -27,7 +26,7 @@ pub struct Workspace {
 impl Workspace {
     pub fn new(flex_tree: &mut TaffyTree) -> Self {
         Self {
-            element_style: Default::default(),
+            layout: Default::default(),
             node_id: flex_tree
                 .new_leaf(Style {
                     position: Absolute,
@@ -47,12 +46,12 @@ impl Element for Workspace {
         self.node_id
     }
 
-    fn get_style(&self) -> &ElementStyle {
-        &self.element_style
+    fn get_layout(&self) -> &Layout {
+        &self.layout
     }
 
-    fn get_mut_style(&mut self) -> &mut ElementStyle {
-        &mut self.element_style
+    fn set_layout(&mut self, layout: Layout) {
+        self.layout = layout;
     }
 
     fn update(&mut self, state: &mut State, _: Point) {
