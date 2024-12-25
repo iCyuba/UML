@@ -1,6 +1,7 @@
 use crate::elements::primitives::simple_box::SimpleBox;
 use crate::elements::primitives::traits::Draw;
 use crate::elements::Element;
+use crate::geometry::rect::Rect;
 use crate::geometry::Point;
 use vello::kurbo::RoundedRectRadii;
 use vello::peniko::Color;
@@ -34,8 +35,9 @@ impl FancyBox {
         border_options: Option<BorderOptions>,
         shadow_options: Option<ShadowOptions>,
     ) -> Self {
-        let layout = element.get_layout();
-        let hitbox = element.get_hitbox();
+        let layout = element.layout();
+        let hitbox = Rect::from(*layout);
+
         let radii = radii.into();
 
         let content = SimpleBox::new(&hitbox, layout, &radii, color, false);

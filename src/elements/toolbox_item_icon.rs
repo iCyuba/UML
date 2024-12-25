@@ -1,10 +1,11 @@
-use crate::app::{Renderer, State};
+use super::primitives::traits::Draw;
+use crate::app::{EventTarget, Renderer, State, Tree};
 use crate::elements::primitives::icon::Icon;
-use crate::elements::primitives::traits::Draw;
 use crate::elements::toolbox_item::Tool;
 use crate::elements::Element;
+use crate::geometry::rect::Rect;
 use taffy::prelude::length;
-use taffy::{Layout, NodeId, Style, TaffyTree};
+use taffy::{Layout, NodeId, Style};
 
 fn get_icon(tool_type: Tool) -> char {
     match tool_type {
@@ -16,43 +17,34 @@ fn get_icon(tool_type: Tool) -> char {
 
 pub struct ToolboxItemIcon {
     layout: Layout,
-    node_id: NodeId,
 
     icon: char,
     tool_type: Tool,
 }
 
 impl ToolboxItemIcon {
-    pub fn new(flex_tree: &mut TaffyTree, tool_type: Tool, size: f32) -> Self {
-        Self {
+    pub fn setup(tree: &mut Tree, tool_type: Tool, size: f32) -> NodeId {
+        let this = Self {
             layout: Default::default(),
-            node_id: flex_tree
-                .new_leaf(Style {
-                    size: length(size),
-                    ..Default::default()
-                })
-                .unwrap(),
+
             icon: get_icon(tool_type),
             tool_type,
-        }
+        };
+
+        tree.new_leaf_with_context(
+            Style {
+                size: length(size),
+                ..Default::default()
+            },
+            Box::new(this),
+        )
+        .unwrap()
     }
 }
 
-impl Element for ToolboxItemIcon {
-    fn node_id(&self) -> NodeId {
-        self.node_id
-    }
-
-    fn get_layout(&self) -> &Layout {
-        &self.layout
-    }
-
-    fn set_layout(&mut self, layout: Layout) {
-        self.layout = layout;
-    }
-
+impl EventTarget for ToolboxItemIcon {
     fn render(&self, r: &mut Renderer, state: &State) {
-        let hitbox = self.get_hitbox();
+        let hitbox = Rect::from(self.layout);
         let icon = Icon::new(
             self.icon,
             hitbox.origin,
@@ -64,5 +56,15 @@ impl Element for ToolboxItemIcon {
             },
         );
         icon.draw(&mut r.scene);
+    }
+}
+
+impl Element for ToolboxItemIcon {
+    fn layout(&self) -> &Layout {
+        &self.layout
+    }
+
+    fn layout_mut(&mut self) -> &mut Layout {
+        &mut self.layout
     }
 }

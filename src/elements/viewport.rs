@@ -1,76 +1,42 @@
-use super::{workspace::Workspace, Element};
-use crate::app::State;
-use crate::elements::toolbox::Toolbox;
-use crate::geometry::Point;
-use taffy::{Layout, NodeId, Style, TaffyTree};
+use super::{toolbox::Toolbox, workspace::Workspace, Element};
+use crate::app::{EventTarget, Renderer, State, Tree};
+use taffy::{Layout, NodeId, Style};
 
-const LAYOUT: Style = {
-    let mut style = Style::DEFAULT;
-    style.size = taffy::Size::from_percent(1., 1.);
-
-    style
-};
-
-pub struct Viewport {
-    node_id: NodeId,
-    layout: Layout,
-
-    workspace: Workspace,
-    toolbox: Toolbox,
-}
+pub struct Viewport(Layout);
 
 impl Viewport {
-    pub fn new(flex_tree: &mut TaffyTree) -> Self {
-        let toolbox = Toolbox::new(flex_tree);
-        let workspace = Workspace::new(flex_tree);
+    const STYLE: Style = {
+        let mut style = Style::DEFAULT;
+        style.size = taffy::Size::from_percent(1., 1.);
 
-        let node_id = flex_tree
-            .new_with_children(LAYOUT, &[toolbox.node_id(), workspace.node_id()])
+        style
+    };
+
+    // Unlike other elements, the viewport overrides an existing node (the root node) instead of creating a new one
+    pub fn setup(tree: &mut Tree, node: NodeId) -> NodeId {
+        let workspace = Workspace::setup(tree);
+        let toolbox = Toolbox::setup(tree);
+
+        tree.set_style(node, Self::STYLE).unwrap();
+        tree.set_children(node, &[workspace, toolbox]).unwrap();
+        tree.set_node_context(node, Some(Box::new(Self(Layout::new()))))
             .unwrap();
 
-        Self {
-            layout: Default::default(),
-            node_id,
-
-            workspace,
-            toolbox,
-        }
+        node
     }
+}
+
+impl EventTarget for Viewport {
+    // Nothing to render
+    fn render(&self, _: &mut Renderer, _: &State) {}
 }
 
 impl Element for Viewport {
-    fn node_id(&self) -> NodeId {
-        self.node_id
+    fn layout(&self) -> &Layout {
+        &self.0
     }
 
-    fn get_layout(&self) -> &Layout {
-        &self.layout
-    }
-
-    fn set_layout(&mut self, layout: Layout) {
-        self.layout = layout;
-    }
-
-    fn children(&self) -> Box<dyn Iterator<Item = &dyn Element> + '_> {
-        let vec: Vec<&dyn Element> = vec![&self.workspace, &self.toolbox];
-        Box::new(vec.into_iter())
-    }
-
-    fn children_mut(&mut self) -> Box<dyn Iterator<Item = &mut dyn Element> + '_> {
-        let vec: Vec<&mut dyn Element> = vec![&mut self.workspace, &mut self.toolbox];
-        Box::new(vec.into_iter())
-    }
-
-    fn update(&mut self, state: &mut State, pos: Point) {
-        state
-            .flex_tree
-            .compute_layout(self.node_id, state.size.into())
-            .expect("Couldn't compute layout");
-
-        self.workspace.update(state, pos);
-        self.toolbox.update(state, pos);
-
-        let new_pos = self.update_layout(state, pos);
-        self.update_children(state, new_pos);
+    fn layout_mut(&mut self) -> &mut Layout {
+        &mut self.0
     }
 }

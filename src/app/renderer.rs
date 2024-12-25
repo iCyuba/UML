@@ -225,6 +225,10 @@ impl Renderer<'_> {
         self.window.as_ref().unwrap().inner_size()
     }
 
+    pub fn scale(&self) -> f64 {
+        self.window.as_ref().unwrap().scale_factor()
+    }
+
     fn window_attributes() -> WindowAttributes {
         Window::default_attributes()
             .with_inner_size(LogicalSize::new(WIDTH, HEIGHT))

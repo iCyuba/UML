@@ -1,11 +1,10 @@
-use crate::app::{Renderer, State};
+use super::primitives::traits::Draw;
+use crate::app::{EventTarget, Renderer, State, Tree};
 use crate::elements::primitives::fancy_box::FancyBox;
-use crate::elements::primitives::traits::Draw;
 use crate::elements::toolbox_item_icon::ToolboxItemIcon;
 use crate::elements::Element;
-use std::iter;
 use taffy::prelude::length;
-use taffy::{AlignContent, AlignItems, NodeId, Style, TaffyTree, Layout};
+use taffy::{AlignContent, AlignItems, Layout, NodeId, Style};
 
 #[derive(Eq, PartialEq, Hash, Debug, Default, Copy, Clone)]
 pub enum Tool {
@@ -17,56 +16,37 @@ pub enum Tool {
 
 pub struct ToolboxItem {
     layout: Layout,
-    node_id: NodeId,
 
     tool_type: Tool,
-    icon: ToolboxItemIcon,
 }
 
 impl ToolboxItem {
-    pub fn new(flex_tree: &mut TaffyTree, tool_type: Tool) -> Self {
-        let icon = ToolboxItemIcon::new(flex_tree, tool_type, 20.);
-
-        Self {
+    pub fn setup(tree: &mut Tree, tool_type: Tool) -> NodeId {
+        let icon = ToolboxItemIcon::setup(tree, tool_type, 20.);
+        let this = Self {
             layout: Default::default(),
-            node_id: flex_tree
-                .new_with_children(
-                    Style {
-                        size: length(32.),
-                        justify_content: Some(AlignContent::Center),
-                        align_items: Some(AlignItems::Center),
-                        ..Default::default()
-                    },
-                    &[icon.node_id()],
-                )
-                .unwrap(),
             tool_type,
-            icon,
-        }
+        };
+
+        let node = tree
+            .new_with_children(
+                Style {
+                    size: length(32.),
+                    justify_content: Some(AlignContent::Center),
+                    align_items: Some(AlignItems::Center),
+                    ..Default::default()
+                },
+                &[icon],
+            )
+            .unwrap();
+
+        tree.set_node_context(node, Some(Box::new(this))).unwrap();
+
+        node
     }
 }
 
-impl Element for ToolboxItem {
-    fn node_id(&self) -> NodeId {
-        self.node_id
-    }
-
-    fn get_layout(&self) -> &Layout {
-        &self.layout
-    }
-
-    fn set_layout(&mut self, layout: Layout) {
-        self.layout = layout;
-    }
-
-    fn children(&self) -> Box<dyn Iterator<Item = &dyn Element> + '_> {
-        Box::new(iter::once(&self.icon as &dyn Element))
-    }
-
-    fn children_mut(&mut self) -> Box<dyn Iterator<Item = &mut dyn Element> + '_> {
-        Box::new(iter::once(&mut self.icon as &mut dyn Element))
-    }
-
+impl EventTarget for ToolboxItem {
     fn render(&self, r: &mut Renderer, state: &State) {
         FancyBox::new(
             self,
@@ -80,7 +60,15 @@ impl Element for ToolboxItem {
             None,
         )
         .draw(&mut r.scene);
+    }
+}
 
-        self.render_children(r, state);
+impl Element for ToolboxItem {
+    fn layout(&self) -> &Layout {
+        &self.layout
+    }
+
+    fn layout_mut(&mut self) -> &mut Layout {
+        &mut self.layout
     }
 }

@@ -1,14 +1,12 @@
 use crate::animations::animated_property::AnimatedProperty;
 use crate::animations::delta_animation::DeltaAnimation;
 use crate::app::renderer::{add_text_to_scene, Renderer};
-use crate::app::State;
+use crate::app::{EventTarget, State, Tree};
 use crate::elements::Element;
 use crate::geometry::{Point, Vec2};
 use crate::presentation::fonts;
 use derive_macros::AnimatedElement;
-use taffy::prelude::length;
-use taffy::Position::Absolute;
-use taffy::{Layout, NodeId, Style, TaffyTree};
+use taffy::{Layout, NodeId, Position, Style};
 use vello::kurbo::{self, Affine, Circle};
 use vello::peniko::Fill;
 use winit::event::MouseButton;
@@ -24,46 +22,63 @@ pub struct Workspace {
 }
 
 impl Workspace {
-    pub fn new(flex_tree: &mut TaffyTree) -> Self {
-        Self {
+    const ZOOM_MIN: f64 = 0.2;
+    const ZOOM_MAX: f64 = 1.5;
+
+    const STYLE: Style = {
+        let mut style = Style::DEFAULT;
+        style.position = Position::Absolute;
+        style.inset = taffy::Rect::zero();
+
+        style
+    };
+
+    pub fn setup(tree: &mut Tree) -> NodeId {
+        let node_id = tree.new_leaf(Self::STYLE).unwrap();
+        let this = Self {
             layout: Default::default(),
-            node_id: flex_tree
-                .new_leaf(Style {
-                    position: Absolute,
-                    inset: length(0.),
-                    ..Default::default()
-                })
-                .unwrap(),
+            node_id,
 
             position: AnimatedProperty::new(DeltaAnimation::new(Default::default(), 30.)),
             zoom: AnimatedProperty::new(DeltaAnimation::new(1., 30.)),
-        }
+        };
+
+        tree.set_node_context(node_id, Some(Box::new(this)))
+            .unwrap();
+
+        node_id
+    }
+
+    fn is_dragging(&self, state: &State) -> bool {
+        let left = state.mouse_buttons.contains(&MouseButton::Left);
+        let middle = state.mouse_buttons.contains(&MouseButton::Middle);
+
+        let space = state.keys.contains(&NamedKey::Space.into());
+
+        middle || (left && space)
     }
 }
 
-impl Element for Workspace {
-    fn node_id(&self) -> NodeId {
-        self.node_id
-    }
-
-    fn get_layout(&self) -> &Layout {
-        &self.layout
-    }
-
-    fn set_layout(&mut self, layout: Layout) {
-        self.layout = layout;
-    }
-
-    fn update(&mut self, state: &mut State, _: Point) {
+impl EventTarget for Workspace {
+    fn update(&mut self, state: &mut State) {
         state.redraw |= self.animate();
+
+        // Focus the workspace when dragging
+        if self.is_dragging(state) {
+            if state.focused.is_none() {
+                state.focused = Some(self.node_id);
+            }
+        } else if state.focused == Some(self.node_id) {
+            state.focused = None;
+        }
     }
 
     fn render(&self, r: &mut Renderer, _: &State) {
-        let window = r.window.as_ref().unwrap();
         let colors = r.colors;
-        let size = window.inner_size();
-        let ui_scale = window.scale_factor();
-        let scale = *self.zoom * ui_scale;
+
+        let zoom = *self.zoom;
+        let ui_scale = r.scale();
+        let scale = zoom * ui_scale;
 
         // Draw dots
         if *self.zoom > 0.3 {
@@ -73,8 +88,8 @@ impl Element for Workspace {
             let start_y = (gap - self.position.y) % gap;
             let mut y = start_y;
 
-            while x < size.width as f64 {
-                while y < size.height as f64 {
+            while x < self.layout.size.width as f64 {
+                while y < self.layout.size.height as f64 {
                     r.scene.fill(
                         Fill::NonZero,
                         Affine::IDENTITY,
@@ -119,7 +134,8 @@ impl Element for Workspace {
             let zoom = *self.zoom;
             let point = (state.cursor + *self.position) / zoom;
 
-            let zoom = (self.zoom.get_target() + zoom * delta.y / 256.).clamp(0.2, 1.5);
+            let zoom = (self.zoom.get_target() + zoom * delta.y / 256.)
+                .clamp(Self::ZOOM_MIN, Self::ZOOM_MAX);
 
             self.zoom.set(zoom);
             self.position.set(point * zoom - state.cursor);
@@ -142,14 +158,20 @@ impl Element for Workspace {
     }
 
     fn on_mousemove(&mut self, state: &mut State, cursor: Point) {
-        let is_dragging = state.mouse_buttons.contains(&MouseButton::Middle)
-            || (state.keys.contains(&NamedKey::Space.into())
-                && state.mouse_buttons.contains(&MouseButton::Left));
-
-        if is_dragging {
+        if self.is_dragging(state) {
             let pos = *self.position - (cursor - state.cursor);
             self.position.reset(pos);
             state.redraw = true;
         }
+    }
+}
+
+impl Element for Workspace {
+    fn layout(&self) -> &Layout {
+        &self.layout
+    }
+
+    fn layout_mut(&mut self) -> &mut Layout {
+        &mut self.layout
     }
 }

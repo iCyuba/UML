@@ -1,23 +1,17 @@
-use crate::app::{Renderer, State};
+use super::primitives::traits::Draw;
+use crate::app::{EventTarget, Renderer, State, Tree};
 use crate::elements::primitives::fancy_box::{BorderOptions, FancyBox, ShadowOptions};
-use crate::elements::primitives::traits::Draw;
 use crate::elements::toolbox_item::{Tool, ToolboxItem};
 use crate::elements::Element;
-use std::collections::HashMap;
 use taffy::prelude::length;
 use taffy::Display::Flex;
 use taffy::FlexDirection::Column;
-use taffy::{Layout, NodeId, Style, TaffyTree};
+use taffy::{Layout, NodeId, Style};
 
-pub struct Toolbox {
-    layout: Layout,
-    node_id: NodeId,
-
-    tools: HashMap<Tool, ToolboxItem>,
-}
+pub struct Toolbox(Layout);
 
 impl Toolbox {
-    pub fn new(flex_tree: &mut TaffyTree) -> Self {
+    pub fn setup(tree: &mut Tree) -> NodeId {
         let style = Style {
             display: Flex,
             flex_direction: Column,
@@ -29,68 +23,30 @@ impl Toolbox {
             ..Default::default()
         };
 
-        let selection_tool = ToolboxItem::new(flex_tree, Tool::Select);
-        let entity_tool = ToolboxItem::new(flex_tree, Tool::Entity);
-        let relation_tool = ToolboxItem::new(flex_tree, Tool::Relation);
+        let selection_tool = ToolboxItem::setup(tree, Tool::Select);
+        let entity_tool = ToolboxItem::setup(tree, Tool::Entity);
+        let relation_tool = ToolboxItem::setup(tree, Tool::Relation);
 
-        let node_id = flex_tree
-            .new_with_children(
-                style,
-                &[
-                    selection_tool.node_id(),
-                    entity_tool.node_id(),
-                    relation_tool.node_id(),
-                ],
-            )
+        let node = tree
+            .new_with_children(style, &[selection_tool, entity_tool, relation_tool])
             .unwrap();
 
-        Self {
-            layout: Default::default(),
-            node_id,
-            tools: [
-                (Tool::Select, selection_tool),
-                (Tool::Entity, entity_tool),
-                (Tool::Relation, relation_tool),
-            ]
-            .into_iter()
-            .collect(),
-        }
+        tree.set_node_context(node, Some(Box::new(Self(Layout::new()))))
+            .unwrap();
+
+        node
     }
 }
 
-impl Element for Toolbox {
-    fn node_id(&self) -> NodeId {
-        self.node_id
-    }
-
-    fn get_layout(&self) -> &Layout {
-        &self.layout
-    }
-
-    fn set_layout(&mut self, layout: Layout) {
-        self.layout = layout;
-    }
-
-    fn children(&self) -> Box<dyn Iterator<Item = &dyn Element> + '_> {
-        Box::new(self.tools.values().map(|item| item as &dyn Element))
-    }
-
-    fn children_mut(&mut self) -> Box<dyn Iterator<Item = &mut dyn Element> + '_> {
-        Box::new(self.tools.values_mut().map(|item| item as &mut dyn Element))
-    }
-
-    fn render(&self, r: &mut Renderer, state: &State) {
+impl EventTarget for Toolbox {
+    fn render(&self, r: &mut Renderer, _: &State) {
         FancyBox::new(
             self,
-            
             13.,
-            
             r.colors.toolbox_background,
-            
             Some(BorderOptions {
                 color: r.colors.toolbox_border,
             }),
-            
             Some(ShadowOptions {
                 color: r.colors.drop_shadow,
                 offset: (0., 1.).into(),
@@ -98,7 +54,15 @@ impl Element for Toolbox {
             }),
         )
         .draw(&mut r.scene);
+    }
+}
 
-        self.render_children(r, state);
+impl Element for Toolbox {
+    fn layout(&self) -> &Layout {
+        &self.0
+    }
+
+    fn layout_mut(&mut self) -> &mut Layout {
+        &mut self.0
     }
 }

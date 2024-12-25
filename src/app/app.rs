@@ -1,6 +1,4 @@
-use super::{Renderer, State};
-use crate::elements::viewport::Viewport;
-use crate::elements::Element;
+use super::{EventTarget, Renderer, State, Tree};
 use crate::geometry::{Point, Vec2};
 use winit::application::ApplicationHandler;
 use winit::event::{ElementState, WindowEvent};
@@ -19,22 +17,35 @@ pub struct App<'s> {
     pub renderer: Renderer<'s>,
     pub state: State,
 
-    pub viewport: Viewport,
+    pub tree: Tree,
 }
 
 impl App<'_> {
     pub fn new(event_loop: EventLoopProxy<AppUserEvent>) -> Self {
-        let mut state = State::default();
-        let viewport = Viewport::new(&mut state.flex_tree);
-
         App {
             event_loop,
 
             renderer: Default::default(),
-            state,
+            state: Default::default(),
 
-            viewport,
+            tree: Tree::new(),
         }
+    }
+
+    pub fn redraw(&mut self) {
+        self.renderer.scene.reset();
+
+        // Flex layout
+        let size = self.renderer.size();
+        let scale = self.renderer.scale() as f32;
+
+        self.tree.compute_layout(size, scale);
+
+        self.tree.update(&mut self.state);
+        self.tree.render(&mut self.renderer, &self.state);
+
+        // Draw the scene onto the screen
+        self.renderer.render();
     }
 }
 
@@ -111,19 +122,7 @@ impl ApplicationHandler<AppUserEvent> for App<'_> {
         match event {
             WindowEvent::CloseRequested => event_loop.exit(),
             WindowEvent::Resized(size) => self.renderer.resize(size),
-
-            WindowEvent::RedrawRequested => {
-                self.renderer.scene.reset();
-
-                let size = self.renderer.size();
-                self.state.size = (size.width as f64, size.height as f64).into();
-
-                self.viewport.update(&mut self.state, Default::default());
-                self.viewport.render(&mut self.renderer, &self.state);
-
-                // Render the scene
-                self.renderer.render();
-            }
+            WindowEvent::RedrawRequested => self.redraw(),
 
             // This is handled in the user_event method
             #[cfg(not(target_arch = "wasm32"))]
@@ -148,27 +147,25 @@ impl ApplicationHandler<AppUserEvent> for App<'_> {
                 let zoom = self.state.main_modifier();
                 let reverse = self.state.modifiers.shift_key();
 
-                self.viewport
+                self.tree
                     .on_scroll(&mut self.state, delta, mouse, zoom, reverse);
             }
 
-            WindowEvent::PinchGesture { delta, .. } => {
-                self.viewport.on_scroll(
-                    &mut self.state,
-                    Vec2 {
-                        x: 0.,
-                        y: delta * 256.,
-                    },
-                    false,
-                    true,
-                    false,
-                );
-            }
+            WindowEvent::PinchGesture { delta, .. } => self.tree.on_scroll(
+                &mut self.state,
+                Vec2 {
+                    x: 0.,
+                    y: delta * 256.,
+                },
+                false,
+                true,
+                false,
+            ),
 
             WindowEvent::CursorMoved { position, .. } => {
                 let cursor = Point::from(position);
 
-                self.viewport.on_mousemove(&mut self.state, cursor);
+                self.tree.on_mousemove(&mut self.state, cursor);
                 self.state.cursor = cursor;
             }
 

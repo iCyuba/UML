@@ -1,27 +1,29 @@
-use crate::geometry::{Point, Size};
+use crate::elements::toolbox_item::Tool;
+use crate::geometry::Point;
 use std::collections::HashSet;
-use taffy::TaffyTree;
+use taffy::NodeId;
 use winit::event::MouseButton;
 use winit::keyboard::{Key, ModifiersState};
-use crate::elements::toolbox_item::Tool;
 
-#[derive(Debug, Default)]
+#[derive(Default)]
 pub struct State {
     #[cfg(target_arch = "wasm32")]
     pub use_super: bool,
 
-    // Shared
-    pub flex_tree: TaffyTree<()>,
-
     // Internal state
     pub redraw: bool,
-    pub size: Size,
 
     // User state
     pub cursor: Point,
     pub modifiers: ModifiersState,
     pub keys: HashSet<Key>,
     pub mouse_buttons: HashSet<MouseButton>,
+
+    // Elements
+    pub hovered: Option<NodeId>,
+    pub focused: Option<NodeId>,
+
+    // App state
     pub tool: Tool,
 }
 

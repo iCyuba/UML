@@ -11,7 +11,10 @@ pub struct Rect {
 
 impl Rect {
     pub fn new(origin: impl Into<Point>, size: impl Into<Size>) -> Self {
-        Self { origin: origin.into(), size: size.into() }
+        Self {
+            origin: origin.into(),
+            size: size.into(),
+        }
     }
 
     pub fn inset(&self, insets: impl Into<Rect>) -> Self {
@@ -20,6 +23,14 @@ impl Rect {
             origin: self.origin + insets.origin,
             size: self.size - insets.size,
         }
+    }
+
+    pub fn contains(&self, point: impl Into<Point>) -> bool {
+        let point = point.into();
+        point.x >= self.origin.x
+            && point.x <= self.origin.x + self.size.x
+            && point.y >= self.origin.y
+            && point.y <= self.origin.y + self.size.y
     }
 }
 
