@@ -41,6 +41,7 @@ impl Toolbox {
 impl EventTarget for Toolbox {
     fn render(&self, r: &mut Renderer, _: &State) {
         FancyBox::new(
+            r.scale(),
             self,
             13.,
             r.colors.toolbox_background,

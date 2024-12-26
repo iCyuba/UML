@@ -23,13 +23,18 @@ impl<A: Animatable> AnimatedProperty<A> {
     }
 
     pub fn set(&mut self, value: A::Value) {
-        self.animation.continue_animation();
-        self.animation.set_target(value);
+        if value != *self.animation.get_target() {
+            self.animation.continue_animation();
+            self.animation.set_target(value);
+        }
     }
 
     pub fn reset(&mut self, value: A::Value) {
         self.animation.stop_animation();
-        self.animation.set_target(value);
+        
+        if value != *self.animation.get_target() {
+            self.animation.set_target(value);
+        }
     }
 
     pub fn animate(&mut self) -> bool {

@@ -10,7 +10,9 @@ pub struct Colors {
     pub accent: Color,
     pub icon_active: Color,
     pub icon_inactive: Color,
+    
     pub drop_shadow: Color,
+    pub hover: Color,
 }
 
 impl Colors {
@@ -24,7 +26,9 @@ impl Colors {
         accent: Color::rgb8(13, 153, 255),
         icon_active: Color::WHITE,
         icon_inactive: Color::BLACK,
+        
         drop_shadow: Color::rgba8(0, 0, 0, 60),
+        hover: Color::BLACK
     };
 
     pub const DARK: Colors = Colors {
@@ -37,6 +41,8 @@ impl Colors {
         accent: Color::rgb8(12, 140, 233),
         icon_active: Color::WHITE,
         icon_inactive: Color::WHITE,
+        
         drop_shadow: Color::rgba8(0, 0, 0, 200),
+        hover: Color::WHITE
     };
 }

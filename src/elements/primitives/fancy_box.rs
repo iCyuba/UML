@@ -8,6 +8,8 @@ use vello::peniko::Color;
 use vello::Scene;
 
 pub struct FancyBox {
+    scale: f64,
+
     content: SimpleBox,
     border: Option<SimpleBox>,
     shadow: Option<SimpleBox>,
@@ -38,6 +40,7 @@ impl FancyBox {
     }
 
     pub fn new(
+        scale: f64,
         element: &impl Element,
         radii: impl Into<RoundedRectRadii>,
         color: Color,
@@ -50,20 +53,27 @@ impl FancyBox {
         let radii = radii.into();
         let offset_radii = Self::offset_radii(&radii, &layout.border);
 
-        let content = SimpleBox::new(hitbox.inset(layout.border), radii, color);
+        let content = SimpleBox::new(scale, hitbox.inset(layout.border), radii, color);
 
         let border = border_options.and_then(|opts| {
             if layout.border != taffy::Rect::zero() {
-                Some(SimpleBox::new(hitbox, offset_radii, opts.color))
+                Some(SimpleBox::new(scale, hitbox, offset_radii, opts.color))
             } else {
                 None
             }
         });
 
-        let shadow = shadow_options
-            .map(|opts| SimpleBox::new(hitbox + opts.offset, offset_radii, opts.color));
+        let shadow = shadow_options.map(|opts| {
+            SimpleBox::new(
+                scale,
+                hitbox + opts.offset * scale,
+                offset_radii,
+                opts.color,
+            )
+        });
 
         Self {
+            scale,
             content,
             border,
             shadow,
@@ -76,7 +86,7 @@ impl Draw for FancyBox {
     fn draw(&self, scene: &mut Scene) {
         if let Some(opts) = &self.shadow_options {
             let shadow = self.shadow.as_ref().unwrap();
-            shadow.draw_blurred(scene, opts.blur_radius);
+            shadow.draw_blurred(scene, opts.blur_radius * self.scale);
         }
 
         if let Some(border) = &self.border {

@@ -9,13 +9,23 @@ pub struct SimpleBox {
 }
 
 impl SimpleBox {
+    fn scale_radii(radii: &RoundedRectRadii, scale: f64) -> RoundedRectRadii {
+        RoundedRectRadii {
+            top_left: radii.top_left * scale,
+            top_right: radii.top_right * scale,
+            bottom_left: radii.bottom_left * scale,
+            bottom_right: radii.bottom_right * scale,
+        }
+    }
+    
     pub fn new(
+        scale: f64,
         rect: impl Into<Rect>,
         radii: impl Into<RoundedRectRadii>,
         color: Color,
     ) -> Self {
         Self {
-            rect: RoundedRect::from_rect(rect.into(), radii.into()),
+            rect: RoundedRect::from_rect(rect.into(), Self::scale_radii(&radii.into(), scale)),
             color,
         }
     }
