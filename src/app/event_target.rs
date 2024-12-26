@@ -27,6 +27,20 @@ pub trait EventTarget {
         false
     }
 
+    /// Fired when the cursor enters the hovered element.
+    fn on_mouseenter(&mut self, state: &mut State) -> bool {
+        let _ = state;
+
+        false
+    }
+
+    /// Fired when the cursor leaves the hovered element.
+    fn on_mouseleave(&mut self, state: &mut State) -> bool {
+        let _ = state;
+
+        false
+    }
+
     /// Fired when the cursor moves on the currently hovered or focused element.
     fn on_mousemove(&mut self, state: &mut State, cursor: Point) -> bool {
         let _ = state;

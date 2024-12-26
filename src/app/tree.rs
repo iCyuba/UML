@@ -71,10 +71,10 @@ impl Tree {
 
         // A
         let mut ancestors = HashSet::new();
-        let mut a = a;
-        while let Some(parent) = self.parent(a) {
-            ancestors.insert(parent);
-            a = parent;
+        let mut a = Some(a);
+        while let Some(node) = a {
+            ancestors.insert(node);
+            a = self.parent(node);
         }
 
         // B
@@ -207,9 +207,40 @@ impl EventTarget for Tree {
         self.bubble(state.hovered, |el| el.on_mousedown(state, button))
     }
 
+    // `on_mouseenter` doesn't need to be handled here when the cursor enters the window
+    // cuz a mouse move event will be fired immediately after that
+
+    fn on_mouseleave(&mut self, state: &mut State) -> bool {
+        self.bubble(state.hovered, |el| {
+            el.on_mouseleave(state);
+
+            // These events should always bubble up
+            false
+        });
+
+        // Clear the hovered element
+        state.hovered = None;
+
+        true
+    }
+
     fn on_mousemove(&mut self, state: &mut State, cursor: Point) -> bool {
         // Update the active element or the element under the cursor
         let node = state.focused.or_else(|| self.node_at_point(cursor));
+
+        // Fire the mouse enter and leave events
+        if state.hovered != node {
+            self.bubble(state.hovered, |el| {
+                el.on_mouseleave(state);
+
+                false
+            });
+            self.bubble(node, |el| {
+                el.on_mouseenter(state);
+
+                false
+            });
+        }
 
         // Set the hovered element
         state.hovered = node;
@@ -218,11 +249,11 @@ impl EventTarget for Tree {
     }
 
     fn on_mouseup(&mut self, state: &mut State, button: MouseButton) -> bool {
-        let captured = self.bubble(state.hovered, |el| el.on_mouseup(state, button));
+        let mut captured = self.bubble(state.hovered, |el| el.on_mouseup(state, button));
 
         // Fire the on_click event
         if button == MouseButton::Left && self.hovered_on_mouse_down.is_some() {
-            self.on_click(state);
+            captured |= self.on_click(state);
 
             // Clear the last mouse down position
             self.hovered_on_mouse_down = None;

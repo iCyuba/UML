@@ -171,6 +171,10 @@ impl ApplicationHandler<AppUserEvent> for App<'_> {
                 self.state.cursor = cursor;
             }
 
+            WindowEvent::CursorLeft { .. } => {
+                self.tree.on_mouseleave(&mut self.state);
+            }
+
             WindowEvent::ThemeChanged(theme) => {
                 self.renderer.update_theme(theme);
                 self.state.redraw = true;
