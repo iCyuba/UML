@@ -40,8 +40,8 @@ impl Project {
     }
 
     pub fn connect(&mut self, connection: Connection) -> ConnectionKey {
-        let from = connection.from;
-        let to = connection.to;
+        let from = connection.from.entity;
+        let to = connection.to.entity;
 
         let key = self.connections.insert(connection);
 
@@ -54,8 +54,8 @@ impl Project {
     pub fn disconnect(&mut self, key: ConnectionKey) {
         let connection = self.connections.remove(key).unwrap();
 
-        let from = connection.from;
-        let to = connection.to;
+        let from = connection.from.entity;
+        let to = connection.to.entity;
 
         self.entities[from].connections.remove(&key);
         self.entities[to].connections.remove(&key);

@@ -4,13 +4,32 @@ use super::project::EntityKey;
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Serialize, Deserialize)]
-pub struct Connection {
-    pub from: EntityKey,
-    pub to: EntityKey,
+pub enum Multiplicity {
+    Zero,
+    One,
+    Many
 }
 
-impl Connection {
-    pub fn new(from: EntityKey, to: EntityKey) -> Self {
-        Self { from, to }
-    }
+#[derive(Debug, Serialize, Deserialize)]
+pub enum RelationType {
+    Association,
+    Inheritance,
+    Realization,
+    Dependency,
+    Aggregation,
+    Composition
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct Relation {
+    pub entity: EntityKey,
+    pub multiplicity: Multiplicity,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct Connection {
+    pub relation: RelationType,
+
+    pub from: Relation,
+    pub to: Relation,
 }
