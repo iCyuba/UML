@@ -10,8 +10,8 @@ use taffy::{Layout, NodeId, Style};
 fn get_icon(tool_type: Tool) -> char {
     match tool_type {
         Tool::Select => 'A',
-        Tool::Entity => 'A',
-        Tool::Relation => 'A',
+        Tool::Entity => 'B',
+        Tool::Relation => 'C',
     }
 }
 

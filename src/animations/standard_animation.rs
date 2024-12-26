@@ -4,6 +4,7 @@ use crate::animations::traits::{Animatable, Interpolate};
 use crate::geometry::Vec2;
 #[cfg(not(target_arch = "wasm32"))]
 use std::time::{Duration, Instant};
+use vello::peniko::Color;
 #[cfg(target_arch = "wasm32")]
 use web_time::{Duration, Instant};
 
@@ -116,17 +117,36 @@ impl<T: Interpolate> Animatable for StandardAnimation<T> {
     }
 }
 
-impl Interpolate for f64 {
-    fn interpolate(&self, end_value: &Self, t: f64) -> Self {
-        self + (end_value - self) * t
+macro_rules! interpolate_impl {
+    ($($t:ty)*) => {
+        $(
+            impl Interpolate for $t {
+                fn interpolate(&self, end_value: &Self, t: f64) -> Self {
+                    (*self as f64 + (*end_value as f64 - *self as f64) * t) as Self
+                }
+            }
+        )*
     }
 }
+
+interpolate_impl!(usize u8 u16 u32 u64 u128 isize i8 i16 i32 i64 i128 f32 f64);
 
 impl Interpolate for Vec2 {
     fn interpolate(&self, end_value: &Self, t: f64) -> Self {
         Vec2 {
             x: self.x.interpolate(&end_value.x, t),
             y: self.y.interpolate(&end_value.y, t),
+        }
+    }
+}
+
+impl Interpolate for Color {
+    fn interpolate(&self, end_value: &Self, t: f64) -> Self {
+        Color {
+            r: self.r.interpolate(&end_value.r, t),
+            g: self.g.interpolate(&end_value.g, t),
+            b: self.b.interpolate(&end_value.b, t),
+            a: self.a.interpolate(&end_value.a, t),
         }
     }
 }

@@ -1,7 +1,5 @@
 use crate::elements::primitives::traits::Draw;
-use crate::geometry::rect::Rect;
-use taffy::Layout;
-use vello::kurbo::{Affine, RoundedRect, RoundedRectRadii};
+use vello::kurbo::{Affine, Rect, RoundedRect, RoundedRectRadii};
 use vello::peniko::{Color, Fill};
 use vello::Scene;
 
@@ -11,47 +9,13 @@ pub struct SimpleBox {
 }
 
 impl SimpleBox {
-    fn adjust_size(
-        size: &Rect,
-        border: &taffy::Rect<f32>,
-        is_border_box: bool,
-    ) -> Rect {
-        if is_border_box {
-            *size
-        } else {
-            size.inset(border)
-        }
-    }
-
-    fn adjust_radii(
-        radii: &RoundedRectRadii,
-        border: &taffy::Rect<f32>,
-        is_border_box: bool,
-    ) -> RoundedRectRadii {
-        if is_border_box {
-            RoundedRectRadii {
-                top_left: radii.top_left + border.left.min(border.top) as f64,
-                top_right: radii.top_right + border.right.min(border.top) as f64,
-                bottom_left: radii.bottom_left + border.left.min(border.bottom) as f64,
-                bottom_right: radii.bottom_right + border.right.min(border.bottom) as f64,
-            }
-        } else {
-            *radii
-        }
-    }
-
     pub fn new(
-        hitbox: &Rect,
-        layout: &Layout,
-        radii: &RoundedRectRadii,
+        rect: impl Into<Rect>,
+        radii: impl Into<RoundedRectRadii>,
         color: Color,
-        is_border_box: bool,
     ) -> Self {
-        let size = Self::adjust_size(hitbox, &layout.border, is_border_box);
-        let adjusted_radii = Self::adjust_radii(radii, &layout.border, is_border_box);
-
         Self {
-            rect: RoundedRect::from_rect(size.into(), adjusted_radii),
+            rect: RoundedRect::from_rect(rect.into(), radii.into()),
             color,
         }
     }
@@ -59,11 +23,12 @@ impl SimpleBox {
 
 impl SimpleBox {
     pub fn draw_blurred(&self, scene: &mut Scene, std_dev: f64) {
+        let radii = self.rect.radii();
         scene.draw_blurred_rounded_rect(
             Affine::IDENTITY,
             self.rect.rect(),
             self.color,
-            self.rect.radii().as_single_radius().unwrap(),
+            (radii.top_left + radii.top_right + radii.bottom_left + radii.bottom_right) / 4.,
             std_dev,
         );
     }

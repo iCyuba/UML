@@ -28,6 +28,15 @@ pub struct BorderOptions {
 }
 
 impl FancyBox {
+    fn offset_radii(radii: &RoundedRectRadii, border: &taffy::Rect<f32>) -> RoundedRectRadii {
+        RoundedRectRadii {
+            top_left: radii.top_left + border.left.min(border.top) as f64,
+            top_right: radii.top_right + border.right.min(border.top) as f64,
+            bottom_left: radii.bottom_left + border.left.min(border.bottom) as f64,
+            bottom_right: radii.bottom_right + border.right.min(border.bottom) as f64,
+        }
+    }
+
     pub fn new(
         element: &impl Element,
         radii: impl Into<RoundedRectRadii>,
@@ -39,19 +48,20 @@ impl FancyBox {
         let hitbox = Rect::from(*layout);
 
         let radii = radii.into();
+        let offset_radii = Self::offset_radii(&radii, &layout.border);
 
-        let content = SimpleBox::new(&hitbox, layout, &radii, color, false);
+        let content = SimpleBox::new(hitbox.inset(layout.border), radii, color);
 
         let border = border_options.and_then(|opts| {
             if layout.border != taffy::Rect::zero() {
-                Some(SimpleBox::new(&hitbox, layout, &radii, opts.color, true))
+                Some(SimpleBox::new(hitbox, offset_radii, opts.color))
             } else {
                 None
             }
         });
 
         let shadow = shadow_options
-            .map(|opts| SimpleBox::new(&(hitbox + opts.offset), layout, &radii, opts.color, true));
+            .map(|opts| SimpleBox::new(hitbox + opts.offset, offset_radii, opts.color));
 
         Self {
             content,

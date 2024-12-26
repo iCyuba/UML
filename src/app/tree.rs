@@ -141,11 +141,12 @@ impl Tree {
 
 impl EventTarget for Tree {
     // Lifecycle
-
-    fn update(&mut self, state: &mut State) {
+    
+    fn update(&mut self, r: &Renderer, state: &mut State) {
         fn update_children(
             node: NodeId,
             tree: &mut Tree,
+            r: &Renderer,
             state: &mut State,
             location: taffy::Point<f32>,
         ) {
@@ -185,19 +186,19 @@ impl EventTarget for Tree {
             if let Some(element) = tree.get_node_context_mut(node) {
                 *element.layout_mut() = layout;
 
-                element.update(state);
+                element.update(r, state);
 
                 // Store the rect for hover detection
                 tree.map.push((Rect::from(layout), node));
             }
 
             for node in tree.children(node).unwrap() {
-                update_children(node, tree, state, layout.location);
+                update_children(node, tree, r, state, layout.location);
             }
         }
 
         self.map.clear();
-        update_children(self.root, self, state, Default::default());
+        update_children(self.root, self, r, state, Default::default());
     }
 
     fn render(&self, r: &mut Renderer, state: &State) {

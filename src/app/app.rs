@@ -43,7 +43,7 @@ impl App<'_> {
 
         self.tree.compute_layout(size, scale);
 
-        self.tree.update(&mut self.state);
+        self.tree.update(&self.renderer, &mut self.state);
         self.tree.render(&mut self.renderer, &self.state);
 
         // Draw the scene onto the screen

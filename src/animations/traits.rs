@@ -35,45 +35,32 @@ pub trait Numeric:
 }
 
 macro_rules! numeric_impl {
-    ($t:ty) => {
-        impl Magnitude for $t {
-            #[inline]
-            fn magnitude(&self) -> f64 {
-                (*self as f64).abs()
+    ($($t:ty)*) => {
+        $(
+            impl Magnitude for $t {
+                #[inline]
+                fn magnitude(&self) -> f64 {
+                    (*self as f64).abs()
+                }
             }
-        }
-        impl ScalarMul for $t {
-            #[inline]
-            fn scalar_mul(self, rhs: f64) -> Self {
-                (self as f64 * rhs) as $t
+            impl ScalarMul for $t {
+                #[inline]
+                fn scalar_mul(self, rhs: f64) -> Self {
+                    (self as f64 * rhs) as $t
+                }
             }
-        }
-        impl DotMul for $t {
-            #[inline]
-            fn dot_mul(self, rhs: Self) -> f64 {
-                self as f64 * rhs as f64
+            impl DotMul for $t {
+                #[inline]
+                fn dot_mul(self, rhs: Self) -> f64 {
+                    self as f64 * rhs as f64
+                }
             }
-        }
-        impl Numeric for $t {}
+            impl Numeric for $t {}
+        )*
     };
 }
 
-numeric_impl!(usize);
-numeric_impl!(u8);
-numeric_impl!(u16);
-numeric_impl!(u32);
-numeric_impl!(u64);
-numeric_impl!(u128);
-
-numeric_impl!(isize);
-numeric_impl!(i8);
-numeric_impl!(i16);
-numeric_impl!(i32);
-numeric_impl!(i64);
-numeric_impl!(i128);
-
-numeric_impl!(f32);
-numeric_impl!(f64);
+numeric_impl!(usize u8 u16 u32 u64 u128 isize i8 i16 i32 i64 i128 f32 f64);
 
 impl Magnitude for Vec2 {
     fn magnitude(&self) -> f64 {

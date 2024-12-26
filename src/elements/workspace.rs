@@ -56,7 +56,7 @@ impl Workspace {
 }
 
 impl EventTarget for Workspace {
-    fn update(&mut self, state: &mut State) {
+    fn update(&mut self, _: &Renderer, state: &mut State) {
         if self.animate() {
             state.request_redraw();
         }
