@@ -129,7 +129,7 @@ impl EventTarget for Workspace {
         );
     }
 
-    fn on_scroll(&mut self, state: &mut State, delta: Vec2, mouse: bool, zoom: bool, shift: bool) {
+    fn on_wheel(&mut self, state: &mut State, delta: Vec2, mouse: bool, zoom: bool, reverse: bool) {
         if zoom {
             let zoom = *self.zoom;
             let point = (state.cursor + *self.position) / zoom;
@@ -141,7 +141,7 @@ impl EventTarget for Workspace {
             self.position.set(point * zoom - state.cursor);
         } else {
             let (mut x, mut y) = delta.into();
-            if shift {
+            if reverse {
                 (x, y) = (y, x);
             }
 

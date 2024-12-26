@@ -148,10 +148,10 @@ impl ApplicationHandler<AppUserEvent> for App<'_> {
                 let reverse = self.state.modifiers.shift_key();
 
                 self.tree
-                    .on_scroll(&mut self.state, delta, mouse, zoom, reverse);
+                    .on_wheel(&mut self.state, delta, mouse, zoom, reverse);
             }
 
-            WindowEvent::PinchGesture { delta, .. } => self.tree.on_scroll(
+            WindowEvent::PinchGesture { delta, .. } => self.tree.on_wheel(
                 &mut self.state,
                 Vec2 {
                     x: 0.,
@@ -177,8 +177,10 @@ impl ApplicationHandler<AppUserEvent> for App<'_> {
             WindowEvent::MouseInput { state, button, .. } => {
                 if state == ElementState::Pressed {
                     self.state.mouse_buttons.insert(button);
+                    self.tree.on_mousedown(&mut self.state, button);
                 } else {
                     self.state.mouse_buttons.remove(&button);
+                    self.tree.on_mouseup(&mut self.state, button);
                 }
             }
 

@@ -5,7 +5,7 @@ use crate::{
 };
 use std::ops::{Deref, DerefMut};
 use taffy::{AvailableSpace, NodeId, Size, TaffyTree};
-use winit::dpi::PhysicalSize;
+use winit::{dpi::PhysicalSize, event::MouseButton};
 
 pub struct Tree {
     taffy_tree: TaffyTree<Box<dyn Element>>,
@@ -13,6 +13,9 @@ pub struct Tree {
 
     map: Vec<(Rect, NodeId)>,
     scale: f32,
+
+    // User state, which shouldn't be accessible from the elements
+    hovered_on_mouse_down: Option<NodeId>,
 }
 
 impl Tree {
@@ -27,6 +30,7 @@ impl Tree {
             root,
             map: Vec::new(),
             scale: 1.,
+            hovered_on_mouse_down: None,
         };
 
         Viewport::setup(&mut this, root);
@@ -37,8 +41,7 @@ impl Tree {
     pub fn node_at_point(&self, point: Point) -> Option<NodeId> {
         self.map
             .iter()
-            .rev()
-            .find(|(rect, _)| rect.contains(point))
+            .rfind(|(rect, _)| rect.contains(point))
             .map(|(_, node)| *node)
     }
 
@@ -130,20 +133,31 @@ impl EventTarget for Tree {
         render_children(self.root, self, r, state);
     }
 
-    fn on_scroll(
-        &mut self,
-        state: &mut State,
-        delta: crate::geometry::Vec2,
-        mouse: bool,
-        zoom: bool,
-        reverse: bool,
-    ) {
-        // Only scroll the element under the cursor
-        let node = self.node_at_point(state.cursor);
-        let element = node.and_then(|node| self.get_node_context_mut(node));
+    // Events
 
-        if let Some(element) = element {
-            element.on_scroll(state, delta, mouse, zoom, reverse);
+    fn on_click(&mut self, state: &mut State) {
+        // TODO: Find the lowest common ancestor
+        if let Some(node) = state.hovered {
+            if node == self.hovered_on_mouse_down.unwrap() {
+                if let Some(element) = self.get_node_context_mut(node) {
+                    element.on_click(state);
+                }
+            }
+        }
+    }
+
+    fn on_mousedown(&mut self, state: &mut State, button: MouseButton) {
+        // Store the last mouse down position
+        if button == MouseButton::Left {
+            self.hovered_on_mouse_down = state.hovered;
+        }
+
+        // Call the element's on_mousedown method
+        if let Some(element) = state
+            .hovered
+            .and_then(|node| self.get_node_context_mut(node))
+        {
+            element.on_mousedown(state, button);
         }
     }
 
@@ -157,6 +171,41 @@ impl EventTarget for Tree {
         // Call the element's on_mousemove method, if it exists
         if let Some(element) = node.and_then(|node| self.get_node_context_mut(node)) {
             element.on_mousemove(state, cursor);
+        }
+    }
+
+    fn on_mouseup(&mut self, state: &mut State, button: MouseButton) {
+        // Call the element's on_mouseup method
+        if let Some(element) = state
+            .hovered
+            .and_then(|node| self.get_node_context_mut(node))
+        {
+            element.on_mouseup(state, button);
+        }
+
+        // Fire the on_click event
+        if button == MouseButton::Left && self.hovered_on_mouse_down.is_some() {
+            self.on_click(state);
+
+            // Clear the last mouse down position
+            self.hovered_on_mouse_down = None;
+        }
+    }
+
+    fn on_wheel(
+        &mut self,
+        state: &mut State,
+        delta: crate::geometry::Vec2,
+        mouse: bool,
+        zoom: bool,
+        reverse: bool,
+    ) {
+        // Only scroll the hovered element
+        if let Some(element) = state
+            .hovered
+            .and_then(|node| self.get_node_context_mut(node))
+        {
+            element.on_wheel(state, delta, mouse, zoom, reverse);
         }
     }
 }
