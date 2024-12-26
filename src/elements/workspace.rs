@@ -11,6 +11,7 @@ use vello::kurbo::{self, Affine, Circle};
 use vello::peniko::Fill;
 use winit::event::MouseButton;
 use winit::keyboard::NamedKey;
+use winit::window::CursorIcon;
 
 #[derive(AnimatedElement)]
 pub struct Workspace {
@@ -50,26 +51,14 @@ impl Workspace {
     }
 
     fn is_dragging(&self, state: &State) -> bool {
-        let left = state.mouse_buttons.contains(&MouseButton::Left);
-        let middle = state.mouse_buttons.contains(&MouseButton::Middle);
-
-        let space = state.keys.contains(&NamedKey::Space.into());
-
-        middle || (left && space)
+        state.focused == Some(self.node_id)
     }
 }
 
 impl EventTarget for Workspace {
     fn update(&mut self, state: &mut State) {
-        state.redraw |= self.animate();
-
-        // Focus the workspace when dragging
-        if self.is_dragging(state) {
-            if state.focused.is_none() {
-                state.focused = Some(self.node_id);
-            }
-        } else if state.focused == Some(self.node_id) {
-            state.focused = None;
+        if self.animate() {
+            state.request_redraw();
         }
     }
 
@@ -129,6 +118,56 @@ impl EventTarget for Workspace {
         );
     }
 
+    fn cursor(&self, state: &State) -> Option<CursorIcon> {
+        if self.is_dragging(state) {
+            Some(CursorIcon::Grabbing)
+        } else if state.keys.contains(&NamedKey::Space.into()) {
+            Some(CursorIcon::Grab)
+        } else {
+            None
+        }
+    }
+
+    fn on_mousedown(&mut self, state: &mut State, button: MouseButton) -> bool {
+        let left = button == MouseButton::Left && state.keys.contains(&NamedKey::Space.into());
+        let middle = button == MouseButton::Middle;
+
+        if left || middle {
+            state.focused = Some(self.node_id);
+            state.request_cursor_update();
+
+            return true;
+        }
+
+        false
+    }
+
+    fn on_mousemove(&mut self, state: &mut State, cursor: Point) -> bool {
+        if self.is_dragging(state) {
+            let pos: Vec2 = *self.position - (cursor - state.cursor);
+            self.position.reset(pos);
+            state.request_redraw();
+
+            return true;
+        }
+
+        false
+    }
+
+    fn on_mouseup(&mut self, state: &mut State, _: MouseButton) -> bool {
+        let left = state.mouse_buttons.contains(&MouseButton::Left);
+        let middle = state.mouse_buttons.contains(&MouseButton::Middle);
+
+        if self.is_dragging(state) && !left && !middle {
+            state.focused = None;
+            state.request_cursor_update();
+
+            return true;
+        }
+
+        false
+    }
+
     fn on_wheel(
         &mut self,
         state: &mut State,
@@ -161,21 +200,9 @@ impl EventTarget for Workspace {
             }
         }
 
-        state.redraw = true;
+        state.request_redraw();
 
         true
-    }
-
-    fn on_mousemove(&mut self, state: &mut State, cursor: Point) -> bool {
-        if self.is_dragging(state) {
-            let pos = *self.position - (cursor - state.cursor);
-            self.position.reset(pos);
-            state.redraw = true;
-
-            return true;
-        }
-
-        false
     }
 }
 

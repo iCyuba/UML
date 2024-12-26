@@ -3,17 +3,21 @@ use crate::geometry::{Point, Vec2};
 use winit::application::ApplicationHandler;
 use winit::event::{ElementState, WindowEvent};
 use winit::event_loop::{ActiveEventLoop, EventLoopProxy};
+use winit::window::CursorIcon;
 
 #[derive(Debug)]
 pub enum AppUserEvent {
     #[cfg(target_arch = "wasm32")]
-    Scroll { delta: Vec2, ctrl_key: bool },
+    Scroll {
+        delta: Vec2,
+        ctrl_key: bool,
+    },
+
+    RequestRedraw,
+    RequestCursorUpdate,
 }
 
 pub struct App<'s> {
-    #[allow(dead_code)] // Unused on the desktop app rn
-    event_loop: EventLoopProxy<AppUserEvent>,
-
     pub renderer: Renderer<'s>,
     pub state: State,
 
@@ -23,10 +27,8 @@ pub struct App<'s> {
 impl App<'_> {
     pub fn new(event_loop: EventLoopProxy<AppUserEvent>) -> Self {
         App {
-            event_loop,
-
             renderer: Default::default(),
-            state: Default::default(),
+            state: State::new(event_loop),
 
             tree: Tree::new(),
         }
@@ -75,7 +77,7 @@ impl ApplicationHandler<AppUserEvent> for App<'_> {
         self.state.use_super = use_super;
 
         // Setup a better scroll handler
-        let proxy = self.event_loop.clone();
+        let proxy = self.state.event_loop.clone();
         let closure = Closure::wrap(Box::new(move |event: web_sys::WheelEvent| {
             proxy
                 .send_event(AppUserEvent::Scroll {
@@ -94,14 +96,19 @@ impl ApplicationHandler<AppUserEvent> for App<'_> {
         closure.forget();
     }
 
-    #[cfg(target_arch = "wasm32")]
     fn user_event(&mut self, _event_loop: &ActiveEventLoop, event: AppUserEvent) {
         match event {
+            #[cfg(target_arch = "wasm32")]
             AppUserEvent::Scroll { delta, ctrl_key } => {
-                self.viewport
-                    .on_scroll(&mut self.state, delta, false, ctrl_key, false);
+                self.tree
+                    .on_wheel(&mut self.state, delta, false, ctrl_key, false);
                 self.renderer.request_redraw();
             }
+
+            AppUserEvent::RequestRedraw => self.renderer.request_redraw(),
+            AppUserEvent::RequestCursorUpdate => self
+                .renderer
+                .set_cursor(self.tree.cursor(&self.state).unwrap_or(CursorIcon::Default)),
         }
     }
 
@@ -176,8 +183,7 @@ impl ApplicationHandler<AppUserEvent> for App<'_> {
             }
 
             WindowEvent::ThemeChanged(theme) => {
-                self.renderer.update_theme(theme);
-                self.state.redraw = true;
+                self.renderer.update_theme(theme); // This automatically requests a redraw
             }
 
             WindowEvent::MouseInput { state, button, .. } => {
@@ -196,17 +202,14 @@ impl ApplicationHandler<AppUserEvent> for App<'_> {
                 } else {
                     self.state.keys.remove(&event.logical_key);
                 }
+
+                // TODO: Move this to a more appropriate place (idk where)
+                self.state.request_cursor_update();
             }
 
             WindowEvent::ModifiersChanged(modifiers) => self.state.modifiers = modifiers.state(),
 
             _ => {}
-        }
-
-        // Request a new frame if needed
-        if self.state.redraw {
-            self.renderer.request_redraw();
-            self.state.redraw = false;
         }
     }
 

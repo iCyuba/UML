@@ -1,14 +1,24 @@
 use super::{Renderer, State};
 use crate::geometry::{Point, Vec2};
-use winit::event::MouseButton;
+use winit::{event::MouseButton, window::CursorIcon};
 
 pub trait EventTarget {
     // Lifecycle
+
     fn update(&mut self, state: &mut State) {
         let _ = state;
     }
 
     fn render(&self, r: &mut Renderer, state: &State);
+
+    // Getters
+
+    /// The cursor icon to display when hovering over the element.
+    fn cursor(&self, state: &State) -> Option<CursorIcon> {
+        let _ = state;
+
+        None
+    }
 
     // Events
 

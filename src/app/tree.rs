@@ -8,7 +8,7 @@ use std::{
     ops::{Deref, DerefMut},
 };
 use taffy::{AvailableSpace, NodeId, Size, TaffyTree};
-use winit::{dpi::PhysicalSize, event::MouseButton};
+use winit::{dpi::PhysicalSize, event::MouseButton, window::CursorIcon};
 
 pub struct Tree {
     taffy_tree: TaffyTree<Box<dyn Element>>,
@@ -90,12 +90,37 @@ impl Tree {
         None
     }
 
-    /// Bubble up the tree.
+    /// Bubble an event up the tree.
     ///
-    /// If the closure returns true, the event will stop bubbling.
+    /// The closure returns an **immutable** reference to the element.
+    /// If it returns true, the event will stop bubbling.
     ///
     /// Returns true if the event was stopped. (i.e. handled)
-    fn bubble(
+    pub fn bubble(
+        &self,
+        node: Option<NodeId>,
+        mut f: impl FnMut(&Box<dyn Element>) -> bool,
+    ) -> bool {
+        let Some(node) = node else {
+            return false;
+        };
+
+        if let Some(element) = self.get_node_context(node) {
+            if f(element) {
+                return true;
+            }
+        }
+
+        self.bubble(self.parent(node), f)
+    }
+
+    /// Bubble an event up the tree.
+    ///
+    /// The closure returns a **mutable** reference to the element.
+    /// If it returns true, the event will stop bubbling.
+    ///
+    /// Returns true if the event was stopped. (i.e. handled)
+    fn bubble_mut(
         &mut self,
         node: Option<NodeId>,
         mut f: impl FnMut(&mut Box<dyn Element>) -> bool,
@@ -110,11 +135,13 @@ impl Tree {
             }
         }
 
-        self.bubble(self.parent(node), f)
+        self.bubble_mut(self.parent(node), f)
     }
 }
 
 impl EventTarget for Tree {
+    // Lifecycle
+
     fn update(&mut self, state: &mut State) {
         fn update_children(
             node: NodeId,
@@ -187,6 +214,20 @@ impl EventTarget for Tree {
         render_children(self.root, self, r, state);
     }
 
+    // Getters
+
+    fn cursor(&self, state: &State) -> Option<CursorIcon> {
+        let mut result = None;
+
+        self.bubble(state.hovered, |el| {
+            result = el.cursor(state);
+
+            result.is_some()
+        });
+
+        result
+    }
+
     // Events
 
     fn on_click(&mut self, state: &mut State) -> bool {
@@ -195,7 +236,7 @@ impl EventTarget for Tree {
         };
 
         let node = self.lowest_common_ancestor(hovered, md);
-        self.bubble(node, |el| el.on_click(state))
+        self.bubble_mut(node, |el| el.on_click(state))
     }
 
     fn on_mousedown(&mut self, state: &mut State, button: MouseButton) -> bool {
@@ -204,14 +245,14 @@ impl EventTarget for Tree {
             self.hovered_on_mouse_down = state.hovered;
         }
 
-        self.bubble(state.hovered, |el| el.on_mousedown(state, button))
+        self.bubble_mut(state.hovered, |el| el.on_mousedown(state, button))
     }
 
     // `on_mouseenter` doesn't need to be handled here when the cursor enters the window
     // cuz a mouse move event will be fired immediately after that
 
     fn on_mouseleave(&mut self, state: &mut State) -> bool {
-        self.bubble(state.hovered, |el| {
+        self.bubble_mut(state.hovered, |el| {
             el.on_mouseleave(state);
 
             // These events should always bubble up
@@ -230,12 +271,12 @@ impl EventTarget for Tree {
 
         // Fire the mouse enter and leave events
         if state.hovered != node {
-            self.bubble(state.hovered, |el| {
+            self.bubble_mut(state.hovered, |el| {
                 el.on_mouseleave(state);
 
                 false
             });
-            self.bubble(node, |el| {
+            self.bubble_mut(node, |el| {
                 el.on_mouseenter(state);
 
                 false
@@ -245,11 +286,11 @@ impl EventTarget for Tree {
         // Set the hovered element
         state.hovered = node;
 
-        self.bubble(node, |el| el.on_mousemove(state, cursor))
+        self.bubble_mut(node, |el| el.on_mousemove(state, cursor))
     }
 
     fn on_mouseup(&mut self, state: &mut State, button: MouseButton) -> bool {
-        let mut captured = self.bubble(state.hovered, |el| el.on_mouseup(state, button));
+        let mut captured = self.bubble_mut(state.hovered, |el| el.on_mouseup(state, button));
 
         // Fire the on_click event
         if button == MouseButton::Left && self.hovered_on_mouse_down.is_some() {
@@ -270,7 +311,7 @@ impl EventTarget for Tree {
         zoom: bool,
         reverse: bool,
     ) -> bool {
-        self.bubble(state.hovered, |el| {
+        self.bubble_mut(state.hovered, |el| {
             el.on_wheel(state, delta, mouse, zoom, reverse)
         })
     }

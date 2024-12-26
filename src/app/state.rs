@@ -1,17 +1,18 @@
+use super::AppUserEvent;
 use crate::elements::toolbox_item::Tool;
 use crate::geometry::Point;
 use std::collections::HashSet;
 use taffy::NodeId;
 use winit::event::MouseButton;
+use winit::event_loop::EventLoopProxy;
 use winit::keyboard::{Key, ModifiersState};
 
-#[derive(Default)]
 pub struct State {
     #[cfg(target_arch = "wasm32")]
     pub use_super: bool,
 
-    // Internal state
-    pub redraw: bool,
+    /// Event loop proxy for sending custom events
+    pub event_loop: EventLoopProxy<AppUserEvent>,
 
     // User state
     pub cursor: Point,
@@ -28,6 +29,25 @@ pub struct State {
 }
 
 impl State {
+    pub fn new(event_loop: EventLoopProxy<AppUserEvent>) -> Self {
+        Self {
+            #[cfg(target_arch = "wasm32")]
+            use_super: false,
+
+            event_loop,
+
+            cursor: Point::default(),
+            modifiers: ModifiersState::default(),
+            keys: HashSet::new(),
+            mouse_buttons: HashSet::new(),
+
+            hovered: None,
+            focused: None,
+
+            tool: Tool::Select,
+        }
+    }
+
     #[inline]
     pub fn main_modifier(&self) -> bool {
         #[cfg(target_os = "macos")]
@@ -42,5 +62,19 @@ impl State {
 
         #[cfg(all(not(target_os = "macos"), not(target_arch = "wasm32")))]
         return self.modifiers.control_key();
+    }
+
+    #[inline]
+    pub fn request_redraw(&self) {
+        self.event_loop
+            .send_event(AppUserEvent::RequestRedraw)
+            .unwrap()
+    }
+
+    #[inline]
+    pub fn request_cursor_update(&self) {
+        self.event_loop
+            .send_event(AppUserEvent::RequestCursorUpdate)
+            .unwrap()
     }
 }

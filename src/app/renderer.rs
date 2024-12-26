@@ -13,7 +13,7 @@ use winit::dpi::{LogicalSize, PhysicalSize};
 use winit::event_loop::ActiveEventLoop;
 #[cfg(target_arch = "wasm32")]
 use winit::event_loop::EventLoop;
-use winit::window::{Theme, Window, WindowAttributes};
+use winit::window::{CursorIcon, Theme, Window, WindowAttributes};
 
 const WIDTH: u32 = 1024;
 const HEIGHT: u32 = 800;
@@ -210,8 +210,9 @@ impl Renderer<'_> {
     }
 
     pub fn request_redraw(&self) {
-        let window = self.window.as_ref().unwrap();
-        window.request_redraw();
+        if let Some(window) = self.window.as_ref() {
+            window.request_redraw();
+        }
     }
 
     pub fn update_theme(&mut self, theme: Theme) {
@@ -219,6 +220,13 @@ impl Renderer<'_> {
             Theme::Light => self.colors = &Colors::LIGHT,
             Theme::Dark => self.colors = &Colors::DARK,
         }
+
+        self.request_redraw();
+    }
+
+    pub fn set_cursor(&self, cursor: CursorIcon) {
+        let window = self.window.as_ref().unwrap();
+        window.set_cursor(cursor);
     }
 
     pub fn size(&self) -> PhysicalSize<u32> {
