@@ -3,7 +3,10 @@ use crate::{
     elements::{viewport::Viewport, Element},
     geometry::{rect::Rect, Point},
 };
-use std::ops::{Deref, DerefMut};
+use std::{
+    collections::HashSet,
+    ops::{Deref, DerefMut},
+};
 use taffy::{AvailableSpace, NodeId, Size, TaffyTree};
 use winit::{dpi::PhysicalSize, event::MouseButton};
 
@@ -57,6 +60,57 @@ impl Tree {
         };
 
         self.taffy_tree.compute_layout(self.root, size).unwrap();
+    }
+
+    /// Get the lowest common ancestor of two nodes.
+    pub fn lowest_common_ancestor(&self, a: NodeId, b: NodeId) -> Option<NodeId> {
+        // Fast path for the same node
+        if a == b {
+            return Some(a);
+        }
+
+        // A
+        let mut ancestors = HashSet::new();
+        let mut a = a;
+        while let Some(parent) = self.parent(a) {
+            ancestors.insert(parent);
+            a = parent;
+        }
+
+        // B
+        let mut b = Some(b);
+        while let Some(node) = b {
+            if ancestors.contains(&node) {
+                return Some(node);
+            }
+
+            b = self.parent(node);
+        }
+
+        None
+    }
+
+    /// Bubble up the tree.
+    ///
+    /// If the closure returns true, the event will stop bubbling.
+    ///
+    /// Returns true if the event was stopped. (i.e. handled)
+    fn bubble(
+        &mut self,
+        node: Option<NodeId>,
+        mut f: impl FnMut(&mut Box<dyn Element>) -> bool,
+    ) -> bool {
+        let Some(node) = node else {
+            return false;
+        };
+
+        if let Some(element) = self.get_node_context_mut(node) {
+            if f(element) {
+                return true;
+            }
+        }
+
+        self.bubble(self.parent(node), f)
     }
 }
 
@@ -135,53 +189,36 @@ impl EventTarget for Tree {
 
     // Events
 
-    fn on_click(&mut self, state: &mut State) {
-        // TODO: Find the lowest common ancestor
-        if let Some(node) = state.hovered {
-            if node == self.hovered_on_mouse_down.unwrap() {
-                if let Some(element) = self.get_node_context_mut(node) {
-                    element.on_click(state);
-                }
-            }
-        }
+    fn on_click(&mut self, state: &mut State) -> bool {
+        let (Some(hovered), Some(md)) = (state.hovered, self.hovered_on_mouse_down) else {
+            return false;
+        };
+
+        let node = self.lowest_common_ancestor(hovered, md);
+        self.bubble(node, |el| el.on_click(state))
     }
 
-    fn on_mousedown(&mut self, state: &mut State, button: MouseButton) {
+    fn on_mousedown(&mut self, state: &mut State, button: MouseButton) -> bool {
         // Store the last mouse down position
         if button == MouseButton::Left {
             self.hovered_on_mouse_down = state.hovered;
         }
 
-        // Call the element's on_mousedown method
-        if let Some(element) = state
-            .hovered
-            .and_then(|node| self.get_node_context_mut(node))
-        {
-            element.on_mousedown(state, button);
-        }
+        self.bubble(state.hovered, |el| el.on_mousedown(state, button))
     }
 
-    fn on_mousemove(&mut self, state: &mut State, cursor: Point) {
+    fn on_mousemove(&mut self, state: &mut State, cursor: Point) -> bool {
         // Update the active element or the element under the cursor
         let node = state.focused.or_else(|| self.node_at_point(cursor));
 
         // Set the hovered element
         state.hovered = node;
 
-        // Call the element's on_mousemove method, if it exists
-        if let Some(element) = node.and_then(|node| self.get_node_context_mut(node)) {
-            element.on_mousemove(state, cursor);
-        }
+        self.bubble(node, |el| el.on_mousemove(state, cursor))
     }
 
-    fn on_mouseup(&mut self, state: &mut State, button: MouseButton) {
-        // Call the element's on_mouseup method
-        if let Some(element) = state
-            .hovered
-            .and_then(|node| self.get_node_context_mut(node))
-        {
-            element.on_mouseup(state, button);
-        }
+    fn on_mouseup(&mut self, state: &mut State, button: MouseButton) -> bool {
+        let captured = self.bubble(state.hovered, |el| el.on_mouseup(state, button));
 
         // Fire the on_click event
         if button == MouseButton::Left && self.hovered_on_mouse_down.is_some() {
@@ -190,6 +227,8 @@ impl EventTarget for Tree {
             // Clear the last mouse down position
             self.hovered_on_mouse_down = None;
         }
+
+        captured
     }
 
     fn on_wheel(
@@ -199,14 +238,10 @@ impl EventTarget for Tree {
         mouse: bool,
         zoom: bool,
         reverse: bool,
-    ) {
-        // Only scroll the hovered element
-        if let Some(element) = state
-            .hovered
-            .and_then(|node| self.get_node_context_mut(node))
-        {
-            element.on_wheel(state, delta, mouse, zoom, reverse);
-        }
+    ) -> bool {
+        self.bubble(state.hovered, |el| {
+            el.on_wheel(state, delta, mouse, zoom, reverse)
+        })
     }
 }
 

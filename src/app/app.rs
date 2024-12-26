@@ -151,16 +151,18 @@ impl ApplicationHandler<AppUserEvent> for App<'_> {
                     .on_wheel(&mut self.state, delta, mouse, zoom, reverse);
             }
 
-            WindowEvent::PinchGesture { delta, .. } => self.tree.on_wheel(
-                &mut self.state,
-                Vec2 {
-                    x: 0.,
-                    y: delta * 256.,
-                },
-                false,
-                true,
-                false,
-            ),
+            WindowEvent::PinchGesture { delta, .. } => {
+                self.tree.on_wheel(
+                    &mut self.state,
+                    Vec2 {
+                        x: 0.,
+                        y: delta * 256.,
+                    },
+                    false,
+                    true,
+                    false,
+                );
+            }
 
             WindowEvent::CursorMoved { position, .. } => {
                 let cursor = Point::from(position);

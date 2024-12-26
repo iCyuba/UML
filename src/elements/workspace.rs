@@ -129,7 +129,14 @@ impl EventTarget for Workspace {
         );
     }
 
-    fn on_wheel(&mut self, state: &mut State, delta: Vec2, mouse: bool, zoom: bool, reverse: bool) {
+    fn on_wheel(
+        &mut self,
+        state: &mut State,
+        delta: Vec2,
+        mouse: bool,
+        zoom: bool,
+        reverse: bool,
+    ) -> bool {
         if zoom {
             let zoom = *self.zoom;
             let point = (state.cursor + *self.position) / zoom;
@@ -155,14 +162,20 @@ impl EventTarget for Workspace {
         }
 
         state.redraw = true;
+
+        true
     }
 
-    fn on_mousemove(&mut self, state: &mut State, cursor: Point) {
+    fn on_mousemove(&mut self, state: &mut State, cursor: Point) -> bool {
         if self.is_dragging(state) {
             let pos = *self.position - (cursor - state.cursor);
             self.position.reset(pos);
             state.redraw = true;
+
+            return true;
         }
+
+        false
     }
 }
 
