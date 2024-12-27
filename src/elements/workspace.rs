@@ -1,8 +1,13 @@
+use super::{
+    primitives::{text::Text, traits::Draw},
+    toolbox_item::Tool,
+    Element,
+};
 use crate::animations::animated_property::AnimatedProperty;
 use crate::animations::delta_animation::DeltaAnimation;
 use crate::app::renderer::Renderer;
 use crate::app::{EventTarget, State, Tree};
-use crate::elements::Element;
+use crate::geometry::rect::Rect;
 use crate::geometry::{Point, Vec2};
 use crate::presentation::fonts;
 use derive_macros::AnimatedElement;
@@ -12,9 +17,6 @@ use vello::peniko::Fill;
 use winit::event::MouseButton;
 use winit::keyboard::{Key, NamedKey};
 use winit::window::CursorIcon;
-use crate::elements::primitives::text::Text;
-use crate::elements::primitives::traits::Draw;
-use crate::geometry::rect::Rect;
 
 #[derive(AnimatedElement)]
 pub struct Workspace {
@@ -23,6 +25,8 @@ pub struct Workspace {
 
     position: AnimatedProperty<DeltaAnimation<Vec2>>,
     zoom: AnimatedProperty<DeltaAnimation<f64>>,
+
+    previous_tool: Option<Tool>,
 }
 
 impl Workspace {
@@ -45,6 +49,8 @@ impl Workspace {
 
             position: AnimatedProperty::new(DeltaAnimation::initialized(Default::default(), 30.)),
             zoom: AnimatedProperty::new(DeltaAnimation::initialized(1., 30.)),
+
+            previous_tool: None,
         };
 
         tree.set_node_context(node_id, Some(Box::new(this)))
@@ -55,8 +61,33 @@ impl Workspace {
         node_id
     }
 
+    #[inline]
     fn is_dragging(&self, state: &State) -> bool {
         state.focused == Some(self.node_id)
+    }
+
+    fn select_hand(&mut self, state: &mut State) {
+        if state.tool == Tool::Hand {
+            return;
+        }
+
+        self.previous_tool = Some(state.tool);
+        state.tool = Tool::Hand;
+
+        state.request_redraw();
+        state.request_cursor_update();
+    }
+
+    fn deselect_hand(&mut self, state: &mut State) {
+        if self.is_dragging(state) {
+            return;
+        }
+
+        if let Some(tool) = self.previous_tool.take() {
+            state.tool = tool;
+            state.request_redraw();
+            state.request_cursor_update();
+        }
     }
 }
 
@@ -119,13 +150,14 @@ impl EventTarget for Workspace {
             16.0,
             fonts::inter_black_italic(),
             colors.workspace_text,
-        ).draw(&mut r.scene);
+        )
+        .draw(&mut r.scene);
     }
 
     fn cursor(&self, state: &State) -> Option<CursorIcon> {
         if self.is_dragging(state) {
             Some(CursorIcon::Grabbing)
-        } else if state.keys.contains(&NamedKey::Space.into()) {
+        } else if state.tool == Tool::Hand {
             Some(CursorIcon::Grab)
         } else {
             None
@@ -134,7 +166,7 @@ impl EventTarget for Workspace {
 
     fn on_keydown(&mut self, state: &mut State, key: &Key) -> bool {
         if matches!(key, Key::Named(NamedKey::Space)) {
-            state.request_cursor_update();
+            self.select_hand(state);
             return true;
         }
 
@@ -143,7 +175,7 @@ impl EventTarget for Workspace {
 
     fn on_keyup(&mut self, state: &mut State, key: &Key) -> bool {
         if matches!(key, Key::Named(NamedKey::Space)) {
-            state.request_cursor_update();
+            self.deselect_hand(state);
             return true;
         }
 
@@ -151,10 +183,14 @@ impl EventTarget for Workspace {
     }
 
     fn on_mousedown(&mut self, state: &mut State, button: MouseButton) -> bool {
-        let left = button == MouseButton::Left && state.keys.contains(&NamedKey::Space.into());
         let middle = button == MouseButton::Middle;
+        let left = button == MouseButton::Left;
 
-        if left || middle {
+        if middle {
+            self.select_hand(state);
+        }
+
+        if (left || middle) && state.tool == Tool::Hand {
             state.focused = Some(self.node_id);
             state.request_cursor_update();
 
@@ -179,10 +215,15 @@ impl EventTarget for Workspace {
     fn on_mouseup(&mut self, state: &mut State, _: MouseButton) -> bool {
         let left = state.mouse_buttons.contains(&MouseButton::Left);
         let middle = state.mouse_buttons.contains(&MouseButton::Middle);
+        let space = state.keys.contains(&NamedKey::Space.into());
 
         if self.is_dragging(state) && !left && !middle {
             state.focused = None;
             state.request_cursor_update();
+
+            if !space {
+                self.deselect_hand(state);
+            }
 
             return true;
         }

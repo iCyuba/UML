@@ -18,6 +18,7 @@ use winit::window::CursorIcon;
 pub enum Tool {
     #[default]
     Select,
+    Hand,
     Entity,
     Relation,
 }
@@ -107,7 +108,6 @@ impl EventTarget for ToolboxItem {
         self.hovered = true;
         self.hover_opacity.set(0.1);
         state.request_redraw();
-        state.request_cursor_update();
 
         true
     }
@@ -116,7 +116,6 @@ impl EventTarget for ToolboxItem {
         self.hovered = false;
         self.hover_opacity.set(0.);
         state.request_redraw();
-        state.request_cursor_update();
 
         true
     }

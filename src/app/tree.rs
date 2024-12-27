@@ -323,6 +323,7 @@ impl EventTarget for Tree {
 
                 false
             });
+            state.request_cursor_update();
         }
 
         // Set the hovered element

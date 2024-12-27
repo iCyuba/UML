@@ -24,11 +24,15 @@ impl Toolbox {
         };
 
         let selection_tool = ToolboxItem::setup(tree, state, Tool::Select);
+        let hand_tool = ToolboxItem::setup(tree, state, Tool::Hand);
         let entity_tool = ToolboxItem::setup(tree, state, Tool::Entity);
         let relation_tool = ToolboxItem::setup(tree, state, Tool::Relation);
 
         let node = tree
-            .new_with_children(style, &[selection_tool, entity_tool, relation_tool])
+            .new_with_children(
+                style,
+                &[selection_tool, hand_tool, entity_tool, relation_tool],
+            )
             .unwrap();
 
         tree.set_node_context(node, Some(Box::new(Self(Layout::new()))))

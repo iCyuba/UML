@@ -1,3 +1,4 @@
+use super::primitives::icon::Symbol;
 use super::primitives::traits::Draw;
 use crate::animations::animated_property::AnimatedProperty;
 use crate::animations::standard_animation::Easing::EaseInOut;
@@ -13,11 +14,12 @@ use taffy::prelude::length;
 use taffy::{Layout, NodeId, Style};
 use vello::peniko::Color;
 
-fn get_icon(tool_type: Tool) -> char {
+fn get_icon(tool_type: Tool) -> Symbol {
     match tool_type {
-        Tool::Select => 'A',
-        Tool::Entity => 'B',
-        Tool::Relation => 'C',
+        Tool::Select => Symbol::Cursor,
+        Tool::Hand => Symbol::Hand,
+        Tool::Entity => Symbol::PlusSquare,
+        Tool::Relation => Symbol::Workflow,
     }
 }
 
@@ -25,7 +27,7 @@ fn get_icon(tool_type: Tool) -> char {
 pub struct ToolboxItemIcon {
     layout: Layout,
 
-    icon: char,
+    icon: Symbol,
     color: AnimatedProperty<StandardAnimation<Color>>,
     tool_type: Tool,
 }
