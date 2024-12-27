@@ -156,7 +156,7 @@ impl Renderer<'_> {
         #[cfg(target_arch = "wasm32")]
         if let Some(size) = self.resize_on_next_frame.take() {
             self.context
-                .resize_surface(surface, size.width, size.height);
+                .resize_surface(surface, size.width.max(1), size.height.max(1));
         }
 
         // Get the window size
@@ -198,7 +198,7 @@ impl Renderer<'_> {
         let surface = self.surface.as_mut().unwrap();
 
         self.context
-            .resize_surface(surface, size.width, size.height);
+            .resize_surface(surface, size.width.max(1), size.height.max(1));
         self.request_redraw();
     }
 
