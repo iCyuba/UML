@@ -1,5 +1,5 @@
 use super::{Point, Size};
-use std::ops::Add;
+use std::ops::{Add, Mul};
 use taffy::Layout;
 use vello::kurbo;
 
@@ -41,6 +41,17 @@ impl Add<Point> for Rect {
         Self::Output {
             origin: self.origin + rhs,
             size: self.size,
+        }
+    }
+}
+
+impl Mul<f64> for Rect {
+    type Output = Self;
+
+    fn mul(self, rhs: f64) -> Self::Output {
+        Self::Output {
+            origin: self.origin * rhs,
+            size: self.size * rhs,
         }
     }
 }

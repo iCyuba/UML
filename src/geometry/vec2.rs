@@ -13,6 +13,8 @@ pub type Point = Vec2;
 pub type Size = Vec2;
 
 impl Vec2 {
+    pub const ZERO: Self = Self { x: 0., y: 0. };
+    
     pub fn new(x: f64, y: f64) -> Self {
         Self { x, y }
     }

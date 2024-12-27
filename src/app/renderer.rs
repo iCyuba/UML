@@ -1,13 +1,11 @@
 #[cfg(target_arch = "wasm32")]
 use crate::app::AppUserEvent;
-use crate::presentation::{Colors, FontResource};
+use crate::presentation::Colors;
 use std::num::NonZeroUsize;
 use std::sync::Arc;
-use vello::kurbo::Affine;
-use vello::peniko::{BrushRef, Fill, StyleRef};
 use vello::util::{RenderContext, RenderSurface};
 use vello::wgpu::{Maintain, PresentMode};
-use vello::{AaConfig, Glyph, RendererOptions, Scene};
+use vello::{AaConfig, RendererOptions, Scene};
 use winit::dpi::{LogicalSize, PhysicalSize};
 #[cfg(not(target_arch = "wasm32"))]
 use winit::event_loop::ActiveEventLoop;
@@ -256,38 +254,4 @@ impl Renderer<'_> {
         )
         .unwrap()
     }
-}
-
-pub fn add_text_to_scene<'a>(
-    scene: &'a mut Scene,
-    text: &'a str,
-    x: f64,
-    y: f64,
-    size: f32,
-    font: &'a FontResource,
-    brush: impl Into<BrushRef<'a>>,
-) {
-    let metrics = font.metrics(size);
-    let mut p_x = 0.0;
-
-    scene
-        .draw_glyphs(&font.font)
-        .font_size(size)
-        .brush(brush)
-        .transform(Affine::translate((x, y + size as f64)))
-        .draw(
-            StyleRef::Fill(Fill::NonZero),
-            text.chars().map(|c| {
-                let glyph_id = font.char_map.map(c).unwrap_or_default();
-                let x = p_x;
-
-                p_x += metrics.advance_width(glyph_id).unwrap_or_default();
-
-                Glyph {
-                    id: glyph_id.to_u32(),
-                    x,
-                    y: 0.,
-                }
-            }),
-        );
 }

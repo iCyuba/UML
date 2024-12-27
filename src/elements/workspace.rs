@@ -1,6 +1,6 @@
 use crate::animations::animated_property::AnimatedProperty;
 use crate::animations::delta_animation::DeltaAnimation;
-use crate::app::renderer::{add_text_to_scene, Renderer};
+use crate::app::renderer::Renderer;
 use crate::app::{EventTarget, State, Tree};
 use crate::elements::Element;
 use crate::geometry::{Point, Vec2};
@@ -12,6 +12,9 @@ use vello::peniko::Fill;
 use winit::event::MouseButton;
 use winit::keyboard::{Key, NamedKey};
 use winit::window::CursorIcon;
+use crate::elements::primitives::text::Text;
+use crate::elements::primitives::traits::Draw;
+use crate::geometry::rect::Rect;
 
 #[derive(AnimatedElement)]
 pub struct Workspace {
@@ -106,18 +109,17 @@ impl EventTarget for Workspace {
         );
 
         // Coords
-        add_text_to_scene(
-            &mut r.scene,
+        Text::new(
             &format!(
                 "x: {:.2}, y: {:.2}, zoom: {:.1}",
                 self.position.x, self.position.y, *self.zoom
             ),
-            10.0 * ui_scale,
-            10.0 * ui_scale,
-            16.0 * ui_scale as f32,
+            ui_scale,
+            Rect::new((10., 10.), (r.size().width as f64 - 20., 16.)),
+            16.0,
             fonts::inter_black_italic(),
             colors.workspace_text,
-        );
+        ).draw(&mut r.scene);
     }
 
     fn cursor(&self, state: &State) -> Option<CursorIcon> {

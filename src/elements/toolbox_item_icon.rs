@@ -69,7 +69,7 @@ impl EventTarget for ToolboxItemIcon {
 
     fn render(&self, r: &mut Renderer, _: &State) {
         let hitbox = Rect::from(self.layout);
-        let icon = Icon::new(self.icon, hitbox.origin, hitbox.size.x as f32, *self.color);
+        let icon = Icon::new(self.icon, hitbox, hitbox.size.x, *self.color);
         icon.draw(&mut r.scene);
     }
 }
