@@ -39,9 +39,9 @@ impl FancyBox {
         }
     }
 
-    pub fn new(
-        scale: f64,
+    pub fn from_element(
         element: &impl Element,
+        scale: f64,
         radii: impl Into<RoundedRectRadii>,
         color: Color,
         border_options: Option<BorderOptions>,
@@ -50,14 +50,29 @@ impl FancyBox {
         let layout = element.layout();
         let hitbox = Rect::from(*layout);
 
-        let radii = radii.into();
-        let offset_radii = Self::offset_radii(&radii, &layout.border);
+        Self::new(scale, hitbox, layout.border, radii, color, border_options, shadow_options)
+    }
 
-        let content = SimpleBox::new(scale, hitbox.inset(layout.border), radii, color);
+    pub fn new(
+        scale: f64,
+        rect: impl Into<Rect>,
+        border: impl Into<taffy::Rect<f32>>,
+        radii: impl Into<RoundedRectRadii>,
+        color: Color,
+        border_options: Option<BorderOptions>,
+        shadow_options: Option<ShadowOptions>,
+    ) -> Self {
+        let radii = radii.into();
+        let rect = rect.into();
+        let border = border.into();
+
+        let offset_radii = Self::offset_radii(&radii, &border);
+
+        let content = SimpleBox::new(scale, rect.inset(border), radii, color);
 
         let border = border_options.and_then(|opts| {
-            if layout.border != taffy::Rect::zero() {
-                Some(SimpleBox::new(scale, hitbox, offset_radii, opts.color))
+            if border != taffy::Rect::zero() {
+                Some(SimpleBox::new(scale, rect, offset_radii, opts.color))
             } else {
                 None
             }
@@ -66,19 +81,13 @@ impl FancyBox {
         let shadow = shadow_options.map(|opts| {
             SimpleBox::new(
                 scale,
-                hitbox + opts.offset * scale,
+                rect + opts.offset * scale,
                 offset_radii,
                 opts.color,
             )
         });
 
-        Self {
-            scale,
-            content,
-            border,
-            shadow,
-            shadow_options,
-        }
+        Self { scale, content, border, shadow, shadow_options }
     }
 }
 

@@ -40,9 +40,9 @@ impl Toolbox {
 
 impl EventTarget for Toolbox {
     fn render(&self, r: &mut Renderer, _: &State) {
-        FancyBox::new(
-            r.scale(),
+        FancyBox::from_element(
             self,
+            r.scale(),
             13.,
             r.colors.toolbox_background,
             Some(BorderOptions {
