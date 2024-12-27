@@ -18,30 +18,50 @@ macro_rules! font {
     };
 }
 
-// Regular
-font!(inter_thin, "Inter-Thin", 100.0);
-font!(inter_extra_light, "Inter-ExtraLight", 200.0);
-font!(inter_light, "Inter-Light", 300.0);
-font!(inter_regular, "Inter-Regular", 400.0);
-font!(inter_medium, "Inter-Medium", 500.0);
-font!(inter_semi_bold, "Inter-SemiBold", 600.0);
-font!(inter_bold, "Inter-Bold", 700.0);
-font!(inter_extra_bold, "Inter-ExtraBold", 800.0);
-font!(inter_black, "Inter-Black", 900.0);
+// Inter
+font!(inter_thin, "Inter/Thin", 100.0);
+font!(inter_extra_light, "Inter/ExtraLight", 200.0);
+font!(inter_light, "Inter/Light", 300.0);
+font!(inter_regular, "Inter/Regular", 400.0);
+font!(inter_medium, "Inter/Medium", 500.0);
+font!(inter_semi_bold, "Inter/SemiBold", 600.0);
+font!(inter_bold, "Inter/Bold", 700.0);
+font!(inter_extra_bold, "Inter/ExtraBold", 800.0);
+font!(inter_black, "Inter/Black", 900.0);
 
-// Italic
-font!(inter_thin_italic, "Inter-ThinItalic", 100.0);
-font!(inter_extra_light_italic, "Inter-ExtraLightItalic", 200.0);
-font!(inter_light_italic, "Inter-LightItalic", 300.0);
-font!(inter_italic, "Inter-Italic", 400.0);
-font!(inter_medium_italic, "Inter-MediumItalic", 500.0);
-font!(inter_semi_bold_italic, "Inter-SemiBoldItalic", 600.0);
-font!(inter_bold_italic, "Inter-BoldItalic", 700.0);
-font!(inter_extra_bold_italic, "Inter-ExtraBoldItalic", 800.0);
-font!(inter_black_italic, "Inter-BlackItalic", 900.0);
+// Inter Italic
+font!(inter_thin_italic, "Inter/ThinItalic", 100.0);
+font!(inter_extra_light_italic, "Inter/ExtraLightItalic", 200.0);
+font!(inter_light_italic, "Inter/LightItalic", 300.0);
+font!(inter_italic, "Inter/Italic", 400.0);
+font!(inter_medium_italic, "Inter/MediumItalic", 500.0);
+font!(inter_semi_bold_italic, "Inter/SemiBoldItalic", 600.0);
+font!(inter_bold_italic, "Inter/BoldItalic", 700.0);
+font!(inter_extra_bold_italic, "Inter/ExtraBoldItalic", 800.0);
+font!(inter_black_italic, "Inter/BlackItalic", 900.0);
 
 // Icons
 font!(icons, "Icons", 100.0);
+
+// JetBrains Mono
+font!(jbmono_thin, "JetBrainsMono/Thin", 100.0);
+font!(jbmono_extra_light, "JetBrainsMono/ExtraLight", 200.0);
+font!(jbmono_light, "JetBrainsMono/Light", 300.0);
+font!(jbmono_regular, "JetBrainsMono/Regular", 400.0);
+font!(jbmono_medium, "JetBrainsMono/Medium", 500.0);
+font!(jbmono_semi_bold, "JetBrainsMono/SemiBold", 600.0);
+font!(jbmono_bold, "JetBrainsMono/Bold", 700.0);
+font!(jbmono_extra_bold, "JetBrainsMono/ExtraBold", 800.0);
+
+// JetBrains Mono Italic
+font!(jbmono_thin_italic, "JetBrainsMono/ThinItalic", 100.0);
+font!(jbmono_extra_light_italic, "JetBrainsMono/ExtraLightItalic", 200.0);
+font!(jbmono_light_italic, "JetBrainsMono/LightItalic", 300.0);
+font!(jbmono_italic, "JetBrainsMono/Italic", 400.0);
+font!(jbmono_medium_italic, "JetBrainsMono/MediumItalic", 500.0);
+font!(jbmono_semi_bold_italic, "JetBrainsMono/SemiBoldItalic", 600.0);
+font!(jbmono_bold_italic, "JetBrainsMono/BoldItalic", 700.0);
+font!(jbmono_extra_bold_italic, "JetBrainsMono/ExtraBoldItalic", 800.0);
 
 pub struct FontResource<'a> {
     pub table: FontRef<'a>,
