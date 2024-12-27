@@ -26,11 +26,14 @@ pub struct App<'s> {
 
 impl App<'_> {
     pub fn new(event_loop: EventLoopProxy<AppUserEvent>) -> Self {
+        let mut state = State::new(event_loop);
+        let tree = Tree::new(&mut state);
+
         App {
             renderer: Default::default(),
-            state: State::new(event_loop),
+            state,
 
-            tree: Tree::new(),
+            tree,
         }
     }
 
@@ -198,13 +201,12 @@ impl ApplicationHandler<AppUserEvent> for App<'_> {
 
             WindowEvent::KeyboardInput { event, .. } => {
                 if event.state == ElementState::Pressed {
+                    self.tree.on_keydown(&mut self.state, &event.logical_key); // The order is weird here, because I don't want to clone the key
                     self.state.keys.insert(event.logical_key);
                 } else {
                     self.state.keys.remove(&event.logical_key);
+                    self.tree.on_keyup(&mut self.state, &event.logical_key);
                 }
-
-                // TODO: Move this to a more appropriate place (idk where)
-                self.state.request_cursor_update();
             }
 
             WindowEvent::ModifiersChanged(modifiers) => self.state.modifiers = modifiers.state(),

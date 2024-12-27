@@ -23,6 +23,7 @@ pub struct State {
     // Elements
     pub hovered: Option<NodeId>,
     pub focused: Option<NodeId>,
+    pub key_listeners: HashSet<NodeId>,
 
     // App state
     pub tool: Tool,
@@ -43,6 +44,7 @@ impl State {
 
             hovered: None,
             focused: None,
+            key_listeners: HashSet::new(),
 
             tool: Tool::Select,
         }

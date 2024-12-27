@@ -11,7 +11,7 @@ use taffy::{Layout, NodeId, Style};
 pub struct Toolbox(Layout);
 
 impl Toolbox {
-    pub fn setup(tree: &mut Tree) -> NodeId {
+    pub fn setup(tree: &mut Tree, state: &mut State) -> NodeId {
         let style = Style {
             display: Flex,
             flex_direction: Column,
@@ -23,9 +23,9 @@ impl Toolbox {
             ..Default::default()
         };
 
-        let selection_tool = ToolboxItem::setup(tree, Tool::Select);
-        let entity_tool = ToolboxItem::setup(tree, Tool::Entity);
-        let relation_tool = ToolboxItem::setup(tree, Tool::Relation);
+        let selection_tool = ToolboxItem::setup(tree, state, Tool::Select);
+        let entity_tool = ToolboxItem::setup(tree, state, Tool::Entity);
+        let relation_tool = ToolboxItem::setup(tree, state, Tool::Relation);
 
         let node = tree
             .new_with_children(style, &[selection_tool, entity_tool, relation_tool])

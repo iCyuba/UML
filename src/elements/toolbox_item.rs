@@ -34,8 +34,8 @@ pub struct ToolboxItem {
 }
 
 impl ToolboxItem {
-    pub fn setup(tree: &mut Tree, tool_type: Tool) -> NodeId {
-        let icon = ToolboxItemIcon::setup(tree, tool_type, 20.);
+    pub fn setup(tree: &mut Tree, state: &mut State, tool_type: Tool) -> NodeId {
+        let icon = ToolboxItemIcon::setup(tree, state, tool_type, 20.);
         let duration = Duration::from_millis(50);
 
         let this = Self {

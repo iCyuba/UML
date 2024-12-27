@@ -10,7 +10,7 @@ use taffy::{Layout, NodeId, Position, Style};
 use vello::kurbo::{self, Affine, Circle};
 use vello::peniko::Fill;
 use winit::event::MouseButton;
-use winit::keyboard::NamedKey;
+use winit::keyboard::{Key, NamedKey};
 use winit::window::CursorIcon;
 
 #[derive(AnimatedElement)]
@@ -34,7 +34,7 @@ impl Workspace {
         style
     };
 
-    pub fn setup(tree: &mut Tree) -> NodeId {
+    pub fn setup(tree: &mut Tree, state: &mut State) -> NodeId {
         let node_id = tree.new_leaf(Self::STYLE).unwrap();
         let this = Self {
             layout: Default::default(),
@@ -46,6 +46,8 @@ impl Workspace {
 
         tree.set_node_context(node_id, Some(Box::new(this)))
             .unwrap();
+
+        state.key_listeners.insert(node_id);
 
         node_id
     }
@@ -126,6 +128,24 @@ impl EventTarget for Workspace {
         } else {
             None
         }
+    }
+
+    fn on_keydown(&mut self, state: &mut State, key: &Key) -> bool {
+        if matches!(key, Key::Named(NamedKey::Space)) {
+            state.request_cursor_update();
+            return true;
+        }
+
+        false
+    }
+
+    fn on_keyup(&mut self, state: &mut State, key: &Key) -> bool {
+        if matches!(key, Key::Named(NamedKey::Space)) {
+            state.request_cursor_update();
+            return true;
+        }
+
+        false
     }
 
     fn on_mousedown(&mut self, state: &mut State, button: MouseButton) -> bool {

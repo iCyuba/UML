@@ -1,6 +1,6 @@
-use super::{EventTarget, Renderer, State};
+use super::{viewport::Viewport, EventTarget, Renderer, State};
 use crate::{
-    elements::{viewport::Viewport, Element},
+    elements::Element,
     geometry::{rect::Rect, Point},
 };
 use std::{
@@ -8,7 +8,7 @@ use std::{
     ops::{Deref, DerefMut},
 };
 use taffy::{AvailableSpace, NodeId, Size, TaffyTree};
-use winit::{dpi::PhysicalSize, event::MouseButton, window::CursorIcon};
+use winit::{dpi::PhysicalSize, event::MouseButton, keyboard::Key, window::CursorIcon};
 
 pub struct Tree {
     taffy_tree: TaffyTree<Box<dyn Element>>,
@@ -22,7 +22,7 @@ pub struct Tree {
 }
 
 impl Tree {
-    pub fn new() -> Self {
+    pub fn new(state: &mut State) -> Self {
         let mut taffy_tree = TaffyTree::new();
         taffy_tree.disable_rounding();
 
@@ -36,7 +36,7 @@ impl Tree {
             hovered_on_mouse_down: None,
         };
 
-        Viewport::setup(&mut this, root);
+        Viewport::setup(&mut this, state, root);
 
         this
     }
@@ -141,7 +141,7 @@ impl Tree {
 
 impl EventTarget for Tree {
     // Lifecycle
-    
+
     fn update(&mut self, r: &Renderer, state: &mut State) {
         fn update_children(
             node: NodeId,
@@ -238,6 +238,47 @@ impl EventTarget for Tree {
 
         let node = self.lowest_common_ancestor(hovered, md);
         self.bubble_mut(node, |el| el.on_click(state))
+    }
+
+    fn on_keydown(&mut self, state: &mut State, key: &Key) -> bool {
+        // If there's a focused element, fire the event there. If not, fire it on all key listeners.
+        if let Some(focused) = state
+            .focused
+            .and_then(|node| self.get_node_context_mut(node))
+        {
+            focused.on_keydown(state, key)
+        } else {
+            let mut handled = false;
+
+            let key_listeners = state.key_listeners.iter().cloned().collect::<Vec<_>>();
+            for node in key_listeners {
+                if let Some(element) = self.get_node_context_mut(node) {
+                    handled |= element.on_keydown(state, key);
+                }
+            }
+
+            handled
+        }
+    }
+
+    fn on_keyup(&mut self, state: &mut State, key: &Key) -> bool {
+        if let Some(focused) = state
+            .focused
+            .and_then(|node| self.get_node_context_mut(node))
+        {
+            focused.on_keyup(state, key)
+        } else {
+            let mut handled = false;
+
+            let key_listeners = state.key_listeners.iter().cloned().collect::<Vec<_>>();
+            for node in key_listeners {
+                if let Some(element) = self.get_node_context_mut(node) {
+                    handled |= element.on_keyup(state, key);
+                }
+            }
+
+            handled
+        }
     }
 
     fn on_mousedown(&mut self, state: &mut State, button: MouseButton) -> bool {

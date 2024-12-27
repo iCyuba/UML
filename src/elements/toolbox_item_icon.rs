@@ -31,7 +31,7 @@ pub struct ToolboxItemIcon {
 }
 
 impl ToolboxItemIcon {
-    pub fn setup(tree: &mut Tree, tool_type: Tool, size: f32) -> NodeId {
+    pub fn setup(tree: &mut Tree, _: &mut State, tool_type: Tool, size: f32) -> NodeId {
         let this = Self {
             layout: Default::default(),
 

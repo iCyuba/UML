@@ -1,6 +1,6 @@
 use super::{Renderer, State};
 use crate::geometry::{Point, Vec2};
-use winit::{event::MouseButton, window::CursorIcon};
+use winit::{event::MouseButton, keyboard::Key, window::CursorIcon};
 
 pub trait EventTarget {
     // Lifecycle
@@ -25,6 +25,28 @@ pub trait EventTarget {
     /// `mousedown` + `mouseup` via the primary mouse button
     fn on_click(&mut self, state: &mut State) -> bool {
         _ = state;
+
+        false
+    }
+
+    /// Fired on a key listener when a key is pressed down.
+    ///
+    /// The element must be either focused, or in the `key_listeners` set.
+    ///
+    /// Does not bubble.
+    fn on_keydown(&mut self, state: &mut State, key: &Key) -> bool {
+        _ = (state, key);
+
+        false
+    }
+
+    /// Fired on a key listener when a key is released.
+    ///
+    /// The element must be either focused, or in the `key_listeners` set.
+    ///
+    /// Does not bubble.
+    fn on_keyup(&mut self, state: &mut State, key: &Key) -> bool {
+        _ = (state, key);
 
         false
     }
