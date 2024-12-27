@@ -28,9 +28,6 @@ pub struct ToolboxItemIcon {
     icon: char,
     color: AnimatedProperty<StandardAnimation<Color>>,
     tool_type: Tool,
-
-    active: bool,
-    initialized: bool,
 }
 
 impl ToolboxItemIcon {
@@ -40,13 +37,10 @@ impl ToolboxItemIcon {
 
             icon: get_icon(tool_type),
             color: AnimatedProperty::new(StandardAnimation::new(
-                Default::default(),
                 Duration::from_millis(50),
                 EaseInOut,
             )),
             tool_type,
-            active: false,
-            initialized: false,
         };
 
         tree.new_leaf_with_context(
@@ -62,19 +56,11 @@ impl ToolboxItemIcon {
 
 impl EventTarget for ToolboxItemIcon {
     fn update(&mut self, r: &Renderer, state: &mut State) {
-        self.active = state.tool == self.tool_type;
-        let color = if self.active {
+        self.color.set(if state.tool == self.tool_type {
             r.colors.icon_active
         } else {
             r.colors.icon_inactive
-        };
-
-        if self.initialized {
-            self.color.set(color);
-        } else {
-            self.color.reset(color);
-            self.initialized = true;
-        }
+        });
 
         if self.animate() {
             state.request_redraw();

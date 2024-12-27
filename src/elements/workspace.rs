@@ -40,8 +40,8 @@ impl Workspace {
             layout: Default::default(),
             node_id,
 
-            position: AnimatedProperty::new(DeltaAnimation::new(Default::default(), 30.)),
-            zoom: AnimatedProperty::new(DeltaAnimation::new(1., 30.)),
+            position: AnimatedProperty::new(DeltaAnimation::initialized(Default::default(), 30.)),
+            zoom: AnimatedProperty::new(DeltaAnimation::initialized(1., 30.)),
         };
 
         tree.set_node_context(node_id, Some(Box::new(this)))

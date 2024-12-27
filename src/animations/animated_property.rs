@@ -22,18 +22,29 @@ impl<A: Animatable> AnimatedProperty<A> {
         self.animation.get_target()
     }
 
+    fn initialize(&mut self, value: A::Value) -> bool {
+        let initialized = self.animation.is_initialized();
+        if !initialized {
+            self.animation.initialize(value);
+        }
+
+        !initialized
+    }
+
     pub fn set(&mut self, value: A::Value) {
-        if value != *self.animation.get_target() {
+        if !self.initialize(value) && value != *self.animation.get_target() {
             self.animation.continue_animation();
             self.animation.set_target(value);
         }
     }
 
     pub fn reset(&mut self, value: A::Value) {
-        self.animation.stop_animation();
-        
-        if value != *self.animation.get_target() {
-            self.animation.set_target(value);
+        if !self.initialize(value) {
+            self.animation.stop_animation();
+
+            if value != *self.animation.get_target() {
+                self.animation.set_target(value);
+            }
         }
     }
 

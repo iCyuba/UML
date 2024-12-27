@@ -1,14 +1,16 @@
 use crate::geometry::Vec2;
 use std::ops::{Add, Sub};
 
-pub trait Interpolate: Copy + PartialEq {
+pub trait Interpolate: Copy + PartialEq + Default {
     fn interpolate(&self, end_value: &Self, t: f64) -> Self;
 }
 
 pub trait Animatable {
-    type Value: Copy + PartialEq;
+    type Value: Copy + PartialEq + Default;
 
     fn is_animating(&self) -> bool;
+    fn is_initialized(&self) -> bool;
+    fn initialize(&mut self, value: Self::Value);
     fn update(&mut self) -> Self::Value;
     fn stop_animation(&mut self);
     fn continue_animation(&mut self);
@@ -30,7 +32,14 @@ pub trait DotMul {
 }
 
 pub trait Numeric:
-    Copy + Sub<Output = Self> + Add<Output = Self> + Magnitude + DotMul + ScalarMul + PartialEq
+    Copy
+    + Sub<Output = Self>
+    + Add<Output = Self>
+    + Magnitude
+    + DotMul
+    + ScalarMul
+    + PartialEq
+    + Default
 {
 }
 

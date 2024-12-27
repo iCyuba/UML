@@ -15,15 +15,24 @@ pub struct DeltaAnimation<T: Numeric> {
     multiplier: f64,
 
     animating: bool,
+    initialized: bool,
 }
 
 impl<T: Numeric> DeltaAnimation<T> {
-    pub fn new(initial_value: T, multiplier: f64) -> Self {
+    pub fn new(multiplier: f64) -> Self {
+        Self {
+            initialized: false,
+            ..Self::initialized(Default::default(), multiplier)
+        }
+    }
+
+    pub fn initialized(initial_value: T, multiplier: f64) -> Self {
         Self {
             start_value: initial_value,
             current_value: initial_value,
             end_value: initial_value,
             animating: false,
+            initialized: true,
             frame_time: Instant::now(),
             multiplier,
         }
@@ -34,7 +43,16 @@ impl<T: Numeric> Animatable for DeltaAnimation<T> {
     type Value = T;
 
     fn is_animating(&self) -> bool {
-        self.animating
+        self.initialized && self.animating
+    }
+
+    fn is_initialized(&self) -> bool {
+        self.initialized
+    }
+
+    fn initialize(&mut self, value: Self::Value) {
+        self.set_target(value);
+        self.initialized = true;
     }
 
     fn update(&mut self) -> T {

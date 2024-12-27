@@ -30,31 +30,21 @@ pub struct ToolboxItem {
     background: AnimatedProperty<StandardAnimation<Color>>,
     hover_opacity: AnimatedProperty<StandardAnimation<f32>>,
 
-    active: bool,
     hovered: bool,
-    initialized: bool,
 }
 
 impl ToolboxItem {
     pub fn setup(tree: &mut Tree, tool_type: Tool) -> NodeId {
         let icon = ToolboxItemIcon::setup(tree, tool_type, 20.);
         let duration = Duration::from_millis(50);
-        
+
         let this = Self {
             layout: Default::default(),
             tool_type,
-            active: false,
             hovered: false,
-            initialized: false,
-            background: AnimatedProperty::new(StandardAnimation::new(
-                Default::default(),
-                duration,
-                EaseInOut,
-            )),
-            hover_opacity: AnimatedProperty::new(StandardAnimation::new(
-                0.,
-                duration,
-                EaseInOut,
+            background: AnimatedProperty::new(StandardAnimation::new(duration, EaseInOut)),
+            hover_opacity: AnimatedProperty::new(StandardAnimation::initialized(
+                0., duration, EaseInOut,
             )),
         };
 
@@ -78,19 +68,11 @@ impl ToolboxItem {
 
 impl EventTarget for ToolboxItem {
     fn update(&mut self, r: &Renderer, state: &mut State) {
-        self.active = state.tool == self.tool_type;
-        let color = if self.active {
+        self.background.set(if state.tool == self.tool_type {
             r.colors.accent
         } else {
             r.colors.toolbox_background
-        };
-
-        if self.initialized {
-            self.background.set(color);
-        } else {
-            self.background.reset(color);
-            self.initialized = true;
-        }
+        });
 
         if self.animate() {
             state.request_redraw();

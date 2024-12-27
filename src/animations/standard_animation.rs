@@ -26,10 +26,18 @@ pub struct StandardAnimation<T: Interpolate> {
     start_time: Instant,
 
     animating: bool,
+    initialized: bool,
 }
 
 impl<T: Interpolate> StandardAnimation<T> {
-    pub fn new(initial_value: T, duration: Duration, easing: Easing) -> Self {
+    pub fn new(duration: Duration, easing: Easing) -> Self {
+        Self {
+            initialized: false,
+            ..Self::initialized(Default::default(), duration, easing)
+        }
+    }
+
+    pub fn initialized(initial_value: T, duration: Duration, easing: Easing) -> Self {
         Self {
             start_value: initial_value,
             current_value: initial_value,
@@ -37,6 +45,7 @@ impl<T: Interpolate> StandardAnimation<T> {
             duration,
             start_time: Instant::now(),
             animating: false,
+            initialized: true,
             easing,
         }
     }
@@ -62,7 +71,16 @@ impl<T: Interpolate> Animatable for StandardAnimation<T> {
     type Value = T;
 
     fn is_animating(&self) -> bool {
-        self.animating
+        self.initialized && self.animating
+    }
+
+    fn is_initialized(&self) -> bool {
+        self.initialized
+    }
+
+    fn initialize(&mut self, value: Self::Value) {
+        self.set_target(value);
+        self.initialized = true;
     }
 
     fn update(&mut self) -> T {
