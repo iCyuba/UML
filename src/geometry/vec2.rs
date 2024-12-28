@@ -1,9 +1,10 @@
+use serde::{Deserialize, Serialize};
 use std::ops::{Add, AddAssign, Div, DivAssign, Mul, MulAssign, Neg, Sub, SubAssign};
 use taffy::AvailableSpace;
 use vello::kurbo;
 use winit::dpi::{PhysicalPosition, PhysicalSize};
 
-#[derive(Debug, Clone, Copy, PartialEq, Default)]
+#[derive(Debug, Clone, Copy, PartialEq, Default, Serialize, Deserialize)]
 pub struct Vec2 {
     pub x: f64,
     pub y: f64,
@@ -43,10 +44,12 @@ impl Div<f64> for Vec2 {
     }
 }
 
-impl Add<Vec2> for Vec2 {
+impl<V: Into<Vec2>> Add<V> for Vec2 {
     type Output = Self;
 
-    fn add(self, rhs: Vec2) -> Self::Output {
+    fn add(self, rhs: V) -> Self::Output {
+        let rhs = rhs.into();
+
         Self::Output {
             x: self.x + rhs.x,
             y: self.y + rhs.y,
@@ -54,10 +57,12 @@ impl Add<Vec2> for Vec2 {
     }
 }
 
-impl Sub<Vec2> for Vec2 {
+impl<V: Into<Vec2>> Sub<V> for Vec2 {
     type Output = Self;
 
-    fn sub(self, rhs: Vec2) -> Self::Output {
+    fn sub(self, rhs: V) -> Self::Output {
+        let rhs = rhs.into();
+
         Self::Output {
             x: self.x - rhs.x,
             y: self.y - rhs.y,
@@ -91,15 +96,19 @@ impl DivAssign<f64> for Vec2 {
     }
 }
 
-impl AddAssign<Vec2> for Vec2 {
-    fn add_assign(&mut self, rhs: Vec2) {
+impl<V: Into<Vec2>> AddAssign<V> for Vec2 {
+    fn add_assign(&mut self, rhs: V) {
+        let rhs = rhs.into();
+
         self.x += rhs.x;
         self.y += rhs.y;
     }
 }
 
-impl SubAssign<Vec2> for Vec2 {
-    fn sub_assign(&mut self, rhs: Vec2) {
+impl<V: Into<Vec2>> SubAssign<V> for Vec2 {
+    fn sub_assign(&mut self, rhs: V) {
+        let rhs = rhs.into();
+
         self.x -= rhs.x;
         self.y -= rhs.y;
     }
@@ -148,8 +157,8 @@ impl From<PhysicalSize<f64>> for Vec2 {
     }
 }
 
-impl From<kurbo::Point> for Vec2 {
-    fn from(value: kurbo::Point) -> Self {
+impl From<kurbo::Vec2> for Vec2 {
+    fn from(value: kurbo::Vec2) -> Self {
         Self {
             x: value.x,
             y: value.y,
@@ -157,12 +166,15 @@ impl From<kurbo::Point> for Vec2 {
     }
 }
 
+impl From<kurbo::Point> for Vec2 {
+    fn from(value: kurbo::Point) -> Self {
+        Self::from(value.to_vec2())
+    }
+}
+
 impl From<kurbo::Size> for Vec2 {
     fn from(value: kurbo::Size) -> Self {
-        Self {
-            x: value.width,
-            y: value.height,
-        }
+        Self::from(value.to_vec2())
     }
 }
 
@@ -202,21 +214,24 @@ impl From<Vec2> for PhysicalSize<f64> {
     }
 }
 
-impl From<Vec2> for kurbo::Point {
+impl From<Vec2> for kurbo::Vec2 {
     fn from(point: Vec2) -> Self {
-        kurbo::Point {
+        kurbo::Vec2 {
             x: point.x,
             y: point.y,
         }
     }
 }
 
+impl From<Vec2> for kurbo::Point {
+    fn from(point: Vec2) -> Self {
+        kurbo::Vec2::from(point).to_point()
+    }
+}
+
 impl From<Vec2> for kurbo::Size {
     fn from(point: Vec2) -> Self {
-        kurbo::Size {
-            width: point.x,
-            height: point.y,
-        }
+        kurbo::Vec2::from(point).to_size()
     }
 }
 

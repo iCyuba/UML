@@ -1,6 +1,7 @@
 #![allow(dead_code)]
 
 use super::project::{ConnectionKey, EntityKey};
+use crate::geometry::rect::Rect;
 use serde::{Deserialize, Serialize};
 use slotmap::{new_key_type, SlotMap};
 use std::collections::{HashMap, HashSet};
@@ -14,6 +15,16 @@ pub enum AccessModifier {
     Public,
     Protected,
     Private,
+}
+
+impl AccessModifier {
+    pub fn as_char(&self) -> char {
+        match self {
+            AccessModifier::Public => '+',
+            AccessModifier::Protected => '#',
+            AccessModifier::Private => '-',
+        }
+    }
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -67,7 +78,7 @@ pub enum EntityType {
     Interface,
 }
 
-#[derive(Debug, Serialize, Deserialize, Default)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct Entity {
     pub name: String,
     pub ty: EntityType,
@@ -79,6 +90,24 @@ pub struct Entity {
     pub attributes: HashMap<String, Attribute>,
 
     pub connections: HashSet<ConnectionKey>,
+
+    /// Position of the entity in the diagram
+    pub rect: Rect,
+}
+
+impl Entity {
+    pub fn new(name: String, ty: EntityType) -> Self {
+        Entity {
+            name,
+            ty,
+            generics: SlotMap::with_key(),
+            inherits: None,
+            implements: vec![],
+            attributes: HashMap::new(),
+            connections: HashSet::new(),
+            rect: Rect::ZERO,
+        }
+    }
 }
 
 pub enum TypeInUseError {

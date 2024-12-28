@@ -1,6 +1,8 @@
 use super::AppUserEvent;
+use crate::data::Project;
 use crate::elements::toolbox_item::Tool;
 use crate::geometry::Point;
+use crate::sample;
 use std::collections::HashSet;
 use taffy::NodeId;
 use winit::event::MouseButton;
@@ -26,6 +28,7 @@ pub struct State {
     pub key_listeners: HashSet<NodeId>,
 
     // App state
+    pub project: Project,
     pub tool: Tool,
 }
 
@@ -46,6 +49,7 @@ impl State {
             focused: None,
             key_listeners: HashSet::new(),
 
+            project: sample::project(),
             tool: Tool::Select,
         }
     }

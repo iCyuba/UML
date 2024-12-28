@@ -1,18 +1,18 @@
-use super::{
-    primitives::{text::Text, traits::Draw},
-    toolbox_item::Tool,
-    Element,
-};
+use super::item::Item;
 use crate::animations::animated_property::AnimatedProperty;
 use crate::animations::delta_animation::DeltaAnimation;
 use crate::app::renderer::Renderer;
 use crate::app::{EventTarget, State, Tree};
+use crate::elements::primitives::text::Text;
+use crate::elements::primitives::traits::Draw;
+use crate::elements::toolbox_item::Tool;
+use crate::elements::Element;
 use crate::geometry::rect::Rect;
 use crate::geometry::{Point, Vec2};
 use crate::presentation::fonts;
 use derive_macros::AnimatedElement;
 use taffy::{Layout, NodeId, Position, Style};
-use vello::kurbo::{self, Affine, Circle};
+use vello::kurbo::{Affine, Circle};
 use vello::peniko::Fill;
 use winit::event::MouseButton;
 use winit::keyboard::{Key, NamedKey};
@@ -62,6 +62,16 @@ impl Workspace {
     }
 
     #[inline]
+    pub fn position(&self) -> Vec2 {
+        *self.position
+    }
+
+    #[inline]
+    pub fn zoom(&self) -> f64 {
+        *self.zoom
+    }
+
+    #[inline]
     fn is_dragging(&self, state: &State) -> bool {
         state.focused == Some(self.node_id)
     }
@@ -96,9 +106,14 @@ impl EventTarget for Workspace {
         if self.animate() {
             state.request_redraw();
         }
+
+        // Entities
+        for (_, entity) in state.project.entities.iter_mut() {
+            entity.update();
+        }
     }
 
-    fn render(&self, r: &mut Renderer, _: &State) {
+    fn render(&self, r: &mut Renderer, state: &State) {
         let colors = r.colors;
 
         let zoom = *self.zoom;
@@ -131,13 +146,12 @@ impl EventTarget for Workspace {
             }
         }
 
-        r.scene.fill(
-            Fill::NonZero,
-            Affine::translate((-self.position.x, -self.position.y)),
-            colors.workspace_dot,
-            None,
-            &kurbo::Rect::from_origin_size((0.0, 0.0), (64. * scale, 64. * scale)),
-        );
+        // Render workspace items
+
+        // Entities
+        for (_, entity) in state.project.entities.iter() {
+            entity.render(r, state, self);
+        }
 
         // Coords
         Text::new(

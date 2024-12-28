@@ -1,15 +1,21 @@
-use super::{Point, Size};
+use super::{Point, Size, Vec2};
+use serde::{Deserialize, Serialize};
 use std::ops::{Add, Mul};
 use taffy::Layout;
 use vello::kurbo;
 
-#[derive(Debug, Clone, Copy, PartialEq, Default)]
+#[derive(Debug, Clone, Copy, PartialEq, Default, Serialize, Deserialize)]
 pub struct Rect {
     pub origin: Point,
     pub size: Size,
 }
 
 impl Rect {
+    pub const ZERO: Self = Self {
+        origin: Point::ZERO,
+        size: Size::ZERO,
+    };
+
     pub fn new(origin: impl Into<Point>, size: impl Into<Size>) -> Self {
         Self {
             origin: origin.into(),
@@ -22,6 +28,18 @@ impl Rect {
         Self {
             origin: self.origin + insets.origin,
             size: self.size - insets.size,
+        }
+    }
+
+    pub fn inset_uniform(&self, inset: f64) -> Self {
+        let inset = Vec2::new(inset, inset);
+        self.inset(Rect::new(inset, inset))
+    }
+
+    pub fn translate(&self, offset: impl Into<Vec2>) -> Self {
+        Self {
+            origin: self.origin + offset.into(),
+            size: self.size,
         }
     }
 
