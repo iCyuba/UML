@@ -64,7 +64,7 @@ impl<T: Numeric> Animatable for DeltaAnimation<T> {
             let step = self.end_value - self.current_value;
 
             // Stop the animation if the value surpasses the target or the step is too small
-            if direction.dot_mul(step).is_sign_negative() || step.magnitude() < 1e-5 {
+            if direction.dot_mul(step).is_sign_negative() || step.magnitude() < 1e-9 {
                 self.stop_animation();
             } else {
                 let step = step.scalar_mul(elapsed * self.multiplier);

@@ -28,9 +28,13 @@ impl Project {
     }
 
     pub fn add_entity(&mut self, entity: Entity) -> EntityKey {
-        self.entities.insert(entity)
+        self.entities.insert_with_key(|key| {
+            let mut entity = entity;
+            entity.key = key;
+            entity
+        })
     }
-
+    
     pub fn remove_entity(&mut self, key: EntityKey) {
         let entity = self.entities.remove(key).unwrap();
 

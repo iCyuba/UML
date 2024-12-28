@@ -13,6 +13,7 @@ use std::time::Duration;
 use taffy::prelude::length;
 use taffy::{Layout, NodeId, Style};
 use vello::peniko::Color;
+use crate::data::Project;
 
 fn get_icon(tool_type: Tool) -> Symbol {
     match tool_type {
@@ -57,7 +58,7 @@ impl ToolboxItemIcon {
 }
 
 impl EventTarget for ToolboxItemIcon {
-    fn update(&mut self, r: &Renderer, state: &mut State) {
+    fn update(&mut self, r: &Renderer, state: &mut State, _: &mut Project) {
         self.color.set(if state.tool == self.tool_type {
             r.colors.icon_active
         } else {
@@ -69,7 +70,7 @@ impl EventTarget for ToolboxItemIcon {
         }
     }
 
-    fn render(&self, r: &mut Renderer, _: &State) {
+    fn render(&self, r: &mut Renderer, _: &State, _: &Project) {
         let hitbox = Rect::from(self.layout);
         let icon = Icon::new(self.icon, hitbox, hitbox.size.x, *self.color);
         icon.draw(&mut r.scene);

@@ -1,9 +1,8 @@
-use super::AppUserEvent;
-use crate::data::Project;
+use super::{AppUserEvent, Tree};
+use crate::data::project::EntityKey;
 use crate::elements::toolbox_item::Tool;
 use crate::elements::tooltip::TooltipState;
 use crate::geometry::Point;
-use crate::sample;
 use std::collections::HashSet;
 use taffy::NodeId;
 use winit::event::MouseButton;
@@ -29,8 +28,8 @@ pub struct State {
     pub key_listeners: HashSet<NodeId>,
 
     // App state
-    pub project: Project,
     pub tool: Tool,
+    pub selected_entity: Option<EntityKey>,
     pub tooltip_state: Option<TooltipState>,
 }
 
@@ -51,9 +50,9 @@ impl State {
             focused: None,
             key_listeners: HashSet::new(),
 
-            project: sample::project(),
             tool: Tool::Select,
             tooltip_state: None,
+            selected_entity: None,
         }
     }
 
@@ -77,7 +76,7 @@ impl State {
     pub fn request_redraw(&self) {
         self.event_loop
             .send_event(AppUserEvent::RequestRedraw)
-            .unwrap()
+            .unwrap();
     }
 
     #[inline]
@@ -92,5 +91,12 @@ impl State {
         self.event_loop
             .send_event(AppUserEvent::RequestTooltipUpdate)
             .unwrap()
+    }
+
+    #[inline]
+    pub fn modify_tree(&self, f: impl FnOnce(&mut Tree) + 'static) {
+        self.event_loop
+            .send_event(AppUserEvent::ModifyTree(Box::new(f)))
+            .unwrap();
     }
 }

@@ -1,11 +1,13 @@
+use std::fmt;
 use super::{EventTarget, Renderer, State, Tree};
 use crate::geometry::{Point, Vec2};
 use winit::application::ApplicationHandler;
 use winit::event::{ElementState, WindowEvent};
 use winit::event_loop::{ActiveEventLoop, EventLoopProxy};
 use winit::window::CursorIcon;
+use crate::data::Project;
+use crate::sample::project;
 
-#[derive(Debug)]
 pub enum AppUserEvent {
     #[cfg(target_arch = "wasm32")]
     Scroll {
@@ -16,6 +18,26 @@ pub enum AppUserEvent {
     RequestRedraw,
     RequestCursorUpdate,
     RequestTooltipUpdate,
+    ModifyTree(Box<dyn FnOnce(&mut Tree)>),
+}
+
+impl fmt::Debug for AppUserEvent {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            #[cfg(target_arch = "wasm32")]
+            AppUserEvent::Scroll { delta, ctrl_key } => {
+                f.debug_struct("Scroll")
+                    .field("delta", delta)
+                    .field("ctrl_key", ctrl_key)
+                    .finish()
+            }
+
+            AppUserEvent::RequestRedraw => f.write_str("RequestRedraw"),
+            AppUserEvent::RequestCursorUpdate => f.write_str("RequestCursorUpdate"),
+            AppUserEvent::RequestTooltipUpdate => f.write_str("RequestTooltipUpdate"),
+            AppUserEvent::ModifyTree(_) => f.write_str("RequestModifyTree"),
+        }
+    }
 }
 
 pub struct App<'s> {
@@ -23,6 +45,7 @@ pub struct App<'s> {
     pub state: State,
 
     pub tree: Tree,
+    pub project: Project,
 }
 
 impl App<'_> {
@@ -35,6 +58,7 @@ impl App<'_> {
             state,
 
             tree,
+            project: project()
         }
     }
 
@@ -47,8 +71,8 @@ impl App<'_> {
 
         self.tree.compute_layout(size, scale);
 
-        self.tree.update(&self.renderer, &mut self.state);
-        self.tree.render(&mut self.renderer, &self.state);
+        self.tree.update(&self.renderer, &mut self.state, &mut self.project);
+        self.tree.render(&mut self.renderer, &self.state, &self.project);
 
         // Draw the scene onto the screen
         self.renderer.render();
@@ -117,6 +141,10 @@ impl ApplicationHandler<AppUserEvent> for App<'_> {
                 self.state.tooltip_state = self.tree.tooltip(&self.state);
                 self.renderer.request_redraw();
             }
+            AppUserEvent::ModifyTree(f) => {
+                f(&mut self.tree);
+                self.renderer.request_redraw();
+            },
         }
     }
 
@@ -163,12 +191,13 @@ impl ApplicationHandler<AppUserEvent> for App<'_> {
                 let reverse = self.state.modifiers.shift_key();
 
                 self.tree
-                    .on_wheel(&mut self.state, delta, mouse, zoom, reverse);
+                    .on_wheel(&mut self.state, &mut self.project, delta, mouse, zoom, reverse);
             }
 
             WindowEvent::PinchGesture { delta, .. } => {
                 self.tree.on_wheel(
                     &mut self.state,
+                    &mut self.project,
                     Vec2 {
                         x: 0.,
                         y: delta * 256.,
@@ -182,12 +211,12 @@ impl ApplicationHandler<AppUserEvent> for App<'_> {
             WindowEvent::CursorMoved { position, .. } => {
                 let cursor = Point::from(position);
 
-                self.tree.on_mousemove(&mut self.state, cursor);
+                self.tree.on_mousemove(&mut self.state, &mut self.project, cursor);
                 self.state.cursor = cursor;
             }
 
             WindowEvent::CursorLeft { .. } => {
-                self.tree.on_mouseleave(&mut self.state);
+                self.tree.on_mouseleave(&mut self.state, &mut self.project);
             }
 
             WindowEvent::ThemeChanged(theme) => {
@@ -197,20 +226,20 @@ impl ApplicationHandler<AppUserEvent> for App<'_> {
             WindowEvent::MouseInput { state, button, .. } => {
                 if state == ElementState::Pressed {
                     self.state.mouse_buttons.insert(button);
-                    self.tree.on_mousedown(&mut self.state, button);
+                    self.tree.on_mousedown(&mut self.state, &mut self.project, button);
                 } else {
                     self.state.mouse_buttons.remove(&button);
-                    self.tree.on_mouseup(&mut self.state, button);
+                    self.tree.on_mouseup(&mut self.state, &mut self.project, button);
                 }
             }
 
             WindowEvent::KeyboardInput { event, .. } => {
                 if event.state == ElementState::Pressed {
-                    self.tree.on_keydown(&mut self.state, &event.logical_key); // The order is weird here, because I don't want to clone the key
+                    self.tree.on_keydown(&mut self.state, &mut self.project, &event.logical_key); // The order is weird here, because I don't want to clone the key
                     self.state.keys.insert(event.logical_key);
                 } else {
                     self.state.keys.remove(&event.logical_key);
-                    self.tree.on_keyup(&mut self.state, &event.logical_key);
+                    self.tree.on_keyup(&mut self.state, &mut self.project, &event.logical_key);
                 }
             }
 

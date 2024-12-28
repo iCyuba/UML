@@ -11,6 +11,7 @@ use crate::presentation::fonts;
 use derive_macros::AnimatedElement;
 use std::time::Duration;
 use taffy::{Layout, NodeId};
+use crate::data::Project;
 
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum TooltipPosition {
@@ -66,7 +67,7 @@ impl Element for Tooltip {
 }
 
 impl EventTarget for Tooltip {
-    fn update(&mut self, _r: &Renderer, state: &mut State) {
+    fn update(&mut self, _r: &Renderer, state: &mut State, project: &mut Project) {
         if self.animate() {
             state.request_redraw();
         } else if self.current.is_none() {
@@ -80,7 +81,7 @@ impl EventTarget for Tooltip {
                 self.current = None;
 
                 // Re-run the update to check if there's a new tooltip to show
-                self.update(_r, state);
+                self.update(_r, state, project);
             } else if self.current != state.tooltip_state {
                 self.opacity.set(0.);
                 state.request_redraw();
@@ -88,7 +89,7 @@ impl EventTarget for Tooltip {
         }
     }
 
-    fn render(&self, r: &mut Renderer, _: &State) {
+    fn render(&self, r: &mut Renderer, _: &State, _: &Project) {
         if let Some(TooltipState {
             text,
             anchor,

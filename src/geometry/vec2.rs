@@ -1,6 +1,7 @@
 use serde::{Deserialize, Serialize};
 use std::ops::{Add, AddAssign, Div, DivAssign, Mul, MulAssign, Neg, Sub, SubAssign};
 use taffy::AvailableSpace;
+use taffy::prelude::length;
 use vello::kurbo;
 use winit::dpi::{PhysicalPosition, PhysicalSize};
 
@@ -66,6 +67,15 @@ impl<V: Into<Vec2>> Sub<V> for Vec2 {
         Self::Output {
             x: self.x - rhs.x,
             y: self.y - rhs.y,
+        }
+    }
+}
+
+impl Into<taffy::Size<taffy::Dimension>> for Vec2 {
+    fn into(self) -> taffy::Size<taffy::Dimension> {
+        taffy::Size {
+            width: length(self.x as f32),
+            height: length(self.y as f32),
         }
     }
 }

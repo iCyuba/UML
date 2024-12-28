@@ -3,6 +3,8 @@ use crate::animations::animated_property::AnimatedProperty;
 use crate::animations::delta_animation::DeltaAnimation;
 use crate::app::renderer::Renderer;
 use crate::app::{EventTarget, State, Tree};
+use crate::data::project::EntityKey;
+use crate::data::{Entity, Project};
 use crate::elements::primitives::text::Text;
 use crate::elements::primitives::traits::Draw;
 use crate::elements::toolbox_item::Tool;
@@ -27,6 +29,7 @@ pub struct Workspace {
     zoom: AnimatedProperty<DeltaAnimation<f64>>,
 
     previous_tool: Option<Tool>,
+    hovered: Option<EntityKey>,
 }
 
 impl Workspace {
@@ -51,6 +54,7 @@ impl Workspace {
             zoom: AnimatedProperty::new(DeltaAnimation::initialized(1., 30.)),
 
             previous_tool: None,
+            hovered: None,
         };
 
         tree.set_node_context(node_id, Some(Box::new(this)))
@@ -99,21 +103,42 @@ impl Workspace {
             state.request_cursor_update();
         }
     }
+
+    fn entity_mut(
+        &mut self,
+        project: &mut Project,
+        entity: Option<EntityKey>,
+        mut f: impl FnMut(&mut Entity) -> bool,
+    ) -> bool {
+        if let Some(entity) = entity.and_then(|key| project.entities.get_mut(key)) {
+            return f(entity);
+        }
+
+        false
+    }
+
+    pub fn entity_at_point(&self, project: &Project, point: Point) -> Option<EntityKey> {
+        project
+            .entities
+            .iter()
+            .find(|(_, e)| (e.rect * *self.zoom).contains(point))
+            .map(|(k, _)| k)
+    }
 }
 
 impl EventTarget for Workspace {
-    fn update(&mut self, _: &Renderer, state: &mut State) {
+    fn update(&mut self, _: &Renderer, state: &mut State, project: &mut Project) {
         if self.animate() {
             state.request_redraw();
         }
 
         // Entities
-        for (_, entity) in state.project.entities.iter_mut() {
+        for (_, entity) in project.entities.iter_mut() {
             entity.update();
         }
     }
 
-    fn render(&self, r: &mut Renderer, state: &State) {
+    fn render(&self, r: &mut Renderer, state: &State, project: &Project) {
         let colors = r.colors;
 
         let zoom = *self.zoom;
@@ -149,7 +174,7 @@ impl EventTarget for Workspace {
         // Render workspace items
 
         // Entities
-        for (_, entity) in state.project.entities.iter() {
+        for (_, entity) in project.entities.iter() {
             entity.render(r, state, self);
         }
 
@@ -178,7 +203,7 @@ impl EventTarget for Workspace {
         }
     }
 
-    fn on_keydown(&mut self, state: &mut State, key: &Key) -> bool {
+    fn on_keydown(&mut self, state: &mut State, _: &mut Project, key: &Key) -> bool {
         if matches!(key, Key::Named(NamedKey::Space)) {
             self.select_hand(state);
             return true;
@@ -187,7 +212,7 @@ impl EventTarget for Workspace {
         false
     }
 
-    fn on_keyup(&mut self, state: &mut State, key: &Key) -> bool {
+    fn on_keyup(&mut self, state: &mut State, _: &mut Project, key: &Key) -> bool {
         if matches!(key, Key::Named(NamedKey::Space)) {
             self.deselect_hand(state);
             return true;
@@ -196,7 +221,12 @@ impl EventTarget for Workspace {
         false
     }
 
-    fn on_mousedown(&mut self, state: &mut State, button: MouseButton) -> bool {
+    fn on_mousedown(
+        &mut self,
+        state: &mut State,
+        project: &mut Project,
+        button: MouseButton,
+    ) -> bool {
         let middle = button == MouseButton::Middle;
         let left = button == MouseButton::Left;
 
@@ -211,10 +241,17 @@ impl EventTarget for Workspace {
             return true;
         }
 
-        false
+        if !self.entity_mut(project, self.hovered, |entity| {
+            entity.on_mousedown(state, button)
+        }) {
+            state.selected_entity = None;
+            state.request_redraw();
+        }
+
+        true
     }
 
-    fn on_mousemove(&mut self, state: &mut State, cursor: Point) -> bool {
+    fn on_mousemove(&mut self, state: &mut State, project: &mut Project, cursor: Point) -> bool {
         if self.is_dragging(state) {
             let pos: Vec2 = *self.position - (cursor - state.cursor);
             self.position.reset(pos);
@@ -223,10 +260,23 @@ impl EventTarget for Workspace {
             return true;
         }
 
-        false
+        let entity = self.entity_at_point(project, cursor + *self.position);
+        if entity != self.hovered {
+            self.entity_mut(project, self.hovered, |entity| entity.on_mouseleave(state));
+
+            self.entity_mut(project, entity, |entity| entity.on_mouseenter(state));
+
+            state.request_cursor_update();
+
+            self.hovered = entity;
+        }
+
+        self.entity_mut(project, self.hovered, |entity| {
+            entity.on_mousemove(state, cursor)
+        })
     }
 
-    fn on_mouseup(&mut self, state: &mut State, _: MouseButton) -> bool {
+    fn on_mouseup(&mut self, state: &mut State, project: &mut Project, mb: MouseButton) -> bool {
         let left = state.mouse_buttons.contains(&MouseButton::Left);
         let middle = state.mouse_buttons.contains(&MouseButton::Middle);
         let space = state.keys.contains(&NamedKey::Space.into());
@@ -242,12 +292,13 @@ impl EventTarget for Workspace {
             return true;
         }
 
-        false
+        self.entity_mut(project, self.hovered, |entity| entity.on_mouseup(state, mb))
     }
 
     fn on_wheel(
         &mut self,
         state: &mut State,
+        _: &mut Project,
         delta: Vec2,
         mouse: bool,
         zoom: bool,

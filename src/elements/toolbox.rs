@@ -7,6 +7,7 @@ use taffy::prelude::length;
 use taffy::Display::Flex;
 use taffy::FlexDirection::Column;
 use taffy::{Layout, NodeId, Style};
+use crate::data::Project;
 
 pub struct Toolbox(Layout);
 
@@ -43,7 +44,7 @@ impl Toolbox {
 }
 
 impl EventTarget for Toolbox {
-    fn render(&self, r: &mut Renderer, _: &State) {
+    fn render(&self, r: &mut Renderer, _: &State, _: &Project) {
         FancyBox::from_element(
             self,
             r.scale(),

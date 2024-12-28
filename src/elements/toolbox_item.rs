@@ -16,6 +16,7 @@ use taffy::prelude::length;
 use taffy::{AlignContent, AlignItems, Layout, NodeId, Style};
 use vello::peniko::Color;
 use winit::window::CursorIcon;
+use crate::data::Project;
 
 #[derive(Eq, PartialEq, Hash, Debug, Default, Copy, Clone)]
 pub enum Tool {
@@ -82,7 +83,7 @@ impl ToolboxItem {
 }
 
 impl EventTarget for ToolboxItem {
-    fn update(&mut self, r: &Renderer, state: &mut State) {
+    fn update(&mut self, r: &Renderer, state: &mut State, _: &mut Project) {
         self.background.set(if state.tool == self.tool_type {
             r.colors.accent
         } else {
@@ -94,7 +95,7 @@ impl EventTarget for ToolboxItem {
         }
     }
 
-    fn render(&self, r: &mut Renderer, _: &State) {
+    fn render(&self, r: &mut Renderer, _: &State, _: &Project) {
         let scale = r.scale();
         let rect: Rect = self.layout.into();
         let hover = r.colors.hover.multiply_alpha(*self.hover_opacity);
@@ -119,7 +120,7 @@ impl EventTarget for ToolboxItem {
         })
     }
 
-    fn on_click(&mut self, state: &mut State) -> bool {
+    fn on_click(&mut self, state: &mut State, _: &mut Project) -> bool {
         state.tool = self.tool_type;
         state.tooltip_state = None; // Hide the tooltip after clicking
         state.request_redraw();
@@ -127,7 +128,7 @@ impl EventTarget for ToolboxItem {
         true
     }
 
-    fn on_mouseenter(&mut self, state: &mut State) -> bool {
+    fn on_mouseenter(&mut self, state: &mut State, _: &mut Project) -> bool {
         self.hovered = true;
         self.hover_opacity.set(0.1);
         state.request_tooltip_update(); // This requests a redraw automatically
@@ -135,7 +136,7 @@ impl EventTarget for ToolboxItem {
         true
     }
 
-    fn on_mouseleave(&mut self, state: &mut State) -> bool {
+    fn on_mouseleave(&mut self, state: &mut State, _: &mut Project) -> bool {
         self.hovered = false;
         self.hover_opacity.set(0.);
         state.request_tooltip_update();

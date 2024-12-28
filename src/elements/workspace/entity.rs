@@ -1,5 +1,6 @@
 use super::{item::Item, Workspace};
 use crate::{
+    geometry::Point,
     app::{Renderer, State},
     data::{
         entity::{Attribute, EntityType},
@@ -11,8 +12,9 @@ use crate::{
         traits::Draw,
     },
     geometry::{rect::Rect, Size},
-    presentation::{fonts, FontResource},
+    presentation::{fonts, FontResource}
 };
+use winit::event::MouseButton;
 
 impl Item for Entity {
     fn update(&mut self) {
@@ -35,7 +37,9 @@ impl Item for Entity {
         self.rect.size = size + (32., 32.); // Padding
     }
 
-    fn render(&self, r: &mut Renderer, _: &State, ws: &Workspace) {
+    fn render(&self, r: &mut Renderer, state: &State, ws: &Workspace) {
+        let selected = state.selected_entity == Some(self.key);
+        
         let pos = ws.position();
         let ui_scale = r.scale();
         let zoom = ws.zoom();
@@ -51,7 +55,11 @@ impl Item for Entity {
             8. * scale,
             r.colors.floating_background,
             Some(BorderOptions {
-                color: r.colors.border,
+                color: if selected {
+                    r.colors.accent
+                } else {
+                    r.colors.border
+                },
             }),
             Some(ShadowOptions {
                 color: r.colors.drop_shadow,
@@ -89,6 +97,28 @@ impl Item for Entity {
 
             y += 16. * scale;
         }
+    }
+
+    fn on_mousedown(&mut self, state: &mut State, _: MouseButton) -> bool {
+        state.selected_entity = Some(self.key);
+        state.request_redraw();
+        true
+    }
+
+    fn on_mousemove(&mut self, _: &mut State, _: Point) -> bool {
+        false
+    }
+
+    fn on_mouseup(&mut self, _: &mut State, _: MouseButton) -> bool {
+        false
+    }
+
+    fn on_mouseenter(&mut self, _: &mut State) -> bool {
+        false
+    }
+
+    fn on_mouseleave(&mut self, _: &mut State) -> bool {
+        false
     }
 }
 

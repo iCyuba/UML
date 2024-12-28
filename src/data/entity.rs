@@ -80,6 +80,8 @@ pub enum EntityType {
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Entity {
+    pub key: EntityKey,
+    
     pub name: String,
     pub ty: EntityType,
     pub generics: SlotMap<InternalTypeKey, TypeArgument>,
@@ -98,6 +100,7 @@ pub struct Entity {
 impl Entity {
     pub fn new(name: String, ty: EntityType) -> Self {
         Entity {
+            key: EntityKey::default(),
             name,
             ty,
             generics: SlotMap::with_key(),
