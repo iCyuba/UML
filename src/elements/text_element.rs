@@ -1,9 +1,11 @@
-use crate::app::{EventTarget, Renderer, State, Tree};
-use crate::data::Project;
-use crate::elements::primitives::text::Text;
-use crate::elements::primitives::traits::Draw;
-use crate::elements::Element;
-use crate::presentation::FontResource;
+use super::{
+    primitives::{text::Text, traits::Draw},
+    Element,
+};
+use crate::{
+    app::{context::RenderContext, EventTarget, Tree},
+    presentation::FontResource,
+};
 use taffy::{Layout, NodeId, Style};
 use vello::peniko::BrushRef;
 
@@ -46,7 +48,7 @@ impl TextElement {
 }
 
 impl EventTarget for TextElement {
-    fn render(&self, r: &mut Renderer, _: &State, _: &Project) {
+    fn render(&self, RenderContext { r, .. }: &mut RenderContext) {
         Text::new(
             &self.text,
             r.scale(),

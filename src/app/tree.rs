@@ -1,8 +1,11 @@
-use super::{viewport::Viewport, EventTarget, Renderer, State};
-use crate::data::Project;
-use crate::elements::tooltip::TooltipState;
+use super::{
+    context::{EventContext, GetterContext},
+    viewport::Viewport,
+    EventTarget,
+};
 use crate::{
-    elements::Element,
+    app::context::RenderContext,
+    elements::{tooltip::TooltipState, Element},
     geometry::{rect::Rect, Point},
 };
 use std::{
@@ -24,7 +27,7 @@ pub struct Tree {
 }
 
 impl Tree {
-    pub fn new(state: &mut State) -> Self {
+    pub fn new(ctx: &mut EventContext) -> Self {
         let mut taffy_tree = TaffyTree::new();
         taffy_tree.disable_rounding();
 
@@ -38,7 +41,7 @@ impl Tree {
             hovered_on_mouse_down: None,
         };
 
-        Viewport::setup(&mut this, state, root);
+        Viewport::setup(&mut this, ctx, root);
 
         this
     }
@@ -153,13 +156,11 @@ impl Tree {
 impl EventTarget for Tree {
     // Lifecycle
 
-    fn update(&mut self, r: &Renderer, state: &mut State, project: &mut Project) {
+    fn update(&mut self, ctx: &mut EventContext) {
         fn update_children(
             node: NodeId,
             tree: &mut Tree,
-            r: &Renderer,
-            state: &mut State,
-            project: &mut Project,
+            ctx: &mut EventContext,
             location: taffy::Point<f32>,
         ) {
             // Scale up the layout and update the layout location to be relative to the root
@@ -198,48 +199,42 @@ impl EventTarget for Tree {
             if let Some(element) = tree.get_node_context_mut(node) {
                 *element.layout_mut() = layout;
 
-                element.update(r, state, project);
+                element.update(ctx);
 
                 // Store the rect for hover detection
                 tree.map.push((Rect::from(layout), node));
             }
 
             for node in tree.children(node).unwrap() {
-                update_children(node, tree, r, state, project, layout.location);
+                update_children(node, tree, ctx, layout.location);
             }
         }
 
         self.map.clear();
-        update_children(self.root, self, r, state, project, Default::default());
+        update_children(self.root, self, ctx, Default::default());
     }
 
-    fn render(&self, r: &mut Renderer, state: &State, project: &Project) {
-        fn render_children(
-            node: NodeId,
-            tree: &Tree,
-            r: &mut Renderer,
-            state: &State,
-            project: &Project,
-        ) {
+    fn render(&self, ctx: &mut RenderContext) {
+        fn render_children(node: NodeId, tree: &Tree, ctx: &mut RenderContext) {
             if let Some(element) = tree.get_node_context(node) {
-                element.render(r, state, project);
+                element.render(ctx);
             }
 
             for node in tree.children(node).unwrap() {
-                render_children(node, tree, r, state, project);
+                render_children(node, tree, ctx);
             }
         }
 
-        render_children(self.root, self, r, state, project);
+        render_children(self.root, self, ctx);
     }
 
     // Getters
 
-    fn cursor(&self, state: &State) -> Option<CursorIcon> {
+    fn cursor(&self, ctx: &GetterContext) -> Option<CursorIcon> {
         let mut result = None;
 
-        self.bubble(state.hovered, |_, el| {
-            result = el.cursor(state);
+        self.bubble(ctx.state.hovered, |_, el| {
+            result = el.cursor(ctx);
 
             result.is_some()
         });
@@ -247,11 +242,11 @@ impl EventTarget for Tree {
         result
     }
 
-    fn tooltip(&self, state: &State) -> Option<TooltipState> {
+    fn tooltip(&self, ctx: &GetterContext) -> Option<TooltipState> {
         let mut result = None;
 
-        self.bubble(state.hovered, |_, el| {
-            result = el.tooltip(state);
+        self.bubble(ctx.state.hovered, |_, el| {
+            result = el.tooltip(ctx);
 
             result.is_some()
         });
@@ -261,29 +256,30 @@ impl EventTarget for Tree {
 
     // Events
 
-    fn on_click(&mut self, state: &mut State, project: &mut Project) -> bool {
-        let (Some(hovered), Some(md)) = (state.hovered, self.hovered_on_mouse_down) else {
+    fn on_click(&mut self, ctx: &mut EventContext) -> bool {
+        let (Some(hovered), Some(md)) = (ctx.state.hovered, self.hovered_on_mouse_down) else {
             return false;
         };
 
         let node = self.lowest_common_ancestor(hovered, md);
-        self.bubble_mut(node, |_, el| el.on_click(state, project))
+        self.bubble_mut(node, |_, el| el.on_click(ctx))
     }
 
-    fn on_keydown(&mut self, state: &mut State, project: &mut Project, key: &Key) -> bool {
+    fn on_keydown(&mut self, ctx: &mut EventContext, key: &Key) -> bool {
         // If there's a focused element, fire the event there. If not, fire it on all key listeners.
-        if let Some(focused) = state
+        if let Some(focused) = ctx
+            .state
             .focused
             .and_then(|node| self.get_node_context_mut(node))
         {
-            focused.on_keydown(state, project, key)
+            focused.on_keydown(ctx, key)
         } else {
             let mut handled = false;
 
-            let key_listeners = state.key_listeners.iter().cloned().collect::<Vec<_>>();
+            let key_listeners = ctx.state.key_listeners.iter().cloned().collect::<Vec<_>>();
             for node in key_listeners {
                 if let Some(element) = self.get_node_context_mut(node) {
-                    handled |= element.on_keydown(state, project, key);
+                    handled |= element.on_keydown(ctx, key);
                 }
             }
 
@@ -291,19 +287,20 @@ impl EventTarget for Tree {
         }
     }
 
-    fn on_keyup(&mut self, state: &mut State, project: &mut Project, key: &Key) -> bool {
-        if let Some(focused) = state
+    fn on_keyup(&mut self, ctx: &mut EventContext, key: &Key) -> bool {
+        if let Some(focused) = ctx
+            .state
             .focused
             .and_then(|node| self.get_node_context_mut(node))
         {
-            focused.on_keyup(state, project, key)
+            focused.on_keyup(ctx, key)
         } else {
             let mut handled = false;
 
-            let key_listeners = state.key_listeners.iter().cloned().collect::<Vec<_>>();
+            let key_listeners = ctx.state.key_listeners.iter().cloned().collect::<Vec<_>>();
             for node in key_listeners {
                 if let Some(element) = self.get_node_context_mut(node) {
-                    handled |= element.on_keyup(state, project, key);
+                    handled |= element.on_keyup(ctx, key);
                 }
             }
 
@@ -311,46 +308,39 @@ impl EventTarget for Tree {
         }
     }
 
-    fn on_mousedown(
-        &mut self,
-        state: &mut State,
-        project: &mut Project,
-        button: MouseButton,
-    ) -> bool {
+    fn on_mousedown(&mut self, ctx: &mut EventContext, button: MouseButton) -> bool {
         // Store the last mouse down position
         if button == MouseButton::Left {
-            self.hovered_on_mouse_down = state.hovered;
+            self.hovered_on_mouse_down = ctx.state.hovered;
         }
 
-        self.bubble_mut(state.hovered, |_, el| {
-            el.on_mousedown(state, project, button)
-        })
+        self.bubble_mut(ctx.state.hovered, |_, el| el.on_mousedown(ctx, button))
     }
 
     // `on_mouseenter` doesn't need to be handled here when the cursor enters the window
     // cuz a mouse move event will be fired immediately after that
 
-    fn on_mouseleave(&mut self, state: &mut State, project: &mut Project) -> bool {
-        self.bubble_mut(state.hovered, |_, el| {
-            el.on_mouseleave(state, project);
+    fn on_mouseleave(&mut self, ctx: &mut EventContext) -> bool {
+        self.bubble_mut(ctx.state.hovered, |_, el| {
+            el.on_mouseleave(ctx);
 
             // This event should always bubble up
             false
         });
 
         // Clear the hovered element
-        state.hovered = None;
+        ctx.state.hovered = None;
 
         true
     }
 
-    fn on_mousemove(&mut self, state: &mut State, project: &mut Project, cursor: Point) -> bool {
+    fn on_mousemove(&mut self, ctx: &mut EventContext, cursor: Point) -> bool {
         // Update the active element or the element under the cursor
-        let node = state.focused.or_else(|| self.node_at_point(cursor));
+        let node = ctx.state.focused.or_else(|| self.node_at_point(cursor));
 
         // Set the hovered element
-        let old = state.hovered;
-        state.hovered = node;
+        let old = ctx.state.hovered;
+        ctx.state.hovered = node;
 
         // Find the lowest common ancestor of the old and new hovered elements
         // We don't want to refire on the LCA and its ancestors
@@ -367,7 +357,7 @@ impl EventTarget for Tree {
                     return true;
                 }
 
-                el.on_mouseleave(state, project);
+                el.on_mouseleave(ctx);
 
                 false
             });
@@ -376,28 +366,23 @@ impl EventTarget for Tree {
                     return true;
                 }
 
-                el.on_mouseenter(state, project);
+                el.on_mouseenter(ctx);
 
                 false
             });
-            state.request_cursor_update();
+
+            ctx.state.request_cursor_update();
         }
 
-        self.bubble_mut(node, |_, el| el.on_mousemove(state, project, cursor))
+        self.bubble_mut(node, |_, el| el.on_mousemove(ctx, cursor))
     }
 
-    fn on_mouseup(
-        &mut self,
-        state: &mut State,
-        project: &mut Project,
-        button: MouseButton,
-    ) -> bool {
-        let mut captured =
-            self.bubble_mut(state.hovered, |_, el| el.on_mouseup(state, project, button));
+    fn on_mouseup(&mut self, ctx: &mut EventContext, button: MouseButton) -> bool {
+        let mut captured = self.bubble_mut(ctx.state.hovered, |_, el| el.on_mouseup(ctx, button));
 
         // Fire the on_click event
         if button == MouseButton::Left && self.hovered_on_mouse_down.is_some() {
-            captured |= self.on_click(state, project);
+            captured |= self.on_click(ctx);
 
             // Clear the last mouse down position
             self.hovered_on_mouse_down = None;
@@ -408,15 +393,14 @@ impl EventTarget for Tree {
 
     fn on_wheel(
         &mut self,
-        state: &mut State,
-        project: &mut Project,
+        ctx: &mut EventContext,
         delta: crate::geometry::Vec2,
         mouse: bool,
         zoom: bool,
         reverse: bool,
     ) -> bool {
-        self.bubble_mut(state.hovered, |_, el| {
-            el.on_wheel(state, project, delta, mouse, zoom, reverse)
+        self.bubble_mut(ctx.state.hovered, |_, el| {
+            el.on_wheel(ctx, delta, mouse, zoom, reverse)
         })
     }
 }

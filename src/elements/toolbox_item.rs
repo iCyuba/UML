@@ -1,22 +1,23 @@
-use super::primitives::traits::Draw;
-use super::tooltip::TooltipPosition;
-use crate::animations::animated_property::AnimatedProperty;
-use crate::animations::standard_animation::Easing::EaseInOut;
-use crate::animations::standard_animation::StandardAnimation;
-use crate::app::{EventTarget, Renderer, State, Tree};
-use crate::elements::primitives::simple_box::SimpleBox;
-use crate::elements::toolbox_item_icon::ToolboxItemIcon;
-use crate::elements::tooltip::TooltipState;
-use crate::elements::Element;
-use crate::geometry::rect::Rect;
+use super::{
+    primitives::simple_box::SimpleBox, primitives::traits::Draw,
+    toolbox_item_icon::ToolboxItemIcon, tooltip::TooltipPosition, tooltip::TooltipState, Element,
+};
+use crate::{
+    animations::{
+        animated_property::AnimatedProperty,
+        standard_animation::{Easing::EaseInOut, StandardAnimation},
+    },
+    app::{
+        context::{EventContext, GetterContext, RenderContext},
+        EventTarget, Tree,
+    },
+    geometry::rect::Rect,
+};
 use derive_macros::AnimatedElement;
-use std::fmt::Display;
-use std::time::Duration;
-use taffy::prelude::length;
-use taffy::{AlignContent, AlignItems, Layout, NodeId, Style};
+use std::{fmt::Display, time::Duration};
+use taffy::{prelude::length, AlignContent, AlignItems, Layout, NodeId, Style};
 use vello::peniko::Color;
 use winit::window::CursorIcon;
-use crate::data::Project;
 
 #[derive(Eq, PartialEq, Hash, Debug, Default, Copy, Clone)]
 pub enum Tool {
@@ -50,8 +51,8 @@ pub struct ToolboxItem {
 }
 
 impl ToolboxItem {
-    pub fn setup(tree: &mut Tree, state: &mut State, tool_type: Tool) -> NodeId {
-        let icon = ToolboxItemIcon::setup(tree, state, tool_type, 20.);
+    pub fn setup(tree: &mut Tree, ctx: &mut EventContext, tool_type: Tool) -> NodeId {
+        let icon = ToolboxItemIcon::setup(tree, ctx, tool_type, 20.);
         let duration = Duration::from_millis(50);
 
         let this = Self {
@@ -83,19 +84,19 @@ impl ToolboxItem {
 }
 
 impl EventTarget for ToolboxItem {
-    fn update(&mut self, r: &Renderer, state: &mut State, _: &mut Project) {
-        self.background.set(if state.tool == self.tool_type {
-            r.colors.accent
+    fn update(&mut self, ctx: &mut EventContext) {
+        self.background.set(if ctx.state.tool == self.tool_type {
+            ctx.r.colors.accent
         } else {
-            r.colors.floating_background
+            ctx.r.colors.floating_background
         });
 
         if self.animate() {
-            state.request_redraw();
+            ctx.state.request_redraw();
         }
     }
 
-    fn render(&self, r: &mut Renderer, _: &State, _: &Project) {
+    fn render(&self, RenderContext { r, .. }: &mut RenderContext) {
         let scale = r.scale();
         let rect: Rect = self.layout.into();
         let hover = r.colors.hover.multiply_alpha(*self.hover_opacity);
@@ -104,7 +105,7 @@ impl EventTarget for ToolboxItem {
         SimpleBox::new(scale, rect, 5., hover).draw(&mut r.scene);
     }
 
-    fn cursor(&self, _: &State) -> Option<CursorIcon> {
+    fn cursor(&self, _: &GetterContext) -> Option<CursorIcon> {
         if self.hovered {
             Some(CursorIcon::Pointer)
         } else {
@@ -112,7 +113,7 @@ impl EventTarget for ToolboxItem {
         }
     }
 
-    fn tooltip(&self, _: &State) -> Option<TooltipState> {
+    fn tooltip(&self, _: &GetterContext) -> Option<TooltipState> {
         Some(TooltipState {
             text: self.tool_type.to_string(),
             anchor: self.layout.into(),
@@ -120,26 +121,26 @@ impl EventTarget for ToolboxItem {
         })
     }
 
-    fn on_click(&mut self, state: &mut State, _: &mut Project) -> bool {
-        state.tool = self.tool_type;
-        state.tooltip_state = None; // Hide the tooltip after clicking
-        state.request_redraw();
+    fn on_click(&mut self, ctx: &mut EventContext) -> bool {
+        ctx.state.tool = self.tool_type;
+        ctx.state.tooltip_state = None; // Hide the tooltip after clicking
+        ctx.state.request_redraw();
 
         true
     }
 
-    fn on_mouseenter(&mut self, state: &mut State, _: &mut Project) -> bool {
+    fn on_mouseenter(&mut self, ctx: &mut EventContext) -> bool {
         self.hovered = true;
         self.hover_opacity.set(0.1);
-        state.request_tooltip_update(); // This requests a redraw automatically
+        ctx.state.request_tooltip_update(); // This requests a redraw automatically
 
         true
     }
 
-    fn on_mouseleave(&mut self, state: &mut State, _: &mut Project) -> bool {
+    fn on_mouseleave(&mut self, ctx: &mut EventContext) -> bool {
         self.hovered = false;
         self.hover_opacity.set(0.);
-        state.request_tooltip_update();
+        ctx.state.request_tooltip_update();
 
         true
     }

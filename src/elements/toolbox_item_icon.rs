@@ -1,19 +1,26 @@
-use super::primitives::icon::Symbol;
-use super::primitives::traits::Draw;
-use crate::animations::animated_property::AnimatedProperty;
-use crate::animations::standard_animation::Easing::EaseInOut;
-use crate::animations::standard_animation::StandardAnimation;
-use crate::app::{EventTarget, Renderer, State, Tree};
-use crate::elements::primitives::icon::Icon;
-use crate::elements::toolbox_item::Tool;
-use crate::elements::Element;
-use crate::geometry::rect::Rect;
+use super::{
+    primitives::{
+        icon::{Icon, Symbol},
+        traits::Draw,
+    },
+    toolbox_item::Tool,
+    Element,
+};
+use crate::{
+    animations::{
+        animated_property::AnimatedProperty,
+        standard_animation::{Easing::EaseInOut, StandardAnimation},
+    },
+    app::{
+        context::{EventContext, RenderContext},
+        EventTarget, Tree,
+    },
+    geometry::rect::Rect,
+};
 use derive_macros::AnimatedElement;
 use std::time::Duration;
-use taffy::prelude::length;
-use taffy::{Layout, NodeId, Style};
+use taffy::{prelude::length, Layout, NodeId, Style};
 use vello::peniko::Color;
-use crate::data::Project;
 
 fn get_icon(tool_type: Tool) -> Symbol {
     match tool_type {
@@ -34,7 +41,7 @@ pub struct ToolboxItemIcon {
 }
 
 impl ToolboxItemIcon {
-    pub fn setup(tree: &mut Tree, _: &mut State, tool_type: Tool, size: f32) -> NodeId {
+    pub fn setup(tree: &mut Tree, _: &mut EventContext, tool_type: Tool, size: f32) -> NodeId {
         let this = Self {
             layout: Default::default(),
 
@@ -58,19 +65,19 @@ impl ToolboxItemIcon {
 }
 
 impl EventTarget for ToolboxItemIcon {
-    fn update(&mut self, r: &Renderer, state: &mut State, _: &mut Project) {
-        self.color.set(if state.tool == self.tool_type {
-            r.colors.icon_active
+    fn update(&mut self, ctx: &mut EventContext) {
+        self.color.set(if ctx.state.tool == self.tool_type {
+            ctx.r.colors.icon_active
         } else {
-            r.colors.icon_inactive
+            ctx.r.colors.icon_inactive
         });
 
         if self.animate() {
-            state.request_redraw();
+            ctx.state.request_redraw();
         }
     }
 
-    fn render(&self, r: &mut Renderer, _: &State, _: &Project) {
+    fn render(&self, RenderContext { r, .. }: &mut RenderContext) {
         let hitbox = Rect::from(self.layout);
         let icon = Icon::new(self.icon, hitbox, hitbox.size.x, *self.color);
         icon.draw(&mut r.scene);

@@ -1,41 +1,46 @@
-use super::{Renderer, State};
-use crate::data::Project;
-use crate::geometry::{Point, Vec2};
+use super::context::{EventContext, GetterContext, RenderContext};
+use crate::{
+    elements::tooltip::TooltipState,
+    geometry::{Point, Vec2},
+};
 use winit::{event::MouseButton, keyboard::Key, window::CursorIcon};
-use crate::elements::tooltip::TooltipState;
+
+macro_rules! noop {
+    ($($arg:tt)*) => {
+        _ = ($($arg)*);
+
+        return Default::default();
+    };
+}
 
 pub trait EventTarget {
     // Lifecycle
 
-    fn update(&mut self, r: &Renderer, state: &mut State, project: &mut Project) {
-        _ = (r, state, project);
+    fn update(&mut self, ctx: &mut EventContext) {
+        noop!(ctx);
     }
 
-    fn render(&self, r: &mut Renderer, state: &State, project: &Project);
+    fn render(&self, ctx: &mut RenderContext) {
+        noop!(ctx);
+    }
 
     // Getters
 
     /// The cursor icon to display when hovering over the element.
-    fn cursor(&self, state: &State) -> Option<CursorIcon> {
-        _ = state;
-
-        None
+    fn cursor(&self, ctx: &GetterContext) -> Option<CursorIcon> {
+        noop!(ctx);
     }
 
     /// The tooltip to display when hovering over the element.
-    fn tooltip(&self, state: &State) -> Option<TooltipState> {
-        _ = state;
-
-        None
+    fn tooltip(&self, ctx: &GetterContext) -> Option<TooltipState> {
+        noop!(ctx);
     }
 
     // Events
 
     /// `mousedown` + `mouseup` via the primary mouse button
-    fn on_click(&mut self, state: &mut State, project: &mut Project) -> bool {
-        _ = (state, project);
-
-        false
+    fn on_click(&mut self, ctx: &mut EventContext) -> bool {
+        noop!(ctx);
     }
 
     /// Fired on a key listener when a key is pressed down.
@@ -43,10 +48,8 @@ pub trait EventTarget {
     /// The element must be either focused, or in the `key_listeners` set.
     ///
     /// Does not bubble.
-    fn on_keydown(&mut self, state: &mut State, project: &mut Project, key: &Key) -> bool {
-        _ = (state, key, project);
-
-        false
+    fn on_keydown(&mut self, ctx: &mut EventContext, key: &Key) -> bool {
+        noop!(ctx, key);
     }
 
     /// Fired on a key listener when a key is released.
@@ -54,69 +57,44 @@ pub trait EventTarget {
     /// The element must be either focused, or in the `key_listeners` set.
     ///
     /// Does not bubble.
-    fn on_keyup(&mut self, state: &mut State, project: &mut Project, key: &Key) -> bool {
-        _ = (state, key, project);
-
-        false
+    fn on_keyup(&mut self, ctx: &mut EventContext, key: &Key) -> bool {
+        noop!(ctx, key);
     }
 
     /// Fired on the hovered element when the mouse is pressed down.
-    fn on_mousedown(
-        &mut self,
-        state: &mut State,
-        project: &mut Project,
-        button: MouseButton,
-    ) -> bool {
-        _ = (state, button, project);
-
-        false
+    fn on_mousedown(&mut self, ctx: &mut EventContext, button: MouseButton) -> bool {
+        noop!(ctx, button);
     }
 
     /// Fired when the cursor enters the hovered element.
-    fn on_mouseenter(&mut self, state: &mut State, project: &mut Project) -> bool {
-        _ = (state, project);
-
-        false
+    fn on_mouseenter(&mut self, ctx: &mut EventContext) -> bool {
+        noop!(ctx);
     }
 
     /// Fired when the cursor leaves the hovered element.
-    fn on_mouseleave(&mut self, state: &mut State, project: &mut Project) -> bool {
-        _ = (state, project);
-
-        false
+    fn on_mouseleave(&mut self, ctx: &mut EventContext) -> bool {
+        noop!(ctx);
     }
 
     /// Fired when the cursor moves on the currently hovered or focused element.
-    fn on_mousemove(&mut self, state: &mut State, project: &mut Project, cursor: Point) -> bool {
-        _ = (state, cursor, project);
-
-        false
+    fn on_mousemove(&mut self, ctx: &mut EventContext, cursor: Point) -> bool {
+        noop!(ctx, cursor);
     }
 
     /// Fired when the mouse is released.
-    fn on_mouseup(
-        &mut self,
-        state: &mut State,
-        project: &mut Project,
-        button: MouseButton,
-    ) -> bool {
-        _ = (state, button, project);
-
-        false
+    fn on_mouseup(&mut self, ctx: &mut EventContext, button: MouseButton) -> bool {
+        noop!(ctx, button);
     }
 
     /// Fired when the mouse wheel is scrolled.
     fn on_wheel(
         &mut self,
-        state: &mut State,
-        project: &mut Project,
+        ctx: &mut EventContext,
         delta: Vec2,
         mouse: bool,
         zoom: bool,
         reverse: bool,
     ) -> bool {
-        _ = (state, project, delta, mouse, zoom, reverse);
-
-        false
+        noop!(ctx, delta, mouse, zoom, reverse);
     }
 }

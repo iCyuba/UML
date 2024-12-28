@@ -1,5 +1,6 @@
 use super::primitives::traits::Draw;
-use crate::app::{EventTarget, Renderer, State, Tree};
+use crate::app::context::{EventContext, RenderContext};
+use crate::app::{EventTarget, Tree};
 use crate::elements::primitives::fancy_box::{BorderOptions, FancyBox, ShadowOptions};
 use crate::elements::toolbox_item::{Tool, ToolboxItem};
 use crate::elements::Element;
@@ -7,12 +8,11 @@ use taffy::prelude::length;
 use taffy::Display::Flex;
 use taffy::FlexDirection::Column;
 use taffy::{Layout, NodeId, Style};
-use crate::data::Project;
 
 pub struct Toolbox(Layout);
 
 impl Toolbox {
-    pub fn setup(tree: &mut Tree, state: &mut State) -> NodeId {
+    pub fn setup(tree: &mut Tree, ctx: &mut EventContext) -> NodeId {
         let style = Style {
             display: Flex,
             flex_direction: Column,
@@ -24,10 +24,10 @@ impl Toolbox {
             ..Default::default()
         };
 
-        let selection_tool = ToolboxItem::setup(tree, state, Tool::Select);
-        let hand_tool = ToolboxItem::setup(tree, state, Tool::Hand);
-        let entity_tool = ToolboxItem::setup(tree, state, Tool::Entity);
-        let relation_tool = ToolboxItem::setup(tree, state, Tool::Relation);
+        let selection_tool = ToolboxItem::setup(tree, ctx, Tool::Select);
+        let hand_tool = ToolboxItem::setup(tree, ctx, Tool::Hand);
+        let entity_tool = ToolboxItem::setup(tree, ctx, Tool::Entity);
+        let relation_tool = ToolboxItem::setup(tree, ctx, Tool::Relation);
 
         let node = tree
             .new_with_children(
@@ -44,7 +44,7 @@ impl Toolbox {
 }
 
 impl EventTarget for Toolbox {
-    fn render(&self, r: &mut Renderer, _: &State, _: &Project) {
+    fn render(&self, RenderContext { r, .. }: &mut RenderContext) {
         FancyBox::from_element(
             self,
             r.scale(),

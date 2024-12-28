@@ -1,15 +1,25 @@
-use crate::app::{EventTarget, Renderer, State, Tree};
-use crate::data::project::EntityKey;
-use crate::data::Project;
-use crate::elements::primitives::fancy_box::{BorderOptions, FancyBox, ShadowOptions};
-use crate::elements::primitives::traits::Draw;
-use crate::elements::text_element::TextElement;
-use crate::elements::Element;
-use crate::presentation::fonts;
-use taffy::prelude::{auto, length};
-use taffy::Display::Flex;
-use taffy::FlexDirection::Column;
-use taffy::{Layout, NodeId, Size, Style};
+use super::{
+    primitives::{
+        fancy_box::{BorderOptions, FancyBox, ShadowOptions},
+        traits::Draw,
+    },
+    text_element::TextElement,
+    Element,
+};
+use crate::{
+    app::{
+        context::{EventContext, RenderContext},
+        EventTarget, Tree,
+    },
+    data::project::EntityKey,
+    presentation::fonts,
+};
+use taffy::{
+    prelude::{auto, length},
+    Display::Flex,
+    FlexDirection::Column,
+    Layout, NodeId, Size, Style,
+};
 
 pub struct Sidebar {
     node_id: NodeId,
@@ -19,7 +29,7 @@ pub struct Sidebar {
 }
 
 impl Sidebar {
-    pub fn setup(tree: &mut Tree, _: &mut State) -> NodeId {
+    pub fn setup(tree: &mut Tree, _: &mut EventContext) -> NodeId {
         let style = Style {
             display: Flex,
             flex_direction: Column,
@@ -49,10 +59,10 @@ impl Sidebar {
         node
     }
 
-    fn remove_children(&self, state: &mut State) {
+    fn remove_children(&self, ctx: &mut EventContext) {
         let node_id = self.node_id;
 
-        state.modify_tree(move |tree| {
+        ctx.state.modify_tree(move |tree| {
             tree.children(node_id)
                 .unwrap()
                 .into_iter()
@@ -62,23 +72,17 @@ impl Sidebar {
         });
     }
 
-    fn update_content(
-        &mut self,
-        r: &Renderer,
-        state: &mut State,
-        project: &mut Project,
-        key: EntityKey,
-    ) {
+    fn update_content(&mut self, ctx: &mut EventContext, key: EntityKey) {
         let parent = self.node_id;
-        let entity = &project.entities[key];
+        let entity = &ctx.project.entities[key];
         let name = entity.name.clone();
-        let color = r.colors.workspace_text;
+        let color = ctx.r.colors.workspace_text;
 
         if self.entity.is_some() {
-            self.remove_children(state);
+            self.remove_children(ctx);
         }
 
-        state.modify_tree(move |tree| {
+        ctx.state.modify_tree(move |tree| {
             let title = TextElement::setup(
                 tree,
                 name,
@@ -94,21 +98,21 @@ impl Sidebar {
 }
 
 impl EventTarget for Sidebar {
-    fn update(&mut self, r: &Renderer, state: &mut State, project: &mut Project) {
-        if self.entity == state.selected_entity {
+    fn update(&mut self, ctx: &mut EventContext) {
+        if self.entity == ctx.state.selected_entity {
             return;
         }
 
-        if let Some(key) = state.selected_entity {
-            self.update_content(r, state, project, key);
+        if let Some(key) = ctx.state.selected_entity {
+            self.update_content(ctx, key);
         } else {
-            self.remove_children(state);
+            self.remove_children(ctx);
         }
 
-        self.entity = state.selected_entity;
+        self.entity = ctx.state.selected_entity;
     }
 
-    fn render(&self, r: &mut Renderer, state: &State, _: &Project) {
+    fn render(&self, RenderContext { r, state, .. }: &mut RenderContext) {
         if state.selected_entity.is_none() {
             return;
         }

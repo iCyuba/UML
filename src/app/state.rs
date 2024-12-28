@@ -73,30 +73,27 @@ impl State {
     }
 
     #[inline]
+    pub fn send_event(&self, event: AppUserEvent) {
+        self.event_loop.send_event(event).unwrap();
+    }
+
+    #[inline]
     pub fn request_redraw(&self) {
-        self.event_loop
-            .send_event(AppUserEvent::RequestRedraw)
-            .unwrap();
+        self.send_event(AppUserEvent::RequestRedraw);
     }
 
     #[inline]
     pub fn request_cursor_update(&self) {
-        self.event_loop
-            .send_event(AppUserEvent::RequestCursorUpdate)
-            .unwrap()
+        self.send_event(AppUserEvent::RequestCursorUpdate)
     }
 
     #[inline]
     pub fn request_tooltip_update(&self) {
-        self.event_loop
-            .send_event(AppUserEvent::RequestTooltipUpdate)
-            .unwrap()
+        self.send_event(AppUserEvent::RequestTooltipUpdate)
     }
 
     #[inline]
     pub fn modify_tree(&self, f: impl FnOnce(&mut Tree) + 'static) {
-        self.event_loop
-            .send_event(AppUserEvent::ModifyTree(Box::new(f)))
-            .unwrap();
+        self.send_event(AppUserEvent::ModifyTree(Box::new(f)));
     }
 }

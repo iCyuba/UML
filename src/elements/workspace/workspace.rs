@@ -1,24 +1,30 @@
 use super::item::Item;
-use crate::animations::animated_property::AnimatedProperty;
-use crate::animations::delta_animation::DeltaAnimation;
-use crate::app::renderer::Renderer;
-use crate::app::{EventTarget, State, Tree};
-use crate::data::project::EntityKey;
-use crate::data::{Entity, Project};
-use crate::elements::primitives::text::Text;
-use crate::elements::primitives::traits::Draw;
-use crate::elements::toolbox_item::Tool;
-use crate::elements::Element;
-use crate::geometry::rect::Rect;
-use crate::geometry::{Point, Vec2};
-use crate::presentation::fonts;
+use crate::{
+    animations::{animated_property::AnimatedProperty, delta_animation::DeltaAnimation},
+    app::{
+        context::{EventContext, GetterContext, RenderContext},
+        EventTarget, State, Tree,
+    },
+    data::{project::EntityKey, Entity, Project},
+    elements::{
+        primitives::{text::Text, traits::Draw},
+        toolbox_item::Tool,
+        Element,
+    },
+    geometry::{rect::Rect, Point, Vec2},
+    presentation::fonts,
+};
 use derive_macros::AnimatedElement;
 use taffy::{Layout, NodeId, Position, Style};
-use vello::kurbo::{Affine, Circle};
-use vello::peniko::Fill;
-use winit::event::MouseButton;
-use winit::keyboard::{Key, NamedKey};
-use winit::window::CursorIcon;
+use vello::{
+    kurbo::{Affine, Circle},
+    peniko::Fill,
+};
+use winit::{
+    event::MouseButton,
+    keyboard::{Key, NamedKey},
+    window::CursorIcon,
+};
 
 #[derive(AnimatedElement)]
 pub struct Workspace {
@@ -44,7 +50,7 @@ impl Workspace {
         style
     };
 
-    pub fn setup(tree: &mut Tree, state: &mut State) -> NodeId {
+    pub fn setup(tree: &mut Tree, ctx: &mut EventContext) -> NodeId {
         let node_id = tree.new_leaf(Self::STYLE).unwrap();
         let this = Self {
             layout: Default::default(),
@@ -60,7 +66,7 @@ impl Workspace {
         tree.set_node_context(node_id, Some(Box::new(this)))
             .unwrap();
 
-        state.key_listeners.insert(node_id);
+        ctx.state.key_listeners.insert(node_id);
 
         node_id
     }
@@ -108,7 +114,7 @@ impl Workspace {
         &mut self,
         project: &mut Project,
         entity: Option<EntityKey>,
-        mut f: impl FnMut(&mut Entity) -> bool,
+        f: impl FnOnce(&mut Entity) -> bool,
     ) -> bool {
         if let Some(entity) = entity.and_then(|key| project.entities.get_mut(key)) {
             return f(entity);
@@ -127,18 +133,18 @@ impl Workspace {
 }
 
 impl EventTarget for Workspace {
-    fn update(&mut self, _: &Renderer, state: &mut State, project: &mut Project) {
+    fn update(&mut self, ctx: &mut EventContext) {
         if self.animate() {
-            state.request_redraw();
+            ctx.state.request_redraw();
         }
 
         // Entities
-        for (_, entity) in project.entities.iter_mut() {
+        for (_, entity) in ctx.project.entities.iter_mut() {
             entity.update();
         }
     }
 
-    fn render(&self, r: &mut Renderer, state: &State, project: &Project) {
+    fn render(&self, RenderContext { r, project, state }: &mut RenderContext) {
         let colors = r.colors;
 
         let zoom = *self.zoom;
@@ -193,112 +199,112 @@ impl EventTarget for Workspace {
         .draw(&mut r.scene);
     }
 
-    fn cursor(&self, state: &State) -> Option<CursorIcon> {
-        if self.is_dragging(state) {
+    fn cursor(&self, ctx: &GetterContext) -> Option<CursorIcon> {
+        if self.is_dragging(ctx.state) {
             Some(CursorIcon::Grabbing)
-        } else if state.tool == Tool::Hand {
+        } else if ctx.state.tool == Tool::Hand {
             Some(CursorIcon::Grab)
         } else {
             None
         }
     }
 
-    fn on_keydown(&mut self, state: &mut State, _: &mut Project, key: &Key) -> bool {
+    fn on_keydown(&mut self, ctx: &mut EventContext, key: &Key) -> bool {
         if matches!(key, Key::Named(NamedKey::Space)) {
-            self.select_hand(state);
+            self.select_hand(ctx.state);
             return true;
         }
 
         false
     }
 
-    fn on_keyup(&mut self, state: &mut State, _: &mut Project, key: &Key) -> bool {
+    fn on_keyup(&mut self, ctx: &mut EventContext, key: &Key) -> bool {
         if matches!(key, Key::Named(NamedKey::Space)) {
-            self.deselect_hand(state);
+            self.deselect_hand(ctx.state);
             return true;
         }
 
         false
     }
 
-    fn on_mousedown(
-        &mut self,
-        state: &mut State,
-        project: &mut Project,
-        button: MouseButton,
-    ) -> bool {
+    fn on_mousedown(&mut self, ctx: &mut EventContext, button: MouseButton) -> bool {
         let middle = button == MouseButton::Middle;
         let left = button == MouseButton::Left;
 
         if middle {
-            self.select_hand(state);
+            self.select_hand(ctx.state);
         }
 
-        if (left || middle) && state.tool == Tool::Hand {
-            state.focused = Some(self.node_id);
-            state.request_cursor_update();
+        if (left || middle) && ctx.state.tool == Tool::Hand {
+            ctx.state.focused = Some(self.node_id);
+            ctx.state.request_cursor_update();
 
             return true;
         }
 
-        if !self.entity_mut(project, self.hovered, |entity| {
-            entity.on_mousedown(state, button)
+        if !self.entity_mut(ctx.project, self.hovered, |entity| {
+            entity.on_mousedown(ctx.state, button)
         }) {
-            state.selected_entity = None;
-            state.request_redraw();
+            ctx.state.selected_entity = None;
+            ctx.state.request_redraw();
         }
 
         true
     }
 
-    fn on_mousemove(&mut self, state: &mut State, project: &mut Project, cursor: Point) -> bool {
-        if self.is_dragging(state) {
-            let pos: Vec2 = *self.position - (cursor - state.cursor);
+    fn on_mousemove(&mut self, ctx: &mut EventContext, cursor: Point) -> bool {
+        if self.is_dragging(ctx.state) {
+            let pos: Vec2 = *self.position - (cursor - ctx.state.cursor);
             self.position.reset(pos);
-            state.request_redraw();
+            ctx.state.request_redraw();
 
             return true;
         }
 
-        let entity = self.entity_at_point(project, cursor + *self.position);
+        let entity = self.entity_at_point(ctx.project, cursor + *self.position);
         if entity != self.hovered {
-            self.entity_mut(project, self.hovered, |entity| entity.on_mouseleave(state));
+            self.entity_mut(ctx.project, self.hovered, |entity| {
+                entity.on_mouseleave(ctx.state)
+            });
 
-            self.entity_mut(project, entity, |entity| entity.on_mouseenter(state));
+            self.entity_mut(ctx.project, entity, |entity| {
+                entity.on_mouseenter(ctx.state)
+            });
 
-            state.request_cursor_update();
+            ctx.state.request_cursor_update();
 
             self.hovered = entity;
         }
 
-        self.entity_mut(project, self.hovered, |entity| {
-            entity.on_mousemove(state, cursor)
+        self.entity_mut(ctx.project, self.hovered, |entity| {
+            entity.on_mousemove(ctx.state, cursor)
         })
     }
 
-    fn on_mouseup(&mut self, state: &mut State, project: &mut Project, mb: MouseButton) -> bool {
-        let left = state.mouse_buttons.contains(&MouseButton::Left);
-        let middle = state.mouse_buttons.contains(&MouseButton::Middle);
-        let space = state.keys.contains(&NamedKey::Space.into());
+    fn on_mouseup(&mut self, ctx: &mut EventContext, mb: MouseButton) -> bool {
+        let left = ctx.state.mouse_buttons.contains(&MouseButton::Left);
+        let middle = ctx.state.mouse_buttons.contains(&MouseButton::Middle);
+        let space = ctx.state.keys.contains(&NamedKey::Space.into());
 
-        if self.is_dragging(state) && !left && !middle {
-            state.focused = None;
-            state.request_cursor_update();
+        if self.is_dragging(ctx.state) && !left && !middle {
+            ctx.state.focused = None;
+            ctx.state.request_cursor_update();
 
             if !space {
-                self.deselect_hand(state);
+                self.deselect_hand(ctx.state);
             }
 
             return true;
         }
 
-        self.entity_mut(project, self.hovered, |entity| entity.on_mouseup(state, mb))
+        self.entity_mut(ctx.project, self.hovered, |entity| {
+            entity.on_mouseup(ctx.state, mb)
+        })
     }
 
     fn on_wheel(
         &mut self,
-        state: &mut State,
-        _: &mut Project,
+        ctx: &mut EventContext,
         delta: Vec2,
         mouse: bool,
         zoom: bool,
@@ -306,13 +312,13 @@ impl EventTarget for Workspace {
     ) -> bool {
         if zoom {
             let zoom = *self.zoom;
-            let point = (state.cursor + *self.position) / zoom;
+            let point = (ctx.state.cursor + *self.position) / zoom;
 
             let zoom = (self.zoom.get_target() + zoom * delta.y / 256.)
                 .clamp(Self::ZOOM_MIN, Self::ZOOM_MAX);
 
             self.zoom.set(zoom);
-            self.position.set(point * zoom - state.cursor);
+            self.position.set(point * zoom - ctx.state.cursor);
         } else {
             let (mut x, mut y) = delta.into();
             if reverse {
@@ -328,7 +334,7 @@ impl EventTarget for Workspace {
             }
         }
 
-        state.request_redraw();
+        ctx.state.request_redraw();
 
         true
     }

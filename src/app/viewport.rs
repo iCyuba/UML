@@ -1,10 +1,11 @@
-use super::{State, Tree};
+use super::context::EventContext;
+use super::Tree;
+use crate::elements::sidebar::Sidebar;
 use crate::elements::tooltip::Tooltip;
 use crate::elements::{toolbox::Toolbox, workspace::Workspace};
-use taffy::{NodeId, Style};
 use taffy::AlignContent::SpaceBetween;
 use taffy::Position::Relative;
-use crate::elements::sidebar::Sidebar;
+use taffy::{NodeId, Style};
 
 pub struct Viewport;
 
@@ -20,16 +21,15 @@ impl Viewport {
     };
 
     // Unlike elements, the viewport overrides an existing node (the root node) instead of creating a new one
-    pub fn setup(tree: &mut Tree, state: &mut State, node: NodeId) -> NodeId {
-        let workspace = Workspace::setup(tree, state);
-        let toolbox = Toolbox::setup(tree, state);
-        let tooltip = Tooltip::setup(tree, state);
-        let sidebar = Sidebar::setup(tree, state);
+    pub fn setup(tree: &mut Tree, ctx: &mut EventContext, node: NodeId) -> NodeId {
+        let workspace = Workspace::setup(tree, ctx);
+        let toolbox = Toolbox::setup(tree, ctx);
+        let tooltip = Tooltip::setup(tree, ctx);
+        let sidebar = Sidebar::setup(tree, ctx);
 
         tree.set_style(node, Self::STYLE).unwrap();
-        tree.set_children(node, &[workspace, toolbox, tooltip])
+        tree.set_children(node, &[workspace, toolbox, tooltip, sidebar])
             .unwrap();
-        tree.set_children(node, &[workspace, toolbox, sidebar]).unwrap();
 
         node
     }

@@ -1,17 +1,26 @@
-use crate::animations::animated_property::AnimatedProperty;
-use crate::animations::standard_animation::{Easing, StandardAnimation};
-use crate::app::{EventTarget, Renderer, State, Tree};
-use crate::elements::primitives::fancy_box::{BorderOptions, FancyBox, ShadowOptions};
-use crate::elements::primitives::text::Text;
-use crate::elements::primitives::traits::Draw;
-use crate::elements::Element;
-use crate::geometry::rect::Rect;
-use crate::geometry::{Point, Size};
-use crate::presentation::fonts;
+use super::{
+    primitives::{
+        fancy_box::{BorderOptions, FancyBox, ShadowOptions},
+        text::Text,
+        traits::Draw,
+    },
+    Element,
+};
+use crate::{
+    animations::{
+        animated_property::AnimatedProperty,
+        standard_animation::{Easing, StandardAnimation},
+    },
+    app::{
+        context::{EventContext, RenderContext},
+        EventTarget, Tree,
+    },
+    geometry::{rect::Rect, Point, Size},
+    presentation::fonts,
+};
 use derive_macros::AnimatedElement;
 use std::time::Duration;
 use taffy::{Layout, NodeId};
-use crate::data::Project;
 
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum TooltipPosition {
@@ -38,11 +47,11 @@ pub struct Tooltip {
 }
 
 impl Tooltip {
-    pub fn setup(tree: &mut Tree, state: &mut State) -> NodeId {
+    pub fn setup(tree: &mut Tree, ctx: &mut EventContext) -> NodeId {
         let this = Self {
             layout: Default::default(),
 
-            current: state.tooltip_state.clone(),
+            current: ctx.state.tooltip_state.clone(),
 
             opacity: AnimatedProperty::new(StandardAnimation::initialized(
                 0.,
@@ -67,29 +76,29 @@ impl Element for Tooltip {
 }
 
 impl EventTarget for Tooltip {
-    fn update(&mut self, _r: &Renderer, state: &mut State, project: &mut Project) {
+    fn update(&mut self, ctx: &mut EventContext) {
         if self.animate() {
-            state.request_redraw();
+            ctx.state.request_redraw();
         } else if self.current.is_none() {
-            if let Some(new) = &state.tooltip_state {
+            if let Some(new) = &ctx.state.tooltip_state {
                 self.opacity.set(1.);
                 self.current = Some(new.clone());
-                state.request_redraw();
+                ctx.state.request_redraw();
             }
         } else if self.current.is_some() {
             if *self.opacity == 0. {
                 self.current = None;
 
                 // Re-run the update to check if there's a new tooltip to show
-                self.update(_r, state, project);
-            } else if self.current != state.tooltip_state {
+                self.update(ctx);
+            } else if self.current != ctx.state.tooltip_state {
                 self.opacity.set(0.);
-                state.request_redraw();
+                ctx.state.request_redraw();
             }
         }
     }
 
-    fn render(&self, r: &mut Renderer, _: &State, _: &Project) {
+    fn render(&self, RenderContext { r, .. }: &mut RenderContext) {
         if let Some(TooltipState {
             text,
             anchor,
