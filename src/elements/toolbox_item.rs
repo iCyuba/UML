@@ -1,13 +1,16 @@
 use super::primitives::traits::Draw;
+use super::tooltip::TooltipPosition;
 use crate::animations::animated_property::AnimatedProperty;
 use crate::animations::standard_animation::Easing::EaseInOut;
 use crate::animations::standard_animation::StandardAnimation;
 use crate::app::{EventTarget, Renderer, State, Tree};
 use crate::elements::primitives::simple_box::SimpleBox;
 use crate::elements::toolbox_item_icon::ToolboxItemIcon;
+use crate::elements::tooltip::TooltipState;
 use crate::elements::Element;
 use crate::geometry::rect::Rect;
 use derive_macros::AnimatedElement;
+use std::fmt::Display;
 use std::time::Duration;
 use taffy::prelude::length;
 use taffy::{AlignContent, AlignItems, Layout, NodeId, Style};
@@ -21,6 +24,17 @@ pub enum Tool {
     Hand,
     Entity,
     Relation,
+}
+
+impl Display for Tool {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Tool::Select => write!(f, "Select"),
+            Tool::Hand => write!(f, "Hand tool"),
+            Tool::Entity => write!(f, "Entity"),
+            Tool::Relation => write!(f, "Relation"),
+        }
+    }
 }
 
 #[derive(AnimatedElement)]
@@ -72,7 +86,7 @@ impl EventTarget for ToolboxItem {
         self.background.set(if state.tool == self.tool_type {
             r.colors.accent
         } else {
-            r.colors.toolbox_background
+            r.colors.floating_background
         });
 
         if self.animate() {
@@ -97,8 +111,17 @@ impl EventTarget for ToolboxItem {
         }
     }
 
+    fn tooltip(&self, _: &State) -> Option<TooltipState> {
+        Some(TooltipState {
+            text: self.tool_type.to_string(),
+            anchor: self.layout.into(),
+            position: TooltipPosition::Right,
+        })
+    }
+
     fn on_click(&mut self, state: &mut State) -> bool {
         state.tool = self.tool_type;
+        state.tooltip_state = None; // Hide the tooltip after clicking
         state.request_redraw();
 
         true
@@ -108,6 +131,7 @@ impl EventTarget for ToolboxItem {
         self.hovered = true;
         self.hover_opacity.set(0.1);
         state.request_redraw();
+        state.request_tooltip_update();
 
         true
     }
@@ -116,6 +140,7 @@ impl EventTarget for ToolboxItem {
         self.hovered = false;
         self.hover_opacity.set(0.);
         state.request_redraw();
+        state.request_tooltip_update();
 
         true
     }

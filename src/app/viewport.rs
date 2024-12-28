@@ -1,4 +1,5 @@
 use super::{State, Tree};
+use crate::elements::tooltip::Tooltip;
 use crate::elements::{toolbox::Toolbox, workspace::Workspace};
 use taffy::{NodeId, Style};
 
@@ -17,9 +18,11 @@ impl Viewport {
     pub fn setup(tree: &mut Tree, state: &mut State, node: NodeId) -> NodeId {
         let workspace = Workspace::setup(tree, state);
         let toolbox = Toolbox::setup(tree, state);
+        let tooltip = Tooltip::setup(tree, state);
 
         tree.set_style(node, Self::STYLE).unwrap();
-        tree.set_children(node, &[workspace, toolbox]).unwrap();
+        tree.set_children(node, &[workspace, toolbox, tooltip])
+            .unwrap();
 
         node
     }

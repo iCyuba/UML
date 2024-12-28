@@ -23,7 +23,15 @@ impl Rect {
         }
     }
 
-    pub fn inset(&self, insets: impl Into<Rect>) -> Self {
+    pub fn center(self) -> Point {
+        self.origin + self.size / 2.0
+    }
+
+    pub fn end(self) -> Point {
+        self.origin + self.size
+    }
+
+    pub fn inset(self, insets: impl Into<Rect>) -> Self {
         let insets = insets.into();
         Self {
             origin: self.origin + insets.origin,
@@ -31,12 +39,12 @@ impl Rect {
         }
     }
 
-    pub fn inset_uniform(&self, inset: f64) -> Self {
+    pub fn inset_uniform(self, inset: f64) -> Self {
         let inset = Vec2::new(inset, inset);
         self.inset(Rect::new(inset, inset))
     }
 
-    pub fn translate(&self, offset: impl Into<Vec2>) -> Self {
+    pub fn translate(self, offset: impl Into<Vec2>) -> Self {
         Self {
             origin: self.origin + offset.into(),
             size: self.size,

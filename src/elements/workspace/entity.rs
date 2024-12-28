@@ -20,17 +20,13 @@ impl Item for Entity {
         let mut size = Size::ZERO;
 
         // Name
-        let name = Text::calculate_dimensions(&self.name, 16., title_font(self));
+        let name = Text::measure(&self.name, 16., title_font(self));
         size.x = size.x.max(name.size.x);
         size.y += name.size.y + 8.; // 8px gap
 
         // Attributes
         for (name, attr) in self.attributes.iter() {
-            let attr = Text::calculate_dimensions(
-                &attr_to_string(name, attr),
-                12.,
-                fonts::jbmono_regular(),
-            );
+            let attr = Text::measure(&attr_to_string(name, attr), 12., fonts::jbmono_regular());
             size.x = size.x.max(attr.size.x);
             size.y += attr.size.y + 4.; // 4px gap
         }
@@ -53,9 +49,9 @@ impl Item for Entity {
             rect,
             taffy::Rect::length(2. * scale as f32),
             8. * scale,
-            r.colors.toolbox_background,
+            r.colors.floating_background,
             Some(BorderOptions {
-                color: r.colors.toolbox_border,
+                color: r.colors.border,
             }),
             Some(ShadowOptions {
                 color: r.colors.drop_shadow,

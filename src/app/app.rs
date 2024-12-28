@@ -15,6 +15,7 @@ pub enum AppUserEvent {
 
     RequestRedraw,
     RequestCursorUpdate,
+    RequestTooltipUpdate,
 }
 
 pub struct App<'s> {
@@ -112,6 +113,9 @@ impl ApplicationHandler<AppUserEvent> for App<'_> {
             AppUserEvent::RequestCursorUpdate => self
                 .renderer
                 .set_cursor(self.tree.cursor(&self.state).unwrap_or(CursorIcon::Default)),
+            AppUserEvent::RequestTooltipUpdate => {
+                self.state.tooltip_state = self.tree.tooltip(&self.state)
+            }
         }
     }
 

@@ -1,6 +1,7 @@
 use super::AppUserEvent;
 use crate::data::Project;
 use crate::elements::toolbox_item::Tool;
+use crate::elements::tooltip::TooltipState;
 use crate::geometry::Point;
 use crate::sample;
 use std::collections::HashSet;
@@ -30,6 +31,7 @@ pub struct State {
     // App state
     pub project: Project,
     pub tool: Tool,
+    pub tooltip_state: Option<TooltipState>,
 }
 
 impl State {
@@ -51,6 +53,7 @@ impl State {
 
             project: sample::project(),
             tool: Tool::Select,
+            tooltip_state: None,
         }
     }
 
@@ -81,6 +84,13 @@ impl State {
     pub fn request_cursor_update(&self) {
         self.event_loop
             .send_event(AppUserEvent::RequestCursorUpdate)
+            .unwrap()
+    }
+
+    #[inline]
+    pub fn request_tooltip_update(&self) {
+        self.event_loop
+            .send_event(AppUserEvent::RequestTooltipUpdate)
             .unwrap()
     }
 }

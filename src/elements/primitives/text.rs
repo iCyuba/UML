@@ -41,7 +41,7 @@ impl<'a> Text<'a> {
         }
     }
 
-    pub fn calculate_dimensions(text: &str, size: f64, font: &FontResource) -> Rect {
+    pub fn measure(text: &str, size: f64, font: &FontResource) -> Rect {
         let metrics = font.metrics(size as f32);
         let width = text
             .chars()
@@ -52,7 +52,7 @@ impl<'a> Text<'a> {
             })
             .sum::<f32>();
 
-        Rect::new((0., 0.), (width as f64, size))
+        Rect::new((0., 0.), (width as f64, size * 1.2))
     }
 }
 

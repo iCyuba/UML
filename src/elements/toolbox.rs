@@ -48,9 +48,9 @@ impl EventTarget for Toolbox {
             self,
             r.scale(),
             13.,
-            r.colors.toolbox_background,
+            r.colors.floating_background,
             Some(BorderOptions {
-                color: r.colors.toolbox_border,
+                color: r.colors.border,
             }),
             Some(ShadowOptions {
                 color: r.colors.drop_shadow,

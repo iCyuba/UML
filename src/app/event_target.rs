@@ -1,6 +1,7 @@
 use super::{Renderer, State};
 use crate::geometry::{Point, Vec2};
 use winit::{event::MouseButton, keyboard::Key, window::CursorIcon};
+use crate::elements::tooltip::TooltipState;
 
 pub trait EventTarget {
     // Lifecycle
@@ -15,6 +16,13 @@ pub trait EventTarget {
 
     /// The cursor icon to display when hovering over the element.
     fn cursor(&self, state: &State) -> Option<CursorIcon> {
+        _ = state;
+
+        None
+    }
+
+    /// The tooltip to display when hovering over the element.
+    fn tooltip(&self, state: &State) -> Option<TooltipState> {
         _ = state;
 
         None

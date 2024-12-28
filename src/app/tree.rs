@@ -1,4 +1,5 @@
 use super::{viewport::Viewport, EventTarget, Renderer, State};
+use crate::elements::tooltip::TooltipState;
 use crate::{
     elements::Element,
     geometry::{rect::Rect, Point},
@@ -222,6 +223,18 @@ impl EventTarget for Tree {
 
         self.bubble(state.hovered, |el| {
             result = el.cursor(state);
+
+            result.is_some()
+        });
+
+        result
+    }
+
+    fn tooltip(&self, state: &State) -> Option<TooltipState> {
+        let mut result = None;
+
+        self.bubble(state.hovered, |el| {
+            result = el.tooltip(state);
 
             result.is_some()
         });
