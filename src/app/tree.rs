@@ -70,6 +70,15 @@ impl Tree {
             return Some(a);
         }
 
+        // Another fast path if one of the nodes is the parent of the other
+        if self.children(a).unwrap().contains(&b) {
+            return Some(a);
+        }
+
+        if self.children(b).unwrap().contains(&a) {
+            return Some(b);
+        }
+
         // A
         let mut ancestors = HashSet::new();
         let mut a = Some(a);
@@ -100,14 +109,14 @@ impl Tree {
     pub fn bubble(
         &self,
         node: Option<NodeId>,
-        mut f: impl FnMut(&Box<dyn Element>) -> bool,
+        mut f: impl FnMut(NodeId, &Box<dyn Element>) -> bool,
     ) -> bool {
         let Some(node) = node else {
             return false;
         };
 
         if let Some(element) = self.get_node_context(node) {
-            if f(element) {
+            if f(node, element) {
                 return true;
             }
         }
@@ -124,14 +133,14 @@ impl Tree {
     fn bubble_mut(
         &mut self,
         node: Option<NodeId>,
-        mut f: impl FnMut(&mut Box<dyn Element>) -> bool,
+        mut f: impl FnMut(NodeId, &mut Box<dyn Element>) -> bool,
     ) -> bool {
         let Some(node) = node else {
             return false;
         };
 
         if let Some(element) = self.get_node_context_mut(node) {
-            if f(element) {
+            if f(node, element) {
                 return true;
             }
         }
@@ -221,7 +230,7 @@ impl EventTarget for Tree {
     fn cursor(&self, state: &State) -> Option<CursorIcon> {
         let mut result = None;
 
-        self.bubble(state.hovered, |el| {
+        self.bubble(state.hovered, |_, el| {
             result = el.cursor(state);
 
             result.is_some()
@@ -233,7 +242,7 @@ impl EventTarget for Tree {
     fn tooltip(&self, state: &State) -> Option<TooltipState> {
         let mut result = None;
 
-        self.bubble(state.hovered, |el| {
+        self.bubble(state.hovered, |_, el| {
             result = el.tooltip(state);
 
             result.is_some()
@@ -250,7 +259,7 @@ impl EventTarget for Tree {
         };
 
         let node = self.lowest_common_ancestor(hovered, md);
-        self.bubble_mut(node, |el| el.on_click(state))
+        self.bubble_mut(node, |_, el| el.on_click(state))
     }
 
     fn on_keydown(&mut self, state: &mut State, key: &Key) -> bool {
@@ -300,17 +309,17 @@ impl EventTarget for Tree {
             self.hovered_on_mouse_down = state.hovered;
         }
 
-        self.bubble_mut(state.hovered, |el| el.on_mousedown(state, button))
+        self.bubble_mut(state.hovered, |_, el| el.on_mousedown(state, button))
     }
 
     // `on_mouseenter` doesn't need to be handled here when the cursor enters the window
     // cuz a mouse move event will be fired immediately after that
 
     fn on_mouseleave(&mut self, state: &mut State) -> bool {
-        self.bubble_mut(state.hovered, |el| {
+        self.bubble_mut(state.hovered, |_, el| {
             el.on_mouseleave(state);
 
-            // These events should always bubble up
+            // This event should always bubble up
             false
         });
 
@@ -324,14 +333,34 @@ impl EventTarget for Tree {
         // Update the active element or the element under the cursor
         let node = state.focused.or_else(|| self.node_at_point(cursor));
 
+        // Set the hovered element
+        let old = state.hovered;
+        state.hovered = node;
+
+        // Find the lowest common ancestor of the old and new hovered elements
+        // We don't want to refire on the LCA and its ancestors
+        let lca = if let (Some(old), Some(node)) = (old, node) {
+            self.lowest_common_ancestor(old, node)
+        } else {
+            None
+        };
+
         // Fire the mouse enter and leave events
-        if state.hovered != node {
-            self.bubble_mut(state.hovered, |el| {
+        if old != node {
+            self.bubble_mut(old, |node, el| {
+                if Some(node) == lca {
+                    return true;
+                }
+
                 el.on_mouseleave(state);
 
                 false
             });
-            self.bubble_mut(node, |el| {
+            self.bubble_mut(node, |node, el| {
+                if Some(node) == lca {
+                    return true;
+                }
+
                 el.on_mouseenter(state);
 
                 false
@@ -339,14 +368,11 @@ impl EventTarget for Tree {
             state.request_cursor_update();
         }
 
-        // Set the hovered element
-        state.hovered = node;
-
-        self.bubble_mut(node, |el| el.on_mousemove(state, cursor))
+        self.bubble_mut(node, |_, el| el.on_mousemove(state, cursor))
     }
 
     fn on_mouseup(&mut self, state: &mut State, button: MouseButton) -> bool {
-        let mut captured = self.bubble_mut(state.hovered, |el| el.on_mouseup(state, button));
+        let mut captured = self.bubble_mut(state.hovered, |_, el| el.on_mouseup(state, button));
 
         // Fire the on_click event
         if button == MouseButton::Left && self.hovered_on_mouse_down.is_some() {
@@ -367,7 +393,7 @@ impl EventTarget for Tree {
         zoom: bool,
         reverse: bool,
     ) -> bool {
-        self.bubble_mut(state.hovered, |el| {
+        self.bubble_mut(state.hovered, |_, el| {
             el.on_wheel(state, delta, mouse, zoom, reverse)
         })
     }

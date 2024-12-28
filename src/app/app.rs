@@ -114,7 +114,8 @@ impl ApplicationHandler<AppUserEvent> for App<'_> {
                 .renderer
                 .set_cursor(self.tree.cursor(&self.state).unwrap_or(CursorIcon::Default)),
             AppUserEvent::RequestTooltipUpdate => {
-                self.state.tooltip_state = self.tree.tooltip(&self.state)
+                self.state.tooltip_state = self.tree.tooltip(&self.state);
+                self.renderer.request_redraw();
             }
         }
     }

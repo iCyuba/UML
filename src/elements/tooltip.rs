@@ -75,13 +75,13 @@ impl EventTarget for Tooltip {
                 self.current = Some(new.clone());
                 state.request_redraw();
             }
-        } else if self.current.is_some() && self.current != state.tooltip_state {
+        } else if self.current.is_some() {
             if *self.opacity == 0. {
                 self.current = None;
 
                 // Re-run the update to check if there's a new tooltip to show
                 self.update(_r, state);
-            } else {
+            } else if self.current != state.tooltip_state {
                 self.opacity.set(0.);
                 state.request_redraw();
             }

@@ -130,8 +130,7 @@ impl EventTarget for ToolboxItem {
     fn on_mouseenter(&mut self, state: &mut State) -> bool {
         self.hovered = true;
         self.hover_opacity.set(0.1);
-        state.request_redraw();
-        state.request_tooltip_update();
+        state.request_tooltip_update(); // This requests a redraw automatically
 
         true
     }
@@ -139,7 +138,6 @@ impl EventTarget for ToolboxItem {
     fn on_mouseleave(&mut self, state: &mut State) -> bool {
         self.hovered = false;
         self.hover_opacity.set(0.);
-        state.request_redraw();
         state.request_tooltip_update();
 
         true
