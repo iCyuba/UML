@@ -6,6 +6,7 @@ use std::time::Instant;
 #[cfg(target_arch = "wasm32")]
 use web_time::Instant;
 
+#[derive(Debug)]
 pub struct DeltaAnimation<T: Numeric> {
     start_value: T,
     current_value: T,

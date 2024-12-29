@@ -1,13 +1,14 @@
 #![allow(dead_code)]
 
 use crate::animations::traits::{Animatable, Interpolate};
-use crate::geometry::Vec2;
+use crate::geometry::{Rect, Vec2};
 #[cfg(not(target_arch = "wasm32"))]
 use std::time::{Duration, Instant};
 use vello::peniko::Color;
 #[cfg(target_arch = "wasm32")]
 use web_time::{Duration, Instant};
 
+#[derive(Debug)]
 pub enum Easing {
     Linear,
     EaseIn,
@@ -16,6 +17,7 @@ pub enum Easing {
     EaseOutCubic,
 }
 
+#[derive(Debug)]
 pub struct StandardAnimation<T: Interpolate> {
     start_value: T,
     current_value: T,
@@ -154,6 +156,15 @@ impl Interpolate for Vec2 {
         Vec2 {
             x: self.x.interpolate(&end_value.x, t),
             y: self.y.interpolate(&end_value.y, t),
+        }
+    }
+}
+
+impl Interpolate for Rect {
+    fn interpolate(&self, end_value: &Self, t: f64) -> Self {
+        Rect {
+            origin: self.origin.interpolate(&end_value.origin, t),
+            size: self.size.interpolate(&end_value.size, t),
         }
     }
 }

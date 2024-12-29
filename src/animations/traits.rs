@@ -85,10 +85,7 @@ impl DotMul for Vec2 {
 
 impl ScalarMul for Vec2 {
     fn scalar_mul(self, rhs: f64) -> Self {
-        Vec2 {
-            x: self.x * rhs,
-            y: self.y * rhs,
-        }
+        self * rhs
     }
 }
 

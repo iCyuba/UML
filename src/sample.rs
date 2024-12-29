@@ -8,7 +8,7 @@ pub fn project() -> Project {
 
     let mut basic = Entity::new("Basic".to_string(), EntityType::Class);
 
-    basic.rect.origin = (288., 0.).into();
+    basic.position = (0, 4);
 
     basic.attributes.insert(
         "id".to_string(),

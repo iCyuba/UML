@@ -2,8 +2,8 @@ use crate::app::renderer::Canvas;
 use crate::elements::primitives::simple_box::SimpleBox;
 use crate::elements::primitives::traits::Draw;
 use crate::elements::Element;
-use crate::geometry::rect::Rect;
 use crate::geometry::Point;
+use crate::geometry::Rect;
 use vello::kurbo::RoundedRectRadii;
 use vello::peniko::Color;
 

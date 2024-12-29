@@ -1,5 +1,10 @@
 use super::{item::Item, Workspace};
 use crate::{
+    animations::{
+        animated_property::AnimatedProperty,
+        standard_animation::{Easing, StandardAnimation},
+        traits::Interpolate,
+    },
     app::{renderer::Canvas, State},
     data::{
         entity::{Attribute, EntityType},
@@ -10,14 +15,43 @@ use crate::{
         text::Text,
         traits::Draw,
     },
-    geometry::{rect::Rect, Point, Size},
+    geometry::{Point, Rect, Size},
     presentation::{fonts, FontResource},
 };
+use derive_macros::AnimatedElement;
+use std::time::Duration;
 use winit::event::MouseButton;
 
+#[derive(Debug, AnimatedElement)]
+pub struct EntityItemData {
+    pub rect: AnimatedProperty<StandardAnimation<Rect>>,
+    pub selection_outline: AnimatedProperty<StandardAnimation<f64>>,
+
+    pub is_selected: bool,
+}
+
+impl Default for EntityItemData {
+    fn default() -> Self {
+        Self {
+            rect: AnimatedProperty::new(StandardAnimation::initialized(
+                Rect::ZERO,
+                Duration::from_millis(100),
+                Easing::EaseOut,
+            )),
+            selection_outline: AnimatedProperty::new(StandardAnimation::initialized(
+                0.,
+                Duration::from_millis(100),
+                Easing::EaseOut,
+            )),
+            is_selected: false,
+        }
+    }
+}
+
 impl Item for Entity {
-    fn update(&mut self) {
-        // Compute the size of the entity
+    fn update(&mut self) -> bool {
+        // Compute the entity's position and size
+        let mut position = Point::new(self.position.0 as f64, self.position.1 as f64) * 32.;
         let mut size = Size::ZERO;
 
         // Name
@@ -32,17 +66,29 @@ impl Item for Entity {
             size.y += attr.size.y + 4.; // 4px gap
         }
 
-        // Set the size
-        self.rect.size = size + (32., 32.); // Padding
+        // Padding
+        size += (32., 32.);
+
+        // Add margin to the position, so it's centered in the 32px grid
+        position.x += (32. - size.x) / 2.;
+        position.y += (32. - size.y) / 2.;
+
+        let rect = Rect::new(position, size);
+        self.data.rect.set(rect);
+
+        // Animate the selection outline
+        self.data
+            .selection_outline
+            .set(if self.data.is_selected { 1. } else { 0. });
+
+        self.data.animate()
     }
 
-    fn render(&self, c: &mut Canvas, state: &State, ws: &Workspace) {
-        let selected = state.selected_entity == Some(self.key);
-
+    fn render(&self, c: &mut Canvas, _: &State, ws: &Workspace) {
         let pos = ws.position();
         let zoom = ws.zoom();
 
-        let rect = (self.rect * zoom).translate(-pos);
+        let rect = (*self.data.rect * zoom).translate(-pos);
 
         // Background
         FancyBox::new(
@@ -51,11 +97,11 @@ impl Item for Entity {
             8. * zoom,
             c.colors().floating_background,
             Some(BorderOptions {
-                color: if selected {
-                    c.colors().accent
-                } else {
-                    c.colors().border
-                },
+                color: Interpolate::interpolate(
+                    &c.colors().border,
+                    &c.colors().accent,
+                    *self.data.selection_outline,
+                ),
             }),
             Some(ShadowOptions {
                 color: c.colors().drop_shadow,

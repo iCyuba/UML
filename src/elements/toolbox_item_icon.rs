@@ -10,17 +10,17 @@ use crate::{
     animations::{
         animated_property::AnimatedProperty,
         standard_animation::{Easing::EaseInOut, StandardAnimation},
+        traits::Interpolate,
     },
     app::{
         context::{EventContext, RenderContext},
         EventTarget, Tree,
     },
-    geometry::rect::Rect,
+    geometry::Rect,
 };
 use derive_macros::AnimatedElement;
 use std::time::Duration;
 use taffy::{prelude::length, Layout, NodeId, Style};
-use vello::peniko::Color;
 
 fn get_icon(tool_type: Tool) -> Symbol {
     match tool_type {
@@ -36,7 +36,7 @@ pub struct ToolboxItemIcon {
     layout: Layout,
 
     icon: Symbol,
-    color: AnimatedProperty<StandardAnimation<Color>>,
+    color: AnimatedProperty<StandardAnimation<f64>>,
     tool_type: Tool,
 }
 
@@ -47,7 +47,7 @@ impl ToolboxItemIcon {
 
             icon: get_icon(tool_type),
             color: AnimatedProperty::new(StandardAnimation::new(
-                Duration::from_millis(50),
+                Duration::from_millis(100),
                 EaseInOut,
             )),
             tool_type,
@@ -67,9 +67,9 @@ impl ToolboxItemIcon {
 impl EventTarget for ToolboxItemIcon {
     fn update(&mut self, ctx: &mut EventContext) {
         self.color.set(if ctx.state.tool == self.tool_type {
-            ctx.c.colors().icon_active
+            1.
         } else {
-            ctx.c.colors().icon_inactive
+            0.
         });
 
         if self.animate() {
@@ -78,8 +78,14 @@ impl EventTarget for ToolboxItemIcon {
     }
 
     fn render(&self, RenderContext { c, .. }: &mut RenderContext) {
+        let color = Interpolate::interpolate(
+            &c.colors().icon_inactive,
+            &c.colors().icon_active,
+            *self.color,
+        );
+
         let hitbox = Rect::from(self.layout);
-        let icon = Icon::new(self.icon, hitbox, hitbox.size.x, *self.color);
+        let icon = Icon::new(self.icon, hitbox, hitbox.size.x, color);
         icon.draw(c);
     }
 }

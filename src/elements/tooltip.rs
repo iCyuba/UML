@@ -15,7 +15,7 @@ use crate::{
         context::{EventContext, RenderContext},
         EventTarget, Tree,
     },
-    geometry::{rect::Rect, Point, Size},
+    geometry::{Point, Rect, Size},
     presentation::fonts,
 };
 use derive_macros::AnimatedElement;

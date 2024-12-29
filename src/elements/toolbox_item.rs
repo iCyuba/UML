@@ -6,17 +6,17 @@ use crate::{
     animations::{
         animated_property::AnimatedProperty,
         standard_animation::{Easing::EaseInOut, StandardAnimation},
+        traits::Interpolate,
     },
     app::{
         context::{EventContext, GetterContext, RenderContext},
         EventTarget, Tree,
     },
-    geometry::rect::Rect,
+    geometry::Rect,
 };
 use derive_macros::AnimatedElement;
 use std::{fmt::Display, time::Duration};
 use taffy::{prelude::length, AlignContent, AlignItems, Layout, NodeId, Style};
-use vello::peniko::Color;
 use winit::window::CursorIcon;
 
 #[derive(Eq, PartialEq, Hash, Debug, Default, Copy, Clone)]
@@ -44,7 +44,7 @@ pub struct ToolboxItem {
     layout: Layout,
 
     tool_type: Tool,
-    background: AnimatedProperty<StandardAnimation<Color>>,
+    background: AnimatedProperty<StandardAnimation<f64>>,
     hover_opacity: AnimatedProperty<StandardAnimation<f32>>,
 
     hovered: bool,
@@ -53,7 +53,7 @@ pub struct ToolboxItem {
 impl ToolboxItem {
     pub fn setup(tree: &mut Tree, ctx: &mut EventContext, tool_type: Tool) -> NodeId {
         let icon = ToolboxItemIcon::setup(tree, ctx, tool_type, 20.);
-        let duration = Duration::from_millis(50);
+        let duration = Duration::from_millis(100);
 
         let this = Self {
             layout: Default::default(),
@@ -86,9 +86,9 @@ impl ToolboxItem {
 impl EventTarget for ToolboxItem {
     fn update(&mut self, ctx: &mut EventContext) {
         self.background.set(if ctx.state.tool == self.tool_type {
-            ctx.c.colors().accent
+            1.
         } else {
-            ctx.c.colors().floating_background
+            0.
         });
 
         if self.animate() {
@@ -99,8 +99,13 @@ impl EventTarget for ToolboxItem {
     fn render(&self, RenderContext { c, .. }: &mut RenderContext) {
         let rect: Rect = self.layout.into();
         let hover = c.colors().hover.multiply_alpha(*self.hover_opacity);
+        let bg = Interpolate::interpolate(
+            &c.colors().floating_background,
+            &c.colors().accent,
+            *self.background,
+        );
 
-        SimpleBox::new(rect, 5., *self.background).draw(c);
+        SimpleBox::new(rect, 5., bg).draw(c);
         SimpleBox::new(rect, 5., hover).draw(c);
     }
 

@@ -1,7 +1,7 @@
 use crate::app::renderer::Canvas;
 use crate::elements::primitives::text::Text;
 use crate::elements::primitives::traits::Draw;
-use crate::geometry::rect::Rect;
+use crate::geometry::Rect;
 use crate::presentation::fonts;
 use vello::peniko::Color;
 

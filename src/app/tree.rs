@@ -6,7 +6,7 @@ use super::{
 use crate::{
     app::context::RenderContext,
     elements::{tooltip::TooltipState, Element},
-    geometry::{rect::Rect, Point},
+    geometry::{Point, Rect},
 };
 use std::{
     collections::HashSet,

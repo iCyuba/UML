@@ -3,6 +3,7 @@
 use crate::animations::traits::Animatable;
 use std::ops::Deref;
 
+#[derive(Debug)]
 pub struct AnimatedProperty<A: Animatable> {
     animation: A,
 }

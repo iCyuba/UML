@@ -1,7 +1,7 @@
 #![allow(dead_code)]
 
 use super::project::{ConnectionKey, EntityKey};
-use crate::geometry::rect::Rect;
+use crate::elements::workspace::entity::EntityItemData;
 use serde::{Deserialize, Serialize};
 use slotmap::{new_key_type, SlotMap};
 use std::collections::{HashMap, HashSet};
@@ -81,7 +81,7 @@ pub enum EntityType {
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Entity {
     pub key: EntityKey,
-    
+
     pub name: String,
     pub ty: EntityType,
     pub generics: SlotMap<InternalTypeKey, TypeArgument>,
@@ -93,14 +93,18 @@ pub struct Entity {
 
     pub connections: HashSet<ConnectionKey>,
 
-    /// Position of the entity in the diagram
-    pub rect: Rect,
+    /// Position of the entity in the workspace.
+    pub position: (i32, i32),
+
+    /// Extra data used for rendering.
+    #[serde(skip)]
+    pub data: EntityItemData,
 }
 
 impl Entity {
     pub fn new(name: String, ty: EntityType) -> Self {
         Entity {
-            key: EntityKey::default(),
+            key: Default::default(),
             name,
             ty,
             generics: SlotMap::with_key(),
@@ -108,7 +112,8 @@ impl Entity {
             implements: vec![],
             attributes: HashMap::new(),
             connections: HashSet::new(),
-            rect: Rect::ZERO,
+            position: (0, 0),
+            data: Default::default(),
         }
     }
 }

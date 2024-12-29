@@ -1,6 +1,6 @@
 use super::{Point, Size, Vec2};
 use serde::{Deserialize, Serialize};
-use std::ops::{Add, Mul};
+use std::ops::{Add, Mul, Sub};
 use taffy::Layout;
 use vello::kurbo;
 
@@ -66,6 +66,17 @@ impl Add<Point> for Rect {
     fn add(self, rhs: Point) -> Self::Output {
         Self::Output {
             origin: self.origin + rhs,
+            size: self.size,
+        }
+    }
+}
+
+impl Sub<Point> for Rect {
+    type Output = Rect;
+
+    fn sub(self, rhs: Point) -> Self::Output {
+        Self::Output {
+            origin: self.origin - rhs,
             size: self.size,
         }
     }

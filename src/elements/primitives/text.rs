@@ -2,7 +2,7 @@
 
 use crate::app::renderer::Canvas;
 use crate::elements::primitives::traits::Draw;
-use crate::geometry::rect::Rect;
+use crate::geometry::Rect;
 use crate::presentation::FontResource;
 use vello::kurbo::Affine;
 use vello::peniko::{BrushRef, Fill, StyleRef};

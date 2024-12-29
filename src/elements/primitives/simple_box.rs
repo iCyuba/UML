@@ -1,6 +1,6 @@
 use crate::app::renderer::Canvas;
 use crate::elements::primitives::traits::Draw;
-use crate::geometry::rect::Rect;
+use crate::geometry::Rect;
 use vello::kurbo::{self, Affine, RoundedRect, RoundedRectRadii};
 use vello::peniko::{Color, Fill};
 

@@ -11,7 +11,7 @@ use crate::{
         toolbox_item::Tool,
         Element,
     },
-    geometry::{rect::Rect, Point, Vec2},
+    geometry::{Point, Rect, Vec2},
     presentation::fonts,
 };
 use derive_macros::AnimatedElement;
@@ -127,7 +127,7 @@ impl Workspace {
         project
             .entities
             .iter()
-            .find(|(_, e)| (e.rect * *self.zoom).contains(point))
+            .find(|(_, e)| (*e.data.rect * *self.zoom).contains(point))
             .map(|(k, _)| k)
     }
 }
@@ -139,8 +139,15 @@ impl EventTarget for Workspace {
         }
 
         // Entities
-        for (_, entity) in ctx.project.entities.iter_mut() {
-            entity.update();
+        let selection = ctx.state.selected_entity;
+        let mut redraw = false;
+        for (key, entity) in ctx.project.entities.iter_mut() {
+            entity.data.is_selected = selection == Some(key);
+            redraw |= entity.update()
+        }
+
+        if redraw {
+            ctx.state.request_redraw();
         }
     }
 
@@ -213,6 +220,12 @@ impl EventTarget for Workspace {
 
     fn on_click(&mut self, ctx: &mut EventContext) -> bool {
         ctx.state.screenshot();
+
+        if let Some(selection) = ctx.state.selected_entity {
+            let entity = ctx.project.entities.get_mut(selection).unwrap();
+            entity.name += "!";
+            ctx.state.request_redraw();
+        }
 
         true
     }
