@@ -3,7 +3,10 @@ use crate::{
     elements::tooltip::TooltipState,
     geometry::{Point, Vec2},
 };
-use winit::{event::MouseButton, keyboard::Key, window::CursorIcon};
+use winit::{
+    event::{KeyEvent, MouseButton},
+    window::CursorIcon,
+};
 
 macro_rules! noop {
     ($($arg:tt)*) => {
@@ -11,6 +14,14 @@ macro_rules! noop {
 
         return Default::default();
     };
+}
+
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct WheelEvent {
+    pub delta: Vec2,
+    pub mouse: bool,
+    pub zoom: bool,
+    pub reverse: bool,
 }
 
 pub trait EventTarget {
@@ -48,8 +59,8 @@ pub trait EventTarget {
     /// The element must be either focused, or in the `key_listeners` set.
     ///
     /// Does not bubble.
-    fn on_keydown(&mut self, ctx: &mut EventContext, key: &Key) -> bool {
-        noop!(ctx, key);
+    fn on_keydown(&mut self, ctx: &mut EventContext, event: KeyEvent) -> bool {
+        noop!(ctx, event);
     }
 
     /// Fired on a key listener when a key is released.
@@ -57,8 +68,8 @@ pub trait EventTarget {
     /// The element must be either focused, or in the `key_listeners` set.
     ///
     /// Does not bubble.
-    fn on_keyup(&mut self, ctx: &mut EventContext, key: &Key) -> bool {
-        noop!(ctx, key);
+    fn on_keyup(&mut self, ctx: &mut EventContext, event: KeyEvent) -> bool {
+        noop!(ctx, event);
     }
 
     /// Fired on the hovered element when the mouse is pressed down.
@@ -87,14 +98,7 @@ pub trait EventTarget {
     }
 
     /// Fired when the mouse wheel is scrolled.
-    fn on_wheel(
-        &mut self,
-        ctx: &mut EventContext,
-        delta: Vec2,
-        mouse: bool,
-        zoom: bool,
-        reverse: bool,
-    ) -> bool {
-        noop!(ctx, delta, mouse, zoom, reverse);
+    fn on_wheel(&mut self, ctx: &mut EventContext, event: WheelEvent) -> bool {
+        noop!(ctx, event);
     }
 }

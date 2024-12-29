@@ -1,5 +1,6 @@
 use super::{
     context::{EventContext, GetterContext},
+    event_target::WheelEvent,
     viewport::Viewport,
     EventTarget,
 };
@@ -13,7 +14,10 @@ use std::{
     ops::{Deref, DerefMut},
 };
 use taffy::{AvailableSpace, NodeId, Size, TaffyTree};
-use winit::{event::MouseButton, keyboard::Key, window::CursorIcon};
+use winit::{
+    event::{KeyEvent, MouseButton},
+    window::CursorIcon,
+};
 
 pub struct Tree {
     taffy_tree: TaffyTree<Box<dyn Element>>,
@@ -235,21 +239,21 @@ impl EventTarget for Tree {
         self.bubble_mut(node, |_, el| el.on_click(ctx))
     }
 
-    fn on_keydown(&mut self, ctx: &mut EventContext, key: &Key) -> bool {
+    fn on_keydown(&mut self, ctx: &mut EventContext, event: KeyEvent) -> bool {
         // If there's a focused element, fire the event there. If not, fire it on all key listeners.
         if let Some(focused) = ctx
             .state
             .focused
             .and_then(|node| self.get_node_context_mut(node))
         {
-            focused.on_keydown(ctx, key)
+            focused.on_keydown(ctx, event)
         } else {
             let mut handled = false;
 
             let key_listeners = ctx.state.key_listeners.iter().cloned().collect::<Vec<_>>();
             for node in key_listeners {
                 if let Some(element) = self.get_node_context_mut(node) {
-                    handled |= element.on_keydown(ctx, key);
+                    handled |= element.on_keydown(ctx, event.clone());
                 }
             }
 
@@ -257,20 +261,20 @@ impl EventTarget for Tree {
         }
     }
 
-    fn on_keyup(&mut self, ctx: &mut EventContext, key: &Key) -> bool {
+    fn on_keyup(&mut self, ctx: &mut EventContext, event: KeyEvent) -> bool {
         if let Some(focused) = ctx
             .state
             .focused
             .and_then(|node| self.get_node_context_mut(node))
         {
-            focused.on_keyup(ctx, key)
+            focused.on_keyup(ctx, event)
         } else {
             let mut handled = false;
 
             let key_listeners = ctx.state.key_listeners.iter().cloned().collect::<Vec<_>>();
             for node in key_listeners {
                 if let Some(element) = self.get_node_context_mut(node) {
-                    handled |= element.on_keyup(ctx, key);
+                    handled |= element.on_keyup(ctx, event.clone());
                 }
             }
 
@@ -361,17 +365,8 @@ impl EventTarget for Tree {
         captured
     }
 
-    fn on_wheel(
-        &mut self,
-        ctx: &mut EventContext,
-        delta: crate::geometry::Vec2,
-        mouse: bool,
-        zoom: bool,
-        reverse: bool,
-    ) -> bool {
-        self.bubble_mut(ctx.state.hovered, |_, el| {
-            el.on_wheel(ctx, delta, mouse, zoom, reverse)
-        })
+    fn on_wheel(&mut self, ctx: &mut EventContext, event: WheelEvent) -> bool {
+        self.bubble_mut(ctx.state.hovered, |_, el| el.on_wheel(ctx, event))
     }
 }
 

@@ -5,7 +5,7 @@ use super::{
     EventTarget, Renderer, State, Tree,
 };
 use crate::{
-    app::context::RenderContext,
+    app::{context::RenderContext, event_target::WheelEvent},
     data::Project,
     geometry::{Point, Vec2},
     sample::project,
@@ -20,10 +20,7 @@ use winit::{
 
 pub enum AppUserEvent {
     #[cfg(target_arch = "wasm32")]
-    Scroll {
-        delta: Vec2,
-        ctrl_key: bool,
-    },
+    Scroll(WheelEvent),
 
     RequestRedraw,
     RequestCursorUpdate,
@@ -36,16 +33,12 @@ impl fmt::Debug for AppUserEvent {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             #[cfg(target_arch = "wasm32")]
-            AppUserEvent::Scroll { delta, ctrl_key } => f
-                .debug_struct("Scroll")
-                .field("delta", delta)
-                .field("ctrl_key", ctrl_key)
-                .finish(),
+            AppUserEvent::Scroll(ev) => f.debug_tuple("Scroll").field(ev).finish(),
 
             AppUserEvent::RequestRedraw => f.write_str("RequestRedraw"),
             AppUserEvent::RequestCursorUpdate => f.write_str("RequestCursorUpdate"),
             AppUserEvent::RequestTooltipUpdate => f.write_str("RequestTooltipUpdate"),
-            AppUserEvent::ModifyTree(_) => f.write_str("RequestModifyTree"),
+            AppUserEvent::ModifyTree(_) => f.write_str("ModifyTree"),
             AppUserEvent::Screenshot => f.write_str("Screenshot"),
         }
     }
@@ -132,13 +125,15 @@ impl ApplicationHandler<AppUserEvent> for App<'_> {
         let proxy = self.state.event_loop.clone();
         let closure = Closure::wrap(Box::new(move |event: web_sys::WheelEvent| {
             proxy
-                .send_event(AppUserEvent::Scroll {
+                .send_event(AppUserEvent::Scroll(WheelEvent {
                     delta: -Vec2 {
                         x: event.delta_x(),
                         y: event.delta_y(),
                     },
-                    ctrl_key: event.ctrl_key() || (use_super && event.meta_key()),
-                })
+                    zoom: event.ctrl_key() || (use_super && event.meta_key()),
+                    reverse: false,
+                    mouse: false,
+                }))
                 .unwrap();
         }) as Box<dyn FnMut(_)>);
 
@@ -157,8 +152,8 @@ impl ApplicationHandler<AppUserEvent> for App<'_> {
 
         match event {
             #[cfg(target_arch = "wasm32")]
-            AppUserEvent::Scroll { delta, ctrl_key } => {
-                self.tree.on_wheel(ctx!(), delta, false, ctrl_key, false);
+            AppUserEvent::Scroll(ev) => {
+                self.tree.on_wheel(ctx!(), ev);
                 self.window.request_redraw();
             }
 
@@ -262,19 +257,29 @@ impl ApplicationHandler<AppUserEvent> for App<'_> {
                 let zoom = self.state.main_modifier();
                 let reverse = self.state.modifiers.shift_key();
 
-                self.tree.on_wheel(ctx!(), delta, mouse, zoom, reverse);
+                self.tree.on_wheel(
+                    ctx!(),
+                    WheelEvent {
+                        delta,
+                        mouse,
+                        zoom,
+                        reverse,
+                    },
+                );
             }
 
             WindowEvent::PinchGesture { delta, .. } => {
                 self.tree.on_wheel(
                     ctx!(),
-                    Vec2 {
-                        x: 0.,
-                        y: delta * 128.,
+                    WheelEvent {
+                        delta: Vec2 {
+                            x: 0.,
+                            y: delta * 128.,
+                        },
+                        mouse: false,
+                        zoom: true,
+                        reverse: false,
                     },
-                    false,
-                    true,
-                    false,
                 );
             }
 
@@ -306,11 +311,11 @@ impl ApplicationHandler<AppUserEvent> for App<'_> {
 
             WindowEvent::KeyboardInput { event, .. } => {
                 if event.state == ElementState::Pressed {
-                    self.tree.on_keydown(ctx!(), &event.logical_key); // The order is weird here, because I don't want to clone the key
-                    self.state.keys.insert(event.logical_key);
+                    self.state.keys.insert(event.logical_key.clone());
+                    self.tree.on_keydown(ctx!(), event);
                 } else {
                     self.state.keys.remove(&event.logical_key);
-                    self.tree.on_keyup(ctx!(), &event.logical_key);
+                    self.tree.on_keyup(ctx!(), event);
                 }
             }
 

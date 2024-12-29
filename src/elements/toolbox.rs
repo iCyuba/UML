@@ -8,6 +8,7 @@ use taffy::prelude::length;
 use taffy::Display::Flex;
 use taffy::FlexDirection::Column;
 use taffy::{Layout, NodeId, Style};
+use winit::keyboard::{KeyCode, PhysicalKey};
 
 pub struct Toolbox(Layout);
 
@@ -39,6 +40,8 @@ impl Toolbox {
         tree.set_node_context(node, Some(Box::new(Self(Layout::new()))))
             .unwrap();
 
+        ctx.state.key_listeners.insert(node);
+
         node
     }
 }
@@ -59,6 +62,36 @@ impl EventTarget for Toolbox {
             }),
         )
         .draw(c);
+    }
+
+    fn on_keydown(&mut self, ctx: &mut EventContext, event: winit::event::KeyEvent) -> bool {
+        let pk = event.physical_key;
+        let char = event.text.and_then(|t| t.chars().next());
+
+        ctx.state.tool = if matches!(pk, PhysicalKey::Code(KeyCode::Digit1))
+            || matches!(char, Some('v') | Some('V'))
+        {
+            Tool::Select
+        } else if matches!(pk, PhysicalKey::Code(KeyCode::Digit2))
+            || matches!(char, Some('h') | Some('H'))
+        {
+            Tool::Hand
+        } else if matches!(pk, PhysicalKey::Code(KeyCode::Digit3))
+            || matches!(char, Some('e') | Some('E'))
+        {
+            Tool::Entity
+        } else if matches!(pk, PhysicalKey::Code(KeyCode::Digit4))
+            || matches!(char, Some('r') | Some('R'))
+        {
+            Tool::Relation
+        } else {
+            return false;
+        };
+
+        ctx.state.request_redraw();
+        ctx.state.request_cursor_update();
+
+        true
     }
 }
 

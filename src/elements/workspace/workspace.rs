@@ -3,6 +3,7 @@ use crate::{
     animations::{animated_property::AnimatedProperty, delta_animation::DeltaAnimation},
     app::{
         context::{EventContext, GetterContext, RenderContext},
+        event_target::WheelEvent,
         EventTarget, State, Tree,
     },
     data::{project::EntityKey, Entity, Project},
@@ -21,7 +22,7 @@ use vello::{
     peniko::Fill,
 };
 use winit::{
-    event::MouseButton,
+    event::{KeyEvent, MouseButton},
     keyboard::{Key, NamedKey},
     window::CursorIcon,
 };
@@ -230,8 +231,8 @@ impl EventTarget for Workspace {
         true
     }
 
-    fn on_keydown(&mut self, ctx: &mut EventContext, key: &Key) -> bool {
-        if matches!(key, Key::Named(NamedKey::Space)) {
+    fn on_keydown(&mut self, ctx: &mut EventContext, event: KeyEvent) -> bool {
+        if matches!(event.logical_key, Key::Named(NamedKey::Space)) {
             self.select_hand(ctx.state);
             return true;
         }
@@ -239,8 +240,8 @@ impl EventTarget for Workspace {
         false
     }
 
-    fn on_keyup(&mut self, ctx: &mut EventContext, key: &Key) -> bool {
-        if matches!(key, Key::Named(NamedKey::Space)) {
+    fn on_keyup(&mut self, ctx: &mut EventContext, event: KeyEvent) -> bool {
+        if matches!(event.logical_key, Key::Named(NamedKey::Space)) {
             self.deselect_hand(ctx.state);
             return true;
         }
@@ -323,32 +324,25 @@ impl EventTarget for Workspace {
         })
     }
 
-    fn on_wheel(
-        &mut self,
-        ctx: &mut EventContext,
-        delta: Vec2,
-        mouse: bool,
-        zoom: bool,
-        reverse: bool,
-    ) -> bool {
-        if zoom {
+    fn on_wheel(&mut self, ctx: &mut EventContext, event: WheelEvent) -> bool {
+        if event.zoom {
             let zoom = *self.zoom;
             let point = (ctx.state.cursor + *self.position) / zoom;
 
-            let zoom = (self.zoom.get_target() + zoom * delta.y / 256.)
+            let zoom = (self.zoom.get_target() + zoom * event.delta.y / 256.)
                 .clamp(Self::ZOOM_MIN, Self::ZOOM_MAX);
 
             self.zoom.set(zoom);
             self.position.set(point * zoom - ctx.state.cursor);
         } else {
-            let (mut x, mut y) = delta.into();
-            if reverse {
+            let (mut x, mut y) = event.delta.into();
+            if event.reverse {
                 (x, y) = (y, x);
             }
 
             let target = *self.position - Vec2::new(x, y);
 
-            if mouse {
+            if event.mouse {
                 self.position.set(target);
             } else {
                 self.position.reset(target);
