@@ -40,18 +40,15 @@ impl Item for Entity {
         let selected = state.selected_entity == Some(self.key);
 
         let pos = ws.position();
-        let ui_scale = c.scale();
         let zoom = ws.zoom();
-        let scale = ui_scale * zoom;
 
-        let rect = (self.rect * scale).translate(-pos);
+        let rect = (self.rect * zoom).translate(-pos);
 
         // Background
         FancyBox::new(
-            1.,
             rect,
-            taffy::Rect::length(2. * scale as f32),
-            8. * scale,
+            taffy::Rect::length(2. * zoom as f32),
+            8. * zoom,
             c.colors().floating_background,
             Some(BorderOptions {
                 color: if selected {
@@ -62,39 +59,37 @@ impl Item for Entity {
             }),
             Some(ShadowOptions {
                 color: c.colors().drop_shadow,
-                offset: (0., 1. * scale).into(),
-                blur_radius: 5. * scale,
+                offset: (0., 1. * zoom).into(),
+                blur_radius: 5. * zoom,
             }),
         )
-        .draw(c.scene());
+        .draw(c);
 
-        let padded: Rect = rect.inset_uniform(16. * scale);
+        let padded: Rect = rect.inset_uniform(16. * zoom);
 
         // Name
         Text::new(
             &self.name,
-            1.,
-            Rect::new(padded.origin, (padded.size.x, 16. * scale)),
-            16.0 * scale,
+            Rect::new(padded.origin, (padded.size.x, 16. * zoom)),
+            16.0 * zoom,
             title_font(self),
             c.colors().workspace_text,
         )
-        .draw(c.scene());
+        .draw(c);
 
         // Attributes
-        let mut y = 24. * scale; // 8px gap
+        let mut y = 24. * zoom; // 8px gap
         for (name, attr) in self.attributes.iter() {
             Text::new(
                 &attr_to_string(name, attr),
-                1.,
-                Rect::new(padded.origin + (0., y), (padded.size.x, 12. * scale)),
-                12.0 * scale,
+                Rect::new(padded.origin + (0., y), (padded.size.x, 12. * zoom)),
+                12.0 * zoom,
                 fonts::jbmono_regular(),
                 c.colors().accent,
             )
-            .draw(c.scene());
+            .draw(c);
 
-            y += 16. * scale;
+            y += 16. * zoom;
         }
     }
 

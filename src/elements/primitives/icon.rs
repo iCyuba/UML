@@ -1,3 +1,4 @@
+use crate::app::renderer::Canvas;
 use crate::elements::primitives::text::Text;
 use crate::elements::primitives::traits::Draw;
 use crate::geometry::rect::Rect;
@@ -39,16 +40,15 @@ impl Icon {
 }
 
 impl Draw for Icon {
-    fn draw(&self, scene: &mut vello::Scene) {
+    fn draw(&self, c: &mut Canvas) {
         let mut str = [0; 1];
         Text::new(
             char::from(self.content).encode_utf8(&mut str),
-            1.,
             self.rect,
             self.size,
             fonts::icons(),
             self.color,
         )
-        .draw(scene);
+        .draw(c);
     }
 }

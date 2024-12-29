@@ -47,7 +47,6 @@ impl EventTarget for Toolbox {
     fn render(&self, RenderContext { c, .. }: &mut RenderContext) {
         FancyBox::from_element(
             self,
-            c.scale(),
             13.,
             c.colors().floating_background,
             Some(BorderOptions {
@@ -59,7 +58,7 @@ impl EventTarget for Toolbox {
                 blur_radius: 5.,
             }),
         )
-        .draw(c.scene());
+        .draw(c);
     }
 }
 

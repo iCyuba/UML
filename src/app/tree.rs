@@ -20,7 +20,6 @@ pub struct Tree {
     root: NodeId,
 
     map: Vec<(Rect, NodeId)>,
-    scale: f32,
 
     // User state, which shouldn't be accessible from the elements
     hovered_on_mouse_down: Option<NodeId>,
@@ -37,7 +36,6 @@ impl Tree {
             taffy_tree,
             root,
             map: Vec::new(),
-            scale: 1.,
             hovered_on_mouse_down: None,
         };
 
@@ -53,14 +51,11 @@ impl Tree {
             .map(|(_, node)| *node)
     }
 
-    pub fn compute_layout(&mut self, size: (u32, u32), scale: f32) {
-        // Store the scale for later use (when updating the layout)
-        self.scale = scale;
-
+    pub fn compute_layout(&mut self, (width, height): (u32, u32), scale: f32) {
         // Apply the scale
         let size = Size {
-            width: AvailableSpace::Definite(size.0 as f32 / scale),
-            height: AvailableSpace::Definite(size.1 as f32 / scale),
+            width: AvailableSpace::Definite(width as f32 / scale),
+            height: AvailableSpace::Definite(height as f32 / scale),
         };
 
         self.taffy_tree.compute_layout(self.root, size).unwrap();
@@ -162,36 +157,8 @@ impl EventTarget for Tree {
             ctx: &mut EventContext,
             location: taffy::Point<f32>,
         ) {
-            // Scale up the layout and update the layout location to be relative to the root
+            // Update the layout location to be relative to the root
             let mut layout = *tree.layout(node).unwrap();
-
-            {
-                macro_rules! scale {
-                    ($e:expr) => {
-                        $e *= tree.scale;
-                    };
-                }
-
-                macro_rules! scale_rect {
-                    ($e:expr) => {
-                        scale!($e.left);
-                        scale!($e.right);
-                        scale!($e.top);
-                        scale!($e.bottom);
-                    };
-                }
-
-                scale!(layout.location.x);
-                scale!(layout.location.y);
-                scale!(layout.size.width);
-                scale!(layout.size.height);
-                scale!(layout.scrollbar_size.width);
-                scale!(layout.scrollbar_size.height);
-                scale_rect!(layout.border);
-                scale_rect!(layout.padding);
-                scale_rect!(layout.margin);
-            }
-
             layout.location = layout.location + location;
 
             // Call the element's update method

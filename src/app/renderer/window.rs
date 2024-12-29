@@ -158,6 +158,9 @@ impl WindowRenderer<'_> {
             self.update_theme(theme);
         }
 
+        // Set the window's scale
+        self.canvas.scale = window.scale_factor();
+
         // Save
         self.window = Some(window);
         self.surface = Some(surface);
@@ -180,6 +183,7 @@ impl WindowRenderer<'_> {
     #[cfg(target_arch = "wasm32")]
     pub fn resize(&mut self, size: PhysicalSize<u32>) {
         self.resize_on_next_frame = Some(size);
+        self.canvas.size = (size.width, size.height);
     }
 
     pub fn set_scale(&mut self, scale: f64) {

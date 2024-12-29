@@ -1,11 +1,12 @@
 #![allow(dead_code)]
 
+use crate::app::renderer::Canvas;
 use crate::elements::primitives::traits::Draw;
 use crate::geometry::rect::Rect;
 use crate::presentation::FontResource;
 use vello::kurbo::Affine;
 use vello::peniko::{BrushRef, Fill, StyleRef};
-use vello::{Glyph, Scene};
+use vello::Glyph;
 
 pub struct Text<'a> {
     text: &'a str,
@@ -22,15 +23,13 @@ impl<'a> Text<'a> {
 
     pub fn new(
         text: &'a str,
-        scale: f64,
         rect: impl Into<Rect>,
         size: f64,
         font: &'a FontResource<'a>,
         brush: impl Into<BrushRef<'a>>,
     ) -> Self {
-        let rect = rect.into() * scale;
+        let rect = rect.into();
         let brush = brush.into();
-        let size = size * scale;
 
         Self {
             text,
@@ -57,8 +56,11 @@ impl<'a> Text<'a> {
 }
 
 impl Draw for Text<'_> {
-    fn draw(&self, scene: &mut Scene) {
-        let pos = self.rect.origin;
+    fn draw(&self, c: &mut Canvas) {
+        let scale = c.scale();
+        let size = self.size * scale;
+
+        let pos = self.rect.origin * scale;
         let font = self.font;
         let metrics = font.metrics(self.size as f32);
 
@@ -68,11 +70,11 @@ impl Draw for Text<'_> {
         let last_char = self.text.len() - 1;
         let max_width = self.rect.size.x;
 
-        scene
+        c.scene()
             .draw_glyphs(&font.font)
-            .font_size(self.size as f32)
+            .font_size(size as f32)
             .brush(self.brush)
-            .transform(Affine::translate((pos.x, pos.y + self.size)))
+            .transform(Affine::translate((pos.x, pos.y + size)))
             .draw(
                 StyleRef::Fill(Fill::NonZero),
                 self.text.chars().enumerate().scan(0.0, |p_x, (i, c)| {
@@ -88,7 +90,7 @@ impl Draw for Text<'_> {
                     } else {
                         Some(Glyph {
                             id: (if overflow { ellipsis } else { glyph_id }).to_u32(),
-                            x: x as f32,
+                            x: (x * scale) as f32,
                             y: 0.,
                         })
                     }

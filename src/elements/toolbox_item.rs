@@ -97,12 +97,11 @@ impl EventTarget for ToolboxItem {
     }
 
     fn render(&self, RenderContext { c, .. }: &mut RenderContext) {
-        let scale = c.scale();
         let rect: Rect = self.layout.into();
         let hover = c.colors().hover.multiply_alpha(*self.hover_opacity);
 
-        SimpleBox::new(scale, rect, 5., *self.background).draw(c.scene());
-        SimpleBox::new(scale, rect, 5., hover).draw(c.scene());
+        SimpleBox::new(rect, 5., *self.background).draw(c);
+        SimpleBox::new(rect, 5., hover).draw(c);
     }
 
     fn cursor(&self, _: &GetterContext) -> Option<CursorIcon> {

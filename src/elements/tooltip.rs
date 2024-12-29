@@ -47,6 +47,8 @@ pub struct Tooltip {
 }
 
 impl Tooltip {
+    const FONT_SIZE: f64 = 14.;
+
     pub fn setup(tree: &mut Tree, ctx: &mut EventContext) -> NodeId {
         let this = Self {
             layout: Default::default(),
@@ -106,15 +108,16 @@ impl EventTarget for Tooltip {
         }) = &self.current
         {
             let font = fonts::inter_regular();
-            let scale = c.scale();
-            let font_size = 14. * scale;
-            let text_size = Text::measure(text, font_size, font).size;
 
-            let margin = font_size / 2.;
-            let padding = Size::new(font_size, font_size / 2.);
+            let text_size = Text::measure(text, Tooltip::FONT_SIZE, font).size;
+
+            const MARGIN: f64 = Tooltip::FONT_SIZE / 2.;
+            const PADDING: Size = Size::new(Tooltip::FONT_SIZE, Tooltip::FONT_SIZE / 2.);
 
             let screen_size = c.size();
-            let tooltip_size = text_size + padding * 2.;
+            let screen_size = Size::new(screen_size.0 as f64, screen_size.1 as f64) / c.scale();
+
+            let tooltip_size = text_size + PADDING * 2.;
 
             // Anchor points
             let origin = anchor.origin - tooltip_size;
@@ -124,13 +127,13 @@ impl EventTarget for Tooltip {
 
             // Check the if the tooltip fits in the screen
             let position = match position {
-                TooltipPosition::Top if origin.y < margin => TooltipPosition::Bottom,
-                TooltipPosition::Bottom if tooltip_end.y > screen_size.1 as f64 - margin => {
+                TooltipPosition::Top if origin.y < MARGIN => TooltipPosition::Bottom,
+                TooltipPosition::Bottom if tooltip_end.y > screen_size.y - MARGIN => {
                     TooltipPosition::Top
                 }
 
-                TooltipPosition::Left if origin.x < margin => TooltipPosition::Right,
-                TooltipPosition::Right if tooltip_end.x > screen_size.0 as f64 - margin => {
+                TooltipPosition::Left if origin.x < MARGIN => TooltipPosition::Right,
+                TooltipPosition::Right if tooltip_end.x > screen_size.x - MARGIN => {
                     TooltipPosition::Left
                 }
 
@@ -138,7 +141,7 @@ impl EventTarget for Tooltip {
             };
 
             // Calculate the tooltip position
-            let margin = margin * *self.opacity as f64;
+            let margin = MARGIN * *self.opacity as f64;
 
             let tooltip_origin_x = match position {
                 TooltipPosition::Top | TooltipPosition::Bottom => center.x - (tooltip_size.x / 2.),
@@ -154,35 +157,30 @@ impl EventTarget for Tooltip {
 
             let tooltip = Rect::new((tooltip_origin_x, tooltip_origin_y), tooltip_size);
 
-            let border = scale as f32;
-            let radii = 5. * scale;
-
             FancyBox::new(
-                1.,
                 tooltip,
-                taffy::Rect::new(border, border, border, border),
-                radii,
+                taffy::Rect::length(1.),
+                5.,
                 c.colors().floating_background.multiply_alpha(*self.opacity),
                 Some(BorderOptions {
                     color: c.colors().border.multiply_alpha(*self.opacity),
                 }),
                 Some(ShadowOptions {
                     color: c.colors().drop_shadow.multiply_alpha(*self.opacity * 0.5),
-                    offset: Point::new(0., 1.) * scale,
-                    blur_radius: 5. * scale,
+                    offset: Point::new(0., 1.),
+                    blur_radius: 5.,
                 }),
             )
-            .draw(c.scene());
+            .draw(c);
 
             Text::new(
                 text,
-                1.,
-                tooltip + padding,
-                font_size,
+                tooltip + PADDING,
+                Tooltip::FONT_SIZE,
                 font,
                 c.colors().workspace_text.multiply_alpha(*self.opacity),
             )
-            .draw(c.scene());
+            .draw(c);
         }
     }
 }

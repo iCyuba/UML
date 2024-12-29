@@ -1,7 +1,7 @@
 use serde::{Deserialize, Serialize};
-use std::ops::{Add, AddAssign, Div, DivAssign, Mul, MulAssign, Neg, Sub, SubAssign};
-use taffy::AvailableSpace;
+use std::ops::{Add, AddAssign, Div, DivAssign, Mul, MulAssign, Neg, Rem, Sub, SubAssign};
 use taffy::prelude::length;
+use taffy::AvailableSpace;
 use vello::kurbo;
 use winit::dpi::{PhysicalPosition, PhysicalSize};
 
@@ -16,8 +16,8 @@ pub type Size = Vec2;
 
 impl Vec2 {
     pub const ZERO: Self = Self { x: 0., y: 0. };
-    
-    pub fn new(x: f64, y: f64) -> Self {
+
+    pub const fn new(x: f64, y: f64) -> Self {
         Self { x, y }
     }
 }
@@ -41,6 +41,17 @@ impl Div<f64> for Vec2 {
         Self::Output {
             x: self.x / rhs,
             y: self.y / rhs,
+        }
+    }
+}
+
+impl Rem<f64> for Vec2 {
+    type Output = Self;
+
+    fn rem(self, rhs: f64) -> Self::Output {
+        Self::Output {
+            x: self.x % rhs,
+            y: self.y % rhs,
         }
     }
 }

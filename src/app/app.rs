@@ -245,13 +245,18 @@ impl ApplicationHandler<AppUserEvent> for App<'_> {
                     MouseScrollDelta::PixelDelta(_) => false,
                 };
 
+                let scale = self.window.canvas.scale();
                 let delta = match delta {
                     MouseScrollDelta::LineDelta(x, y) => Vec2 {
                         x: x as f64 * 64.,
                         y: y as f64 * 64.,
                     },
 
-                    MouseScrollDelta::PixelDelta(PhysicalPosition { x, y }) => Vec2 { x, y },
+                    // Pretty sure macOS scales up the delta
+                    MouseScrollDelta::PixelDelta(PhysicalPosition { x, y }) => Vec2 {
+                        x: x / scale,
+                        y: y / scale,
+                    },
                 };
 
                 let zoom = self.state.main_modifier();
@@ -265,7 +270,7 @@ impl ApplicationHandler<AppUserEvent> for App<'_> {
                     ctx!(),
                     Vec2 {
                         x: 0.,
-                        y: delta * 256.,
+                        y: delta * 128.,
                     },
                     false,
                     true,
@@ -274,7 +279,8 @@ impl ApplicationHandler<AppUserEvent> for App<'_> {
             }
 
             WindowEvent::CursorMoved { position, .. } => {
-                let cursor = Point::from(position);
+                // Scale down the cursor position
+                let cursor = Point::from(position) / self.window.canvas.scale();
 
                 self.tree.on_mousemove(ctx!(), cursor);
                 self.state.cursor = cursor;

@@ -147,33 +147,36 @@ impl EventTarget for Workspace {
     fn render(&self, RenderContext { c, project, state }: &mut RenderContext) {
         let colors = c.colors();
 
-        let zoom = *self.zoom;
-        let ui_scale = c.scale();
-        let scale = zoom * ui_scale;
-
         // Draw dots
         if *self.zoom > 0.3 {
-            let gap = 32.0 * scale;
+            let scale = c.scale();
+            let (width, height) = c.size();
 
-            let mut x = (gap - self.position.x) % gap;
-            let start_y = (gap - self.position.y) % gap;
-            let mut y = start_y;
+            let scale_zoom = scale * *self.zoom;
 
-            while x < self.layout.size.width as f64 {
-                while y < self.layout.size.height as f64 {
+            let gap = 32.0 * scale_zoom;
+            let position = *self.position * scale;
+
+            let mut x = 0.;
+            let mut y = 0.;
+
+            let transform = Affine::translate(Point::new(gap - position.x, gap - position.y) % gap);
+
+            while x < width as f64 {
+                while y < height as f64 {
                     c.scene().fill(
                         Fill::NonZero,
-                        Affine::IDENTITY,
+                        transform,
                         colors.workspace_dot,
                         None,
-                        &Circle::new((x, y), 2.0 * scale),
+                        &Circle::new((x, y), 2.0 * scale_zoom),
                     );
 
                     y += gap;
                 }
 
                 x += gap;
-                y = start_y;
+                y = 0.;
             }
         }
 
@@ -190,13 +193,12 @@ impl EventTarget for Workspace {
                 "x: {:.2}, y: {:.2}, zoom: {:.1}",
                 self.position.x, self.position.y, *self.zoom
             ),
-            ui_scale,
             Rect::new((10., 10.), (c.size().0 as f64 - 20., 16.)),
             16.0,
             fonts::inter_black_italic(),
             colors.workspace_text,
         )
-        .draw(c.scene());
+        .draw(c);
     }
 
     fn cursor(&self, ctx: &GetterContext) -> Option<CursorIcon> {
