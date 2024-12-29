@@ -10,12 +10,13 @@ use crate::app::{App, AppUserEvent};
 use winit::event_loop::EventLoop;
 
 #[cfg(not(target_arch = "wasm32"))]
-fn main() {
+#[pollster::main]
+async fn main() {
     let event_loop = EventLoop::<AppUserEvent>::with_user_event()
         .build()
         .unwrap();
 
-    let mut app = App::new(event_loop.create_proxy());
+    let mut app = App::new(event_loop.create_proxy()).await;
 
     event_loop
         .run_app(&mut app)
@@ -29,9 +30,9 @@ fn main() {
             .build()
             .unwrap();
 
-        let mut app = App::new(event_loop.create_proxy());
+        let mut app = App::new(event_loop.create_proxy()).await;
 
-        app.renderer.init(&event_loop).await;
+        app.window.init(&event_loop).await;
 
         event_loop
             .run_app(&mut app)

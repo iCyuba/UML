@@ -76,7 +76,7 @@ impl Sidebar {
         let parent = self.node_id;
         let entity = &ctx.project.entities[key];
         let name = entity.name.clone();
-        let color = ctx.r.colors.workspace_text;
+        let color = ctx.c.colors().workspace_text;
 
         if self.entity.is_some() {
             self.remove_children(ctx);
@@ -112,26 +112,26 @@ impl EventTarget for Sidebar {
         self.entity = ctx.state.selected_entity;
     }
 
-    fn render(&self, RenderContext { r, state, .. }: &mut RenderContext) {
+    fn render(&self, RenderContext { c, state, .. }: &mut RenderContext) {
         if state.selected_entity.is_none() {
             return;
         }
 
         FancyBox::from_element(
             self,
-            r.scale(),
+            c.scale(),
             13.,
-            r.colors.floating_background,
+            c.colors().floating_background,
             Some(BorderOptions {
-                color: r.colors.border,
+                color: c.colors().border,
             }),
             Some(ShadowOptions {
-                color: r.colors.drop_shadow,
+                color: c.colors().drop_shadow,
                 offset: (0., 1.).into(),
                 blur_radius: 5.,
             }),
         )
-        .draw(&mut r.scene);
+        .draw(c.scene());
     }
 }
 

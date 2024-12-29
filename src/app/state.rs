@@ -96,4 +96,15 @@ impl State {
     pub fn modify_tree(&self, f: impl FnOnce(&mut Tree) + 'static) {
         self.send_event(AppUserEvent::ModifyTree(Box::new(f)));
     }
+
+    #[inline]
+    pub fn screenshot(&self) {
+        self.send_event(AppUserEvent::Screenshot);
+    }
+}
+
+impl AsRef<State> for State {
+    fn as_ref(&self) -> &State {
+        self
+    }
 }

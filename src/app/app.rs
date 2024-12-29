@@ -1,10 +1,16 @@
-use super::{context::EventContext, ctx, EventTarget, Renderer, State, Tree};
+use super::{
+    context::EventContext,
+    ctx,
+    renderer::{PngRenderer, WindowRenderer},
+    EventTarget, Renderer, State, Tree,
+};
 use crate::{
+    app::context::RenderContext,
     data::Project,
     geometry::{Point, Vec2},
     sample::project,
 };
-use std::fmt;
+use std::{cell::RefCell, fmt, fs::File, io::Write, rc::Rc};
 use winit::{
     application::ApplicationHandler,
     event::{ElementState, WindowEvent},
@@ -23,6 +29,7 @@ pub enum AppUserEvent {
     RequestCursorUpdate,
     RequestTooltipUpdate,
     ModifyTree(Box<dyn FnOnce(&mut Tree)>),
+    Screenshot,
 }
 
 impl fmt::Debug for AppUserEvent {
@@ -39,12 +46,15 @@ impl fmt::Debug for AppUserEvent {
             AppUserEvent::RequestCursorUpdate => f.write_str("RequestCursorUpdate"),
             AppUserEvent::RequestTooltipUpdate => f.write_str("RequestTooltipUpdate"),
             AppUserEvent::ModifyTree(_) => f.write_str("RequestModifyTree"),
+            AppUserEvent::Screenshot => f.write_str("Screenshot"),
         }
     }
 }
 
 pub struct App<'s> {
-    pub renderer: Renderer<'s>,
+    pub window: WindowRenderer<'s>,
+    pub png: PngRenderer,
+
     pub state: State,
 
     pub tree: Tree,
@@ -52,8 +62,14 @@ pub struct App<'s> {
 }
 
 impl App<'_> {
-    pub fn new(event_loop: EventLoopProxy<AppUserEvent>) -> Self {
-        let renderer = Renderer::default();
+    pub async fn new(event_loop: EventLoopProxy<AppUserEvent>) -> Self {
+        let vello_render_context = Rc::new(RefCell::new(vello::util::RenderContext::new()));
+
+        let mut window = WindowRenderer::new(vello_render_context.clone());
+        let png = PngRenderer::new(vello_render_context)
+            .await
+            .expect("Couldn't create PNG renderer");
+
         let mut state = State::new(event_loop);
         let mut project = project();
 
@@ -61,11 +77,13 @@ impl App<'_> {
         let tree = Tree::new(&mut EventContext {
             project: &mut project,
             state: &mut state,
-            r: &renderer,
+            c: window.canvas(),
         });
 
         App {
-            renderer: Default::default(),
+            window,
+            png,
+
             state,
 
             tree,
@@ -74,27 +92,22 @@ impl App<'_> {
     }
 
     pub fn redraw(&mut self) {
-        self.renderer.scene.reset();
+        self.window.canvas.reset();
 
         // Flex layout
-        let size = self.renderer.size();
-        let scale = self.renderer.scale() as f32;
-
-        self.tree.compute_layout(size, scale);
-
         self.tree.update(ctx!(self));
         self.tree.render(ctx!(self));
 
         // Draw the scene onto the screen
-        self.renderer.render();
+        self.window.render().unwrap();
     }
 }
 
 impl ApplicationHandler<AppUserEvent> for App<'_> {
     #[cfg(not(target_arch = "wasm32"))]
     fn resumed(&mut self, event_loop: &ActiveEventLoop) {
-        if self.renderer.window.is_none() {
-            self.renderer.init(event_loop);
+        if self.window.window.is_none() {
+            pollster::block_on(self.window.init(event_loop)).unwrap();
         }
     }
 
@@ -146,21 +159,49 @@ impl ApplicationHandler<AppUserEvent> for App<'_> {
             #[cfg(target_arch = "wasm32")]
             AppUserEvent::Scroll { delta, ctrl_key } => {
                 self.tree.on_wheel(ctx!(), delta, false, ctrl_key, false);
-                self.renderer.request_redraw();
+                self.window.request_redraw();
             }
 
-            AppUserEvent::RequestRedraw => self.renderer.request_redraw(),
+            AppUserEvent::RequestRedraw => self.window.request_redraw(),
             AppUserEvent::RequestCursorUpdate => {
                 let cursor = self.tree.cursor(ctx!()).unwrap_or(CursorIcon::Default);
-                self.renderer.set_cursor(cursor);
+                self.window.set_cursor(cursor);
             }
             AppUserEvent::RequestTooltipUpdate => {
                 self.state.tooltip_state = self.tree.tooltip(ctx!());
-                self.renderer.request_redraw();
+                self.window.request_redraw();
             }
             AppUserEvent::ModifyTree(f) => {
                 f(&mut self.tree);
-                self.renderer.request_redraw();
+                self.window.request_redraw();
+            }
+            AppUserEvent::Screenshot => {
+                #[cfg(target_arch = "wasm32")]
+                return; // Unsupported
+
+                let (width, height) = self.window.canvas.size();
+                let scale = self.window.canvas.scale();
+
+                let width = (width as f64 / scale) as u32;
+                let height = (height as f64 / scale) as u32;
+                self.png.resize(width, height);
+
+                let canvas = self.png.canvas();
+                canvas.reset();
+
+                self.tree.render(&mut RenderContext {
+                    c: canvas,
+                    project: &self.project,
+                    state: &self.state,
+                });
+
+                let image = self.png.render().unwrap();
+
+                // Save the image
+                File::create("screenshot.png")
+                    .unwrap()
+                    .write_all(&image)
+                    .unwrap();
             }
         }
     }
@@ -177,7 +218,7 @@ impl ApplicationHandler<AppUserEvent> for App<'_> {
             };
         }
 
-        let Some(window) = self.renderer.window.as_ref() else {
+        let Some(window) = self.window.window.as_ref() else {
             return;
         };
 
@@ -187,8 +228,11 @@ impl ApplicationHandler<AppUserEvent> for App<'_> {
 
         match event {
             WindowEvent::CloseRequested => event_loop.exit(),
-            WindowEvent::Resized(size) => self.renderer.resize(size),
+            WindowEvent::Resized(size) => self.window.resize(size),
             WindowEvent::RedrawRequested => self.redraw(),
+            WindowEvent::ScaleFactorChanged { scale_factor, .. } => {
+                self.window.set_scale(scale_factor)
+            }
 
             // This is handled in the user_event method
             #[cfg(not(target_arch = "wasm32"))]
@@ -241,7 +285,7 @@ impl ApplicationHandler<AppUserEvent> for App<'_> {
             }
 
             WindowEvent::ThemeChanged(theme) => {
-                self.renderer.update_theme(theme); // This automatically requests a redraw
+                self.window.update_theme(theme); // This automatically requests a redraw
             }
 
             WindowEvent::MouseInput { state, button, .. } => {

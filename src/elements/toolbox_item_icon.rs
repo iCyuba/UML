@@ -67,9 +67,9 @@ impl ToolboxItemIcon {
 impl EventTarget for ToolboxItemIcon {
     fn update(&mut self, ctx: &mut EventContext) {
         self.color.set(if ctx.state.tool == self.tool_type {
-            ctx.r.colors.icon_active
+            ctx.c.colors().icon_active
         } else {
-            ctx.r.colors.icon_inactive
+            ctx.c.colors().icon_inactive
         });
 
         if self.animate() {
@@ -77,10 +77,10 @@ impl EventTarget for ToolboxItemIcon {
         }
     }
 
-    fn render(&self, RenderContext { r, .. }: &mut RenderContext) {
+    fn render(&self, RenderContext { c, .. }: &mut RenderContext) {
         let hitbox = Rect::from(self.layout);
         let icon = Icon::new(self.icon, hitbox, hitbox.size.x, *self.color);
-        icon.draw(&mut r.scene);
+        icon.draw(c.scene());
     }
 }
 

@@ -86,9 +86,9 @@ impl ToolboxItem {
 impl EventTarget for ToolboxItem {
     fn update(&mut self, ctx: &mut EventContext) {
         self.background.set(if ctx.state.tool == self.tool_type {
-            ctx.r.colors.accent
+            ctx.c.colors().accent
         } else {
-            ctx.r.colors.floating_background
+            ctx.c.colors().floating_background
         });
 
         if self.animate() {
@@ -96,13 +96,13 @@ impl EventTarget for ToolboxItem {
         }
     }
 
-    fn render(&self, RenderContext { r, .. }: &mut RenderContext) {
-        let scale = r.scale();
+    fn render(&self, RenderContext { c, .. }: &mut RenderContext) {
+        let scale = c.scale();
         let rect: Rect = self.layout.into();
-        let hover = r.colors.hover.multiply_alpha(*self.hover_opacity);
+        let hover = c.colors().hover.multiply_alpha(*self.hover_opacity);
 
-        SimpleBox::new(scale, rect, 5., *self.background).draw(&mut r.scene);
-        SimpleBox::new(scale, rect, 5., hover).draw(&mut r.scene);
+        SimpleBox::new(scale, rect, 5., *self.background).draw(c.scene());
+        SimpleBox::new(scale, rect, 5., hover).draw(c.scene());
     }
 
     fn cursor(&self, _: &GetterContext) -> Option<CursorIcon> {

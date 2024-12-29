@@ -44,22 +44,22 @@ impl Toolbox {
 }
 
 impl EventTarget for Toolbox {
-    fn render(&self, RenderContext { r, .. }: &mut RenderContext) {
+    fn render(&self, RenderContext { c, .. }: &mut RenderContext) {
         FancyBox::from_element(
             self,
-            r.scale(),
+            c.scale(),
             13.,
-            r.colors.floating_background,
+            c.colors().floating_background,
             Some(BorderOptions {
-                color: r.colors.border,
+                color: c.colors().border,
             }),
             Some(ShadowOptions {
-                color: r.colors.drop_shadow,
+                color: c.colors().drop_shadow,
                 offset: (0., 1.).into(),
                 blur_radius: 5.,
             }),
         )
-        .draw(&mut r.scene);
+        .draw(c.scene());
     }
 }
 

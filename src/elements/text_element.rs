@@ -48,16 +48,16 @@ impl TextElement {
 }
 
 impl EventTarget for TextElement {
-    fn render(&self, RenderContext { r, .. }: &mut RenderContext) {
+    fn render(&self, RenderContext { c, .. }: &mut RenderContext) {
         Text::new(
             &self.text,
-            r.scale(),
+            c.scale(),
             self.layout,
             self.size,
             self.font,
             self.brush,
         )
-        .draw(&mut r.scene);
+        .draw(c.scene());
     }
 }
 

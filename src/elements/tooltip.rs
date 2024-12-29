@@ -98,7 +98,7 @@ impl EventTarget for Tooltip {
         }
     }
 
-    fn render(&self, RenderContext { r, .. }: &mut RenderContext) {
+    fn render(&self, RenderContext { c, .. }: &mut RenderContext) {
         if let Some(TooltipState {
             text,
             anchor,
@@ -106,14 +106,14 @@ impl EventTarget for Tooltip {
         }) = &self.current
         {
             let font = fonts::inter_regular();
-            let scale = r.scale();
+            let scale = c.scale();
             let font_size = 14. * scale;
             let text_size = Text::measure(text, font_size, font).size;
 
             let margin = font_size / 2.;
             let padding = Size::new(font_size, font_size / 2.);
 
-            let screen_size = r.size();
+            let screen_size = c.size();
             let tooltip_size = text_size + padding * 2.;
 
             // Anchor points
@@ -125,12 +125,12 @@ impl EventTarget for Tooltip {
             // Check the if the tooltip fits in the screen
             let position = match position {
                 TooltipPosition::Top if origin.y < margin => TooltipPosition::Bottom,
-                TooltipPosition::Bottom if tooltip_end.y > screen_size.height as f64 - margin => {
+                TooltipPosition::Bottom if tooltip_end.y > screen_size.1 as f64 - margin => {
                     TooltipPosition::Top
                 }
 
                 TooltipPosition::Left if origin.x < margin => TooltipPosition::Right,
-                TooltipPosition::Right if tooltip_end.x > screen_size.width as f64 - margin => {
+                TooltipPosition::Right if tooltip_end.x > screen_size.0 as f64 - margin => {
                     TooltipPosition::Left
                 }
 
@@ -162,17 +162,17 @@ impl EventTarget for Tooltip {
                 tooltip,
                 taffy::Rect::new(border, border, border, border),
                 radii,
-                r.colors.floating_background.multiply_alpha(*self.opacity),
+                c.colors().floating_background.multiply_alpha(*self.opacity),
                 Some(BorderOptions {
-                    color: r.colors.border.multiply_alpha(*self.opacity),
+                    color: c.colors().border.multiply_alpha(*self.opacity),
                 }),
                 Some(ShadowOptions {
-                    color: r.colors.drop_shadow.multiply_alpha(*self.opacity * 0.5),
+                    color: c.colors().drop_shadow.multiply_alpha(*self.opacity * 0.5),
                     offset: Point::new(0., 1.) * scale,
                     blur_radius: 5. * scale,
                 }),
             )
-            .draw(&mut r.scene);
+            .draw(c.scene());
 
             Text::new(
                 text,
@@ -180,9 +180,9 @@ impl EventTarget for Tooltip {
                 tooltip + padding,
                 font_size,
                 font,
-                r.colors.workspace_text.multiply_alpha(*self.opacity),
+                c.colors().workspace_text.multiply_alpha(*self.opacity),
             )
-            .draw(&mut r.scene);
+            .draw(c.scene());
         }
     }
 }

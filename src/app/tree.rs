@@ -13,7 +13,7 @@ use std::{
     ops::{Deref, DerefMut},
 };
 use taffy::{AvailableSpace, NodeId, Size, TaffyTree};
-use winit::{dpi::PhysicalSize, event::MouseButton, keyboard::Key, window::CursorIcon};
+use winit::{event::MouseButton, keyboard::Key, window::CursorIcon};
 
 pub struct Tree {
     taffy_tree: TaffyTree<Box<dyn Element>>,
@@ -53,15 +53,14 @@ impl Tree {
             .map(|(_, node)| *node)
     }
 
-    pub fn compute_layout(&mut self, size: PhysicalSize<u32>, scale: f32) {
+    pub fn compute_layout(&mut self, size: (u32, u32), scale: f32) {
         // Store the scale for later use (when updating the layout)
         self.scale = scale;
 
         // Apply the scale
-        let size = size.to_logical(scale as f64);
         let size = Size {
-            width: AvailableSpace::Definite(size.width),
-            height: AvailableSpace::Definite(size.height),
+            width: AvailableSpace::Definite(size.0 as f32 / scale),
+            height: AvailableSpace::Definite(size.1 as f32 / scale),
         };
 
         self.taffy_tree.compute_layout(self.root, size).unwrap();
@@ -211,6 +210,10 @@ impl EventTarget for Tree {
         }
 
         self.map.clear();
+
+        // Update layout
+        self.compute_layout(ctx.c.size(), ctx.c.scale() as f32);
+
         update_children(self.root, self, ctx, Default::default());
     }
 

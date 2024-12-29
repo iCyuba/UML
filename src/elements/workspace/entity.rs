@@ -1,7 +1,6 @@
 use super::{item::Item, Workspace};
 use crate::{
-    geometry::Point,
-    app::{Renderer, State},
+    app::{renderer::Canvas, State},
     data::{
         entity::{Attribute, EntityType},
         Entity,
@@ -11,8 +10,8 @@ use crate::{
         text::Text,
         traits::Draw,
     },
-    geometry::{rect::Rect, Size},
-    presentation::{fonts, FontResource}
+    geometry::{rect::Rect, Point, Size},
+    presentation::{fonts, FontResource},
 };
 use winit::event::MouseButton;
 
@@ -37,11 +36,11 @@ impl Item for Entity {
         self.rect.size = size + (32., 32.); // Padding
     }
 
-    fn render(&self, r: &mut Renderer, state: &State, ws: &Workspace) {
+    fn render(&self, c: &mut Canvas, state: &State, ws: &Workspace) {
         let selected = state.selected_entity == Some(self.key);
-        
+
         let pos = ws.position();
-        let ui_scale = r.scale();
+        let ui_scale = c.scale();
         let zoom = ws.zoom();
         let scale = ui_scale * zoom;
 
@@ -53,21 +52,21 @@ impl Item for Entity {
             rect,
             taffy::Rect::length(2. * scale as f32),
             8. * scale,
-            r.colors.floating_background,
+            c.colors().floating_background,
             Some(BorderOptions {
                 color: if selected {
-                    r.colors.accent
+                    c.colors().accent
                 } else {
-                    r.colors.border
+                    c.colors().border
                 },
             }),
             Some(ShadowOptions {
-                color: r.colors.drop_shadow,
+                color: c.colors().drop_shadow,
                 offset: (0., 1. * scale).into(),
                 blur_radius: 5. * scale,
             }),
         )
-        .draw(&mut r.scene);
+        .draw(c.scene());
 
         let padded: Rect = rect.inset_uniform(16. * scale);
 
@@ -78,9 +77,9 @@ impl Item for Entity {
             Rect::new(padded.origin, (padded.size.x, 16. * scale)),
             16.0 * scale,
             title_font(self),
-            r.colors.workspace_text,
+            c.colors().workspace_text,
         )
-        .draw(&mut r.scene);
+        .draw(c.scene());
 
         // Attributes
         let mut y = 24. * scale; // 8px gap
@@ -91,9 +90,9 @@ impl Item for Entity {
                 Rect::new(padded.origin + (0., y), (padded.size.x, 12. * scale)),
                 12.0 * scale,
                 fonts::jbmono_regular(),
-                r.colors.accent,
+                c.colors().accent,
             )
-            .draw(&mut r.scene);
+            .draw(c.scene());
 
             y += 16. * scale;
         }

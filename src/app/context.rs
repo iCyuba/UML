@@ -1,27 +1,25 @@
-use crate::{
-    app::{Renderer, State},
-    data::Project,
-};
+use super::renderer::Canvas;
+use crate::{app::State, data::Project};
 
-pub struct Context<P, S, R> {
+pub struct Context<P: AsRef<Project>, S: AsRef<State>, C: AsRef<Canvas>> {
     pub project: P,
     pub state: S,
 
-    /// Renderer
-    pub r: R,
+    /// Canvas
+    pub c: C,
 }
 
-pub type MutContext<'a, 'b> = Context<&'a mut Project, &'a mut State, &'a mut Renderer<'b>>;
-pub type EventContext<'a, 'b> = Context<&'a mut Project, &'a mut State, &'a Renderer<'b>>;
-pub type RenderContext<'a, 'b> = Context<&'a Project, &'a State, &'a mut Renderer<'b>>;
-pub type GetterContext<'a, 'b> = Context<&'a Project, &'a State, &'a Renderer<'b>>;
+pub type MutContext<'a, 'b> = Context<&'a mut Project, &'a mut State, &'a mut Canvas>;
+pub type EventContext<'a, 'b> = Context<&'a mut Project, &'a mut State, &'a Canvas>;
+pub type RenderContext<'a, 'b> = Context<&'a Project, &'a State, &'a mut Canvas>;
+pub type GetterContext<'a, 'b> = Context<&'a Project, &'a State, &'a Canvas>;
 
 impl<'a, 'b> From<MutContext<'a, 'b>> for EventContext<'a, 'b> {
     fn from(ctx: MutContext<'a, 'b>) -> Self {
         Self {
             project: ctx.project,
             state: ctx.state,
-            r: ctx.r,
+            c: ctx.c,
         }
     }
 }
@@ -31,7 +29,7 @@ impl<'a, 'b> From<MutContext<'a, 'b>> for RenderContext<'a, 'b> {
         Self {
             project: ctx.project,
             state: ctx.state,
-            r: ctx.r,
+            c: ctx.c,
         }
     }
 }
@@ -41,7 +39,7 @@ impl<'a, 'b> From<MutContext<'a, 'b>> for GetterContext<'a, 'b> {
         Self {
             project: ctx.project,
             state: ctx.state,
-            r: ctx.r,
+            c: ctx.c,
         }
     }
 }
@@ -52,7 +50,7 @@ macro_rules! ctx {
         &mut $crate::app::context::MutContext {
             project: &mut $app.project,
             state: &mut $app.state,
-            r: &mut $app.renderer,
+            c: &mut $app.window.canvas(),
         }
         .into()
     };

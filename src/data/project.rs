@@ -34,7 +34,7 @@ impl Project {
             entity
         })
     }
-    
+
     pub fn remove_entity(&mut self, key: EntityKey) {
         let entity = self.entities.remove(key).unwrap();
 
@@ -63,5 +63,11 @@ impl Project {
 
         self.entities[from].connections.remove(&key);
         self.entities[to].connections.remove(&key);
+    }
+}
+
+impl AsRef<Project> for Project {
+    fn as_ref(&self) -> &Project {
+        self
     }
 }

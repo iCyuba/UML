@@ -144,11 +144,11 @@ impl EventTarget for Workspace {
         }
     }
 
-    fn render(&self, RenderContext { r, project, state }: &mut RenderContext) {
-        let colors = r.colors;
+    fn render(&self, RenderContext { c, project, state }: &mut RenderContext) {
+        let colors = c.colors();
 
         let zoom = *self.zoom;
-        let ui_scale = r.scale();
+        let ui_scale = c.scale();
         let scale = zoom * ui_scale;
 
         // Draw dots
@@ -161,7 +161,7 @@ impl EventTarget for Workspace {
 
             while x < self.layout.size.width as f64 {
                 while y < self.layout.size.height as f64 {
-                    r.scene.fill(
+                    c.scene().fill(
                         Fill::NonZero,
                         Affine::IDENTITY,
                         colors.workspace_dot,
@@ -181,7 +181,7 @@ impl EventTarget for Workspace {
 
         // Entities
         for (_, entity) in project.entities.iter() {
-            entity.render(r, state, self);
+            entity.render(c, state, self);
         }
 
         // Coords
@@ -191,12 +191,12 @@ impl EventTarget for Workspace {
                 self.position.x, self.position.y, *self.zoom
             ),
             ui_scale,
-            Rect::new((10., 10.), (r.size().width as f64 - 20., 16.)),
+            Rect::new((10., 10.), (c.size().0 as f64 - 20., 16.)),
             16.0,
             fonts::inter_black_italic(),
             colors.workspace_text,
         )
-        .draw(&mut r.scene);
+        .draw(c.scene());
     }
 
     fn cursor(&self, ctx: &GetterContext) -> Option<CursorIcon> {
@@ -207,6 +207,12 @@ impl EventTarget for Workspace {
         } else {
             None
         }
+    }
+
+    fn on_click(&mut self, ctx: &mut EventContext) -> bool {
+        ctx.state.screenshot();
+
+        true
     }
 
     fn on_keydown(&mut self, ctx: &mut EventContext, key: &Key) -> bool {
