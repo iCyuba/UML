@@ -1,4 +1,5 @@
 use super::item::Item;
+use crate::elements::node::Element;
 use crate::{
     animations::{animated_property::AnimatedProperty, delta_animation::DeltaAnimation},
     app::{
@@ -10,7 +11,7 @@ use crate::{
     elements::{
         primitives::{text::Text, traits::Draw},
         toolbox_item::Tool,
-        Element,
+        Node,
     },
     geometry::{Point, Rect, Vec2},
     presentation::fonts,
@@ -56,28 +57,6 @@ impl Workspace {
         style
     };
 
-    pub fn setup(tree: &mut Tree, ctx: &mut EventContext) -> NodeId {
-        let node_id = tree.new_leaf(Self::STYLE).unwrap();
-        let this = Self {
-            layout: Default::default(),
-            node_id,
-
-            position: AnimatedProperty::new(DeltaAnimation::initialized(Default::default(), 30.)),
-            zoom: AnimatedProperty::new(DeltaAnimation::initialized(1., 30.)),
-
-            previous_tool: None,
-            hovered: None,
-            move_start_point: None,
-        };
-
-        tree.set_node_context(node_id, Some(Box::new(this)))
-            .unwrap();
-
-        ctx.state.key_listeners.insert(node_id);
-
-        node_id
-    }
-
     #[inline]
     pub fn position(&self) -> Vec2 {
         *self.position
@@ -117,10 +96,10 @@ impl Workspace {
         }
     }
 
-    fn entity_mut<'p>(
-        project: &'p mut Project,
+    fn entity_mut(
+        project: &mut Project,
         entity: Option<EntityKey>,
-        f: impl FnOnce(&'p mut Entity) -> bool,
+        f: impl FnOnce(&mut Entity) -> bool,
     ) -> bool {
         if let Some(entity) = entity.and_then(|key| project.entities.get_mut(key)) {
             return f(entity);
@@ -229,7 +208,8 @@ impl EventTarget for Workspace {
     }
 
     fn on_keydown(&mut self, ctx: &mut EventContext, event: KeyEvent) -> bool {
-        if matches!(event.logical_key, Key::Named(NamedKey::Space)) {
+        let key = event.logical_key;
+        if matches!(key, Key::Named(NamedKey::Space)) {
             self.select_hand(ctx.state);
             return true;
         }
@@ -238,7 +218,8 @@ impl EventTarget for Workspace {
     }
 
     fn on_keyup(&mut self, ctx: &mut EventContext, event: KeyEvent) -> bool {
-        if matches!(event.logical_key, Key::Named(NamedKey::Space)) {
+        let key = event.logical_key;
+        if matches!(key, Key::Named(NamedKey::Space)) {
             self.deselect_hand(ctx.state);
             return true;
         }
@@ -384,12 +365,35 @@ impl EventTarget for Workspace {
     }
 }
 
-impl Element for Workspace {
+impl Node for Workspace {
     fn layout(&self) -> &Layout {
         &self.layout
     }
 
     fn layout_mut(&mut self) -> &mut Layout {
         &mut self.layout
+    }
+}
+
+impl Element for Workspace {
+    fn setup(tree: &mut Tree, ctx: &mut EventContext) -> NodeId {
+        tree.add_element(ctx, Self::STYLE, None, |node_id, ctx| {
+            ctx.state.key_listeners.insert(node_id);
+
+            Self {
+                layout: Default::default(),
+                node_id,
+
+                position: AnimatedProperty::new(DeltaAnimation::initialized(
+                    Default::default(),
+                    30.,
+                )),
+                zoom: AnimatedProperty::new(DeltaAnimation::initialized(1., 30.)),
+
+                previous_tool: None,
+                hovered: None,
+                move_start_point: None,
+            }
+        })
     }
 }

@@ -4,23 +4,24 @@ use super::{
     viewport::Viewport,
     EventTarget,
 };
+use crate::elements::tooltip::TooltipState;
+use crate::elements::Node;
 use crate::{
     app::context::RenderContext,
-    elements::{tooltip::TooltipState, Element},
     geometry::{Point, Rect},
 };
 use std::{
     collections::HashSet,
     ops::{Deref, DerefMut},
 };
-use taffy::{AvailableSpace, NodeId, Size, TaffyTree};
+use taffy::{AvailableSpace, NodeId, Size, Style, TaffyTree};
 use winit::{
     event::{KeyEvent, MouseButton},
     window::CursorIcon,
 };
 
 pub struct Tree {
-    taffy_tree: TaffyTree<Box<dyn Element>>,
+    taffy_tree: TaffyTree<Box<dyn Node>>,
     root: NodeId,
 
     map: Vec<(Rect, NodeId)>,
@@ -111,7 +112,7 @@ impl Tree {
     pub fn bubble(
         &self,
         node: Option<NodeId>,
-        mut f: impl FnMut(NodeId, &Box<dyn Element>) -> bool,
+        mut f: impl FnMut(NodeId, &Box<dyn Node>) -> bool,
     ) -> bool {
         let Some(node) = node else {
             return false;
@@ -135,7 +136,7 @@ impl Tree {
     fn bubble_mut(
         &mut self,
         node: Option<NodeId>,
-        mut f: impl FnMut(NodeId, &mut Box<dyn Element>) -> bool,
+        mut f: impl FnMut(NodeId, &mut Box<dyn Node>) -> bool,
     ) -> bool {
         let Some(node) = node else {
             return false;
@@ -148,6 +149,35 @@ impl Tree {
         }
 
         self.bubble_mut(self.parent(node), f)
+    }
+
+    /// Adds an element to the tree
+    pub fn add_element<T>(
+        &mut self,
+        ctx: &mut EventContext,
+        style: Style,
+        children: Option<Vec<Box<dyn FnOnce(&mut Tree, &mut EventContext) -> NodeId>>>,
+        mut this: impl FnMut(NodeId, &mut EventContext) -> T,
+    ) -> NodeId
+    where
+        T: Node + 'static,
+    {
+        let node_id = (if let Some(children) = children {
+            let children = children
+                .into_iter()
+                .map(|callback| callback(self, ctx))
+                .collect::<Vec<_>>();
+            self.new_with_children(style, &children)
+        } else {
+            self.new_leaf(style)
+        })
+        .unwrap();
+
+        self.taffy_tree
+            .set_node_context(node_id, Some(Box::new(this(node_id, ctx))))
+            .unwrap();
+
+        node_id
     }
 }
 
@@ -371,7 +401,7 @@ impl EventTarget for Tree {
 }
 
 impl Deref for Tree {
-    type Target = TaffyTree<Box<dyn Element>>;
+    type Target = TaffyTree<Box<dyn Node>>;
 
     fn deref(&self) -> &Self::Target {
         &self.taffy_tree

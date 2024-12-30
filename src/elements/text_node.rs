@@ -1,6 +1,6 @@
 use super::{
     primitives::{text::Text, traits::Draw},
-    Element,
+    Node,
 };
 use crate::{
     app::{context::RenderContext, EventTarget, Tree},
@@ -9,7 +9,7 @@ use crate::{
 use taffy::{Layout, NodeId, Style};
 use vello::peniko::BrushRef;
 
-pub struct TextElement {
+pub struct TextNode {
     pub text: String,
     pub size: f64,
     pub font: &'static FontResource<'static>,
@@ -17,7 +17,7 @@ pub struct TextElement {
     pub layout: Layout,
 }
 
-impl TextElement {
+impl TextNode {
     pub fn setup(
         tree: &mut Tree,
         text: String,
@@ -47,13 +47,13 @@ impl TextElement {
     }
 }
 
-impl EventTarget for TextElement {
+impl EventTarget for TextNode {
     fn render(&self, RenderContext { c, .. }: &mut RenderContext) {
         Text::new(&self.text, self.layout, self.size, self.font, self.brush).draw(c);
     }
 }
 
-impl Element for TextElement {
+impl Node for TextNode {
     fn layout(&self) -> &Layout {
         &self.layout
     }

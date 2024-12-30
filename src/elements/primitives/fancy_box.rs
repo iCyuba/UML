@@ -1,7 +1,7 @@
 use crate::app::renderer::Canvas;
 use crate::elements::primitives::simple_box::SimpleBox;
 use crate::elements::primitives::traits::Draw;
-use crate::elements::Element;
+use crate::elements::Node;
 use crate::geometry::Point;
 use crate::geometry::Rect;
 use vello::kurbo::RoundedRectRadii;
@@ -37,14 +37,14 @@ impl FancyBox {
         }
     }
 
-    pub fn from_element(
-        element: &impl Element,
+    pub fn from_node(
+        node: &impl Node,
         radii: impl Into<RoundedRectRadii>,
         color: Color,
         border_options: Option<BorderOptions>,
         shadow_options: Option<ShadowOptions>,
     ) -> Self {
-        let layout = element.layout();
+        let layout = node.layout();
         let hitbox = Rect::from(*layout);
 
         Self::new(

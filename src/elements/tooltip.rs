@@ -4,8 +4,9 @@ use super::{
         text::Text,
         traits::Draw,
     },
-    Element,
+    Node,
 };
+use crate::elements::node::Element;
 use crate::{
     animations::{
         animated_property::AnimatedProperty,
@@ -48,26 +49,9 @@ pub struct Tooltip {
 
 impl Tooltip {
     const FONT_SIZE: f64 = 14.;
-
-    pub fn setup(tree: &mut Tree, ctx: &mut EventContext) -> NodeId {
-        let this = Self {
-            layout: Default::default(),
-
-            current: ctx.state.tooltip_state.clone(),
-
-            opacity: AnimatedProperty::new(StandardAnimation::initialized(
-                0.,
-                Duration::from_millis(200),
-                Easing::EaseInOut,
-            )),
-        };
-
-        tree.new_leaf_with_context(Default::default(), Box::new(this))
-            .unwrap()
-    }
 }
 
-impl Element for Tooltip {
+impl Node for Tooltip {
     fn layout(&self) -> &Layout {
         &self.layout
     }
@@ -182,5 +166,21 @@ impl EventTarget for Tooltip {
             )
             .draw(c);
         }
+    }
+}
+
+impl Element for Tooltip {
+    fn setup(tree: &mut Tree, ctx: &mut EventContext) -> NodeId {
+        tree.add_element(ctx, Default::default(), None, |_, ctx| Self {
+            layout: Default::default(),
+
+            current: ctx.state.tooltip_state.clone(),
+
+            opacity: AnimatedProperty::new(StandardAnimation::initialized(
+                0.,
+                Duration::from_millis(200),
+                Easing::EaseInOut,
+            )),
+        })
     }
 }

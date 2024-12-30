@@ -3,16 +3,17 @@ use super::{
         fancy_box::{BorderOptions, FancyBox, ShadowOptions},
         traits::Draw,
     },
-    text_element::TextElement,
-    Element,
+    text_node::TextNode,
+    Node,
 };
 use crate::{
+    elements::node::Element,
     app::{
         context::{EventContext, RenderContext},
         EventTarget, Tree,
     },
     data::project::EntityKey,
-    presentation::fonts,
+    presentation::fonts
 };
 use taffy::{
     prelude::{auto, length},
@@ -29,36 +30,6 @@ pub struct Sidebar {
 }
 
 impl Sidebar {
-    pub fn setup(tree: &mut Tree, _: &mut EventContext) -> NodeId {
-        let style = Style {
-            display: Flex,
-            flex_direction: Column,
-            border: length(1.),
-            margin: length(12.),
-            padding: length(16.),
-            gap: length(8.),
-            size: Size {
-                width: length(300.),
-                height: auto(),
-            },
-            ..Default::default()
-        };
-
-        let node = tree.new_leaf(style).unwrap();
-
-        tree.set_node_context(
-            node,
-            Some(Box::new(Self {
-                node_id: node,
-                layout: Layout::new(),
-                entity: None,
-            })),
-        )
-        .unwrap();
-
-        node
-    }
-
     fn remove_children(&self, ctx: &mut EventContext) {
         let node_id = self.node_id;
 
@@ -83,7 +54,7 @@ impl Sidebar {
         }
 
         ctx.state.modify_tree(move |tree| {
-            let title = TextElement::setup(
+            let title = TextNode::setup(
                 tree,
                 name,
                 24.,
@@ -117,7 +88,7 @@ impl EventTarget for Sidebar {
             return;
         }
 
-        FancyBox::from_element(
+        FancyBox::from_node(
             self,
             13.,
             c.colors().floating_background,
@@ -134,12 +105,39 @@ impl EventTarget for Sidebar {
     }
 }
 
-impl Element for Sidebar {
+impl Node for Sidebar {
     fn layout(&self) -> &Layout {
         &self.layout
     }
 
     fn layout_mut(&mut self) -> &mut Layout {
         &mut self.layout
+    }
+}
+
+impl Element for Sidebar {
+    fn setup(tree: &mut Tree, ctx: &mut EventContext) -> NodeId {
+        tree.add_element(
+            ctx,
+            Style {
+                display: Flex,
+                flex_direction: Column,
+                border: length(1.),
+                margin: length(12.),
+                padding: length(16.),
+                gap: length(8.),
+                size: Size {
+                    width: length(300.),
+                    height: auto(),
+                },
+                ..Default::default()
+            },
+            None,
+            |node_id, _| Self {
+                node_id,
+                layout: Default::default(),
+                entity: Default::default(),
+            },
+        )
     }
 }

@@ -1,7 +1,9 @@
 use super::{
     primitives::simple_box::SimpleBox, primitives::traits::Draw,
-    toolbox_item_icon::ToolboxItemIcon, tooltip::TooltipPosition, tooltip::TooltipState, Element,
+    toolbox_item_icon::ToolboxItemIcon, tooltip::TooltipPosition, tooltip::TooltipState, Node,
 };
+use crate::elements::node::ElementWithProps;
+use crate::elements::toolbox_item_icon::ToolboxItemIconProps;
 use crate::{
     animations::{
         animated_property::AnimatedProperty,
@@ -48,39 +50,6 @@ pub struct ToolboxItem {
     hover_opacity: AnimatedProperty<StandardAnimation<f32>>,
 
     hovered: bool,
-}
-
-impl ToolboxItem {
-    pub fn setup(tree: &mut Tree, ctx: &mut EventContext, tool_type: Tool) -> NodeId {
-        let icon = ToolboxItemIcon::setup(tree, ctx, tool_type, 20.);
-        let duration = Duration::from_millis(100);
-
-        let this = Self {
-            layout: Default::default(),
-            tool_type,
-            hovered: false,
-            background: AnimatedProperty::new(StandardAnimation::new(duration, EaseInOut)),
-            hover_opacity: AnimatedProperty::new(StandardAnimation::initialized(
-                0., duration, EaseInOut,
-            )),
-        };
-
-        let node = tree
-            .new_with_children(
-                Style {
-                    size: length(32.),
-                    justify_content: Some(AlignContent::Center),
-                    align_items: Some(AlignItems::Center),
-                    ..Default::default()
-                },
-                &[icon],
-            )
-            .unwrap();
-
-        tree.set_node_context(node, Some(Box::new(this))).unwrap();
-
-        node
-    }
 }
 
 impl EventTarget for ToolboxItem {
@@ -150,12 +119,43 @@ impl EventTarget for ToolboxItem {
     }
 }
 
-impl Element for ToolboxItem {
+impl Node for ToolboxItem {
     fn layout(&self) -> &Layout {
         &self.layout
     }
 
     fn layout_mut(&mut self) -> &mut Layout {
         &mut self.layout
+    }
+}
+
+impl ElementWithProps for ToolboxItem {
+    type Props = Tool;
+
+    fn setup(tree: &mut Tree, ctx: &mut EventContext, tool_type: Tool) -> NodeId {
+        let duration = Duration::from_millis(50);
+
+        tree.add_element(
+            ctx,
+            Style {
+                size: length(32.),
+                justify_content: Some(AlignContent::Center),
+                align_items: Some(AlignItems::Center),
+                ..Default::default()
+            },
+            Some(vec![ToolboxItemIcon::create(ToolboxItemIconProps {
+                tool: tool_type,
+                size: 20.,
+            })]),
+            |_, _| Self {
+                layout: Default::default(),
+                tool_type,
+                hovered: false,
+                background: AnimatedProperty::new(StandardAnimation::new(duration, EaseInOut)),
+                hover_opacity: AnimatedProperty::new(StandardAnimation::initialized(
+                    0., duration, EaseInOut,
+                )),
+            },
+        )
     }
 }

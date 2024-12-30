@@ -4,8 +4,9 @@ use super::{
         traits::Draw,
     },
     toolbox_item::Tool,
-    Element,
+    Node,
 };
+use crate::elements::node::ElementWithProps;
 use crate::{
     animations::{
         animated_property::AnimatedProperty,
@@ -40,28 +41,10 @@ pub struct ToolboxItemIcon {
     tool_type: Tool,
 }
 
-impl ToolboxItemIcon {
-    pub fn setup(tree: &mut Tree, _: &mut EventContext, tool_type: Tool, size: f32) -> NodeId {
-        let this = Self {
-            layout: Default::default(),
-
-            icon: get_icon(tool_type),
-            color: AnimatedProperty::new(StandardAnimation::new(
-                Duration::from_millis(100),
-                EaseInOut,
-            )),
-            tool_type,
-        };
-
-        tree.new_leaf_with_context(
-            Style {
-                size: length(size),
-                ..Default::default()
-            },
-            Box::new(this),
-        )
-        .unwrap()
-    }
+#[derive(PartialEq)]
+pub struct ToolboxItemIconProps {
+    pub tool: Tool,
+    pub size: f32,
 }
 
 impl EventTarget for ToolboxItemIcon {
@@ -90,12 +73,37 @@ impl EventTarget for ToolboxItemIcon {
     }
 }
 
-impl Element for ToolboxItemIcon {
+impl Node for ToolboxItemIcon {
     fn layout(&self) -> &Layout {
         &self.layout
     }
 
     fn layout_mut(&mut self) -> &mut Layout {
         &mut self.layout
+    }
+}
+
+impl ElementWithProps for ToolboxItemIcon {
+    type Props = ToolboxItemIconProps;
+
+    fn setup(tree: &mut Tree, ctx: &mut EventContext, props: ToolboxItemIconProps) -> NodeId {
+        tree.add_element(
+            ctx,
+            Style {
+                size: length(props.size),
+                ..Default::default()
+            },
+            None,
+            |_, _| Self {
+                layout: Default::default(),
+
+                icon: get_icon(props.tool),
+                color: AnimatedProperty::new(StandardAnimation::new(
+                    Duration::from_millis(100),
+                    EaseInOut,
+                )),
+                tool_type: props.tool,
+            },
+        )
     }
 }

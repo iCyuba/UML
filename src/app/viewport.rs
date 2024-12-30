@@ -1,5 +1,6 @@
 use super::context::EventContext;
 use super::Tree;
+use crate::elements::node::Element;
 use crate::elements::sidebar::Sidebar;
 use crate::elements::tooltip::Tooltip;
 use crate::elements::{toolbox::Toolbox, workspace::Workspace};
