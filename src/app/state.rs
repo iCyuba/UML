@@ -1,5 +1,6 @@
 use super::{AppUserEvent, Tree};
 use crate::data::project::EntityKey;
+use crate::elements::sidebar::SidebarState;
 use crate::elements::toolbox_item::Tool;
 use crate::elements::tooltip::TooltipState;
 use crate::geometry::Point;
@@ -31,6 +32,9 @@ pub struct State {
     pub tool: Tool,
     pub selected_entity: Option<EntityKey>,
     pub tooltip_state: Option<TooltipState>,
+
+    // Individual elements' state
+    pub sidebar: SidebarState,
 }
 
 impl State {
@@ -53,6 +57,8 @@ impl State {
             tool: Tool::Select,
             tooltip_state: None,
             selected_entity: None,
+
+            sidebar: <_>::default(),
         }
     }
 

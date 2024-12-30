@@ -218,6 +218,9 @@ impl EventTarget for Tree {
 
                 element.update(ctx);
 
+                // This is to check if the element modified it's layout
+                layout = *element.layout();
+
                 // Store the rect for hover detection
                 tree.map.push((Rect::from(layout), node));
             }

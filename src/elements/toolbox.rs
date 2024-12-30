@@ -92,7 +92,11 @@ impl Element for Toolbox {
                 ToolboxItem::create(Tool::Entity),
                 ToolboxItem::create(Tool::Relation),
             ]),
-            |_, _| Self(Layout::new()),
+            |node_id, ctx| {
+                ctx.state.key_listeners.insert(node_id);
+
+                Self(Layout::new())
+            },
         )
     }
 }

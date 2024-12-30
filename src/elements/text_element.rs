@@ -64,9 +64,9 @@ impl Node for TextElement {
         ctx: &mut EventContext,
     ) -> taffy::Size<f32> {
         let text = self.props.text.as_ref()(&GetterContext {
-            state: &ctx.state,
-            project: &ctx.project,
-            c: &ctx.c,
+            state: ctx.state,
+            project: ctx.project,
+            c: ctx.c,
         });
 
         let size = Text::measure(&text, self.props.size, self.props.font);

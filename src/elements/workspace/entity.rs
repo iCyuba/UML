@@ -177,26 +177,11 @@ impl Item for Entity {
         }
     }
 
-    fn on_mousedown(&mut self, state: &mut State, _: MouseButton) -> bool {
+    fn on_mouseup(&mut self, state: &mut State, _: MouseButton) -> bool {
         state.selected_entity = Some(self.key);
         state.request_redraw();
+
         true
-    }
-
-    fn on_mousemove(&mut self, _: &mut State, _: Point) -> bool {
-        false
-    }
-
-    fn on_mouseup(&mut self, _: &mut State, _: MouseButton) -> bool {
-        false
-    }
-
-    fn on_mouseenter(&mut self, _: &mut State) -> bool {
-        false
-    }
-
-    fn on_mouseleave(&mut self, _: &mut State) -> bool {
-        false
     }
 }
 

@@ -253,6 +253,7 @@ impl EventTarget for Workspace {
         if !Self::entity_mut(ctx.project, self.hovered, |entity| {
             if left && ctx.state.tool == Tool::Select {
                 self.move_start_point = Some(point);
+                entity.data.move_pos = Some(Vec2::ZERO);
             }
 
             entity.on_mousedown(ctx.state, button)
@@ -275,7 +276,7 @@ impl EventTarget for Workspace {
         }
 
         // Move the selected entity to the top
-        if let Some(entity) = ctx.state.selected_entity {
+        if let Some(entity) = self.hovered {
             ctx.project.ordered_entities.retain(|&k| k != entity);
             ctx.project.ordered_entities.push(entity);
         }
@@ -295,7 +296,7 @@ impl EventTarget for Workspace {
         if let Some(old) = self.move_start_point {
             let diff = self.cursor_to_point(ctx.state.cursor) - old;
 
-            if Self::entity_mut(ctx.project, ctx.state.selected_entity, |entity| {
+            if Self::entity_mut(ctx.project, self.hovered, |entity| {
                 entity.data.move_pos = Some(diff);
                 ctx.state.request_redraw();
 
