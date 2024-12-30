@@ -4,6 +4,7 @@ use super::{
     viewport::Viewport,
     EventTarget,
 };
+use crate::elements::node::CurriedSetup;
 use crate::elements::tooltip::TooltipState;
 use crate::elements::Node;
 use crate::{
@@ -156,8 +157,8 @@ impl Tree {
         &mut self,
         ctx: &mut EventContext,
         style: Style,
-        children: Option<Vec<Box<dyn FnOnce(&mut Tree, &mut EventContext) -> NodeId>>>,
-        mut this: impl FnMut(NodeId, &mut EventContext) -> T,
+        children: Option<Vec<Box<CurriedSetup>>>,
+        this: impl FnOnce(NodeId, &mut EventContext) -> T,
     ) -> NodeId
     where
         T: Node + 'static,
@@ -173,8 +174,7 @@ impl Tree {
         })
         .unwrap();
 
-        self.taffy_tree
-            .set_node_context(node_id, Some(Box::new(this(node_id, ctx))))
+        self.set_node_context(node_id, Some(Box::new(this(node_id, ctx))))
             .unwrap();
 
         node_id

@@ -14,35 +14,23 @@ pub type EventContext<'a, 'b> = Context<&'a mut Project, &'a mut State, &'a Canv
 pub type RenderContext<'a, 'b> = Context<&'a Project, &'a State, &'a mut Canvas>;
 pub type GetterContext<'a, 'b> = Context<&'a Project, &'a State, &'a Canvas>;
 
-impl<'a, 'b> From<MutContext<'a, 'b>> for EventContext<'a, 'b> {
-    fn from(ctx: MutContext<'a, 'b>) -> Self {
-        Self {
-            project: ctx.project,
-            state: ctx.state,
-            c: ctx.c,
+macro_rules! impl_from_mutcontext {
+    ($target:ident) => {
+        impl<'a, 'b> From<MutContext<'a, 'b>> for $target<'a, 'b> {
+            fn from(ctx: MutContext<'a, 'b>) -> Self {
+                Self {
+                    project: ctx.project,
+                    state: ctx.state,
+                    c: ctx.c,
+                }
+            }
         }
-    }
+    };
 }
 
-impl<'a, 'b> From<MutContext<'a, 'b>> for RenderContext<'a, 'b> {
-    fn from(ctx: MutContext<'a, 'b>) -> Self {
-        Self {
-            project: ctx.project,
-            state: ctx.state,
-            c: ctx.c,
-        }
-    }
-}
-
-impl<'a, 'b> From<MutContext<'a, 'b>> for GetterContext<'a, 'b> {
-    fn from(ctx: MutContext<'a, 'b>) -> Self {
-        Self {
-            project: ctx.project,
-            state: ctx.state,
-            c: ctx.c,
-        }
-    }
-}
+impl_from_mutcontext!(EventContext);
+impl_from_mutcontext!(RenderContext);
+impl_from_mutcontext!(GetterContext);
 
 macro_rules! ctx {
     // Expects a mutable reference to App

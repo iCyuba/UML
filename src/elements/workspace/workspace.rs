@@ -96,6 +96,7 @@ impl Workspace {
         }
     }
 
+    /// Modifies entity based on callback
     fn entity_mut(
         project: &mut Project,
         entity: Option<EntityKey>,
