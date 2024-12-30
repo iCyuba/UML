@@ -57,14 +57,31 @@ impl Tree {
             .map(|(_, node)| *node)
     }
 
-    pub fn compute_layout(&mut self, (width, height): (u32, u32), scale: f32) {
+    pub fn compute_layout(
+        &mut self,
+        (width, height): (u32, u32),
+        scale: f32,
+        ctx: &mut EventContext,
+    ) {
         // Apply the scale
         let size = Size {
             width: AvailableSpace::Definite(width as f32 / scale),
             height: AvailableSpace::Definite(height as f32 / scale),
         };
 
-        self.taffy_tree.compute_layout(self.root, size).unwrap();
+        self.taffy_tree
+            .compute_layout_with_measure(
+                self.root,
+                size,
+                |known_dimensions, available_space, _, node_context, style| {
+                    if let Some(node) = node_context {
+                        node.measure(known_dimensions, available_space, style, ctx)
+                    } else {
+                        Size::default()
+                    }
+                },
+            )
+            .unwrap();
     }
 
     /// Get the lowest common ancestor of two nodes.
@@ -213,7 +230,7 @@ impl EventTarget for Tree {
         self.map.clear();
 
         // Update layout
-        self.compute_layout(ctx.c.size(), ctx.c.scale() as f32);
+        self.compute_layout(ctx.c.size(), ctx.c.scale() as f32, ctx);
 
         update_children(self.root, self, ctx, Default::default());
     }

@@ -1,19 +1,19 @@
 use super::{
+    node::ElementWithProps,
     primitives::{
         fancy_box::{BorderOptions, FancyBox, ShadowOptions},
         traits::Draw,
     },
-    text_node::TextNode,
+    text_element::{TextElement, TextElementProps},
     Node,
 };
 use crate::{
-    elements::node::Element,
     app::{
         context::{EventContext, RenderContext},
         EventTarget, Tree,
     },
-    data::project::EntityKey,
-    presentation::fonts
+    elements::node::Element,
+    presentation::fonts,
 };
 use taffy::{
     prelude::{auto, length},
@@ -23,66 +23,10 @@ use taffy::{
 };
 
 pub struct Sidebar {
-    node_id: NodeId,
     layout: Layout,
-
-    entity: Option<EntityKey>,
-}
-
-impl Sidebar {
-    fn remove_children(&self, ctx: &mut EventContext) {
-        let node_id = self.node_id;
-
-        ctx.state.modify_tree(move |tree| {
-            tree.children(node_id)
-                .unwrap()
-                .into_iter()
-                .for_each(|child| {
-                    tree.remove(child).unwrap();
-                });
-        });
-    }
-
-    fn update_content(&mut self, ctx: &mut EventContext, key: EntityKey) {
-        let parent = self.node_id;
-        let entity = &ctx.project.entities[key];
-        let name = entity.name.clone();
-        let color = ctx.c.colors().workspace_text;
-
-        if self.entity.is_some() {
-            self.remove_children(ctx);
-        }
-
-        ctx.state.modify_tree(move |tree| {
-            let title = TextNode::setup(
-                tree,
-                name,
-                24.,
-                fonts::jbmono_regular(),
-                color,
-                Style::DEFAULT,
-            );
-
-            tree.add_child(parent, title).unwrap();
-        });
-    }
 }
 
 impl EventTarget for Sidebar {
-    fn update(&mut self, ctx: &mut EventContext) {
-        if self.entity == ctx.state.selected_entity {
-            return;
-        }
-
-        if let Some(key) = ctx.state.selected_entity {
-            self.update_content(ctx, key);
-        } else {
-            self.remove_children(ctx);
-        }
-
-        self.entity = ctx.state.selected_entity;
-    }
-
     fn render(&self, RenderContext { c, state, .. }: &mut RenderContext) {
         if state.selected_entity.is_none() {
             return;
@@ -132,11 +76,20 @@ impl Element for Sidebar {
                 },
                 ..Default::default()
             },
-            None,
-            |node_id, _| Self {
-                node_id,
+            Some(vec![TextElement::create(TextElementProps {
+                text: Box::new(|ctx| {
+                    if let Some(selected_entity) = ctx.state.selected_entity {
+                        let entity = ctx.project.entities.get(selected_entity).unwrap();
+                        entity.name.clone()
+                    } else {
+                        "".to_string()
+                    }
+                }),
+                size: 24.,
+                font: fonts::jbmono_bold(),
+            })]),
+            |_, _| Self {
                 layout: Default::default(),
-                entity: Default::default(),
             },
         )
     }

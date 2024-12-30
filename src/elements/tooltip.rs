@@ -93,7 +93,7 @@ impl EventTarget for Tooltip {
         {
             let font = fonts::inter_regular();
 
-            let text_size = Text::measure(text, Tooltip::FONT_SIZE, font).size;
+            let text_size = Text::measure(text, Tooltip::FONT_SIZE, font);
 
             const MARGIN: f64 = Tooltip::FONT_SIZE / 2.;
             const PADDING: Size = Size::new(Tooltip::FONT_SIZE, Tooltip::FONT_SIZE / 2.);

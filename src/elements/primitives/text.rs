@@ -2,7 +2,7 @@
 
 use crate::app::renderer::Canvas;
 use crate::elements::primitives::traits::Draw;
-use crate::geometry::Rect;
+use crate::geometry::{Rect, Size};
 use crate::presentation::FontResource;
 use vello::kurbo::Affine;
 use vello::peniko::{BrushRef, Fill, StyleRef};
@@ -40,7 +40,7 @@ impl<'a> Text<'a> {
         }
     }
 
-    pub fn measure(text: &str, size: f64, font: &FontResource) -> Rect {
+    pub fn measure(text: &str, size: f64, font: &FontResource) -> Size {
         let metrics = font.metrics(size as f32);
         let width = text
             .chars()
@@ -51,12 +51,16 @@ impl<'a> Text<'a> {
             })
             .sum::<f32>();
 
-        Rect::new((0., 0.), (width as f64, size * 1.2))
+        Size::new(width as f64, size * 1.2)
     }
 }
 
 impl Draw for Text<'_> {
     fn draw(&self, c: &mut Canvas) {
+        if self.text.is_empty() {
+            return;
+        }
+
         let scale = c.scale();
         let size = self.size * scale;
 

@@ -88,14 +88,14 @@ impl Item for Entity {
 
         // Name
         let name = Text::measure(&self.name, 16., title_font(self));
-        size.x = size.x.max(name.size.x);
-        size.y += name.size.y + 8.; // 8px gap
+        size.x = size.x.max(name.x);
+        size.y += name.y + 8.; // 8px gap
 
         // Attributes
         for (name, attr) in self.attributes.iter() {
             let attr = Text::measure(&attr_to_string(name, attr), 12., fonts::jbmono_regular());
-            size.x = size.x.max(attr.size.x);
-            size.y += attr.size.y + 4.; // 4px gap
+            size.x = size.x.max(attr.x);
+            size.y += attr.y + 4.; // 4px gap
         }
 
         // Padding

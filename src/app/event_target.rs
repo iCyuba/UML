@@ -16,6 +16,8 @@ macro_rules! noop {
     };
 }
 
+pub(crate) use noop;
+
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct WheelEvent {
     pub delta: Vec2,
