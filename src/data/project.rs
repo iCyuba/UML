@@ -14,6 +14,8 @@ pub struct Project {
     pub name: String,
 
     pub entities: SlotMap<EntityKey, Entity>,
+    // Used for keeping track of the order in which entities are displayed on the screen
+    pub ordered_entities: Vec<EntityKey>,
     pub connections: SlotMap<ConnectionKey, Connection>,
 }
 
@@ -23,12 +25,14 @@ impl Project {
             name,
 
             entities: SlotMap::with_key(),
+            ordered_entities: Vec::new(),
             connections: SlotMap::with_key(),
         }
     }
 
     pub fn add_entity(&mut self, entity: Entity) -> EntityKey {
         self.entities.insert_with_key(|key| {
+            self.ordered_entities.push(key);
             let mut entity = entity;
             entity.key = key;
             entity
@@ -36,6 +40,7 @@ impl Project {
     }
 
     pub fn remove_entity(&mut self, key: EntityKey) {
+        self.ordered_entities.retain(|&k| k != key);
         let entity = self.entities.remove(key).unwrap();
 
         for connection in entity.connections {

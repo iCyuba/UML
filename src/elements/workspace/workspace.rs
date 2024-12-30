@@ -113,12 +113,14 @@ impl Workspace {
         (cursor + *self.position) / *self.zoom
     }
 
+    /// Finds the highest (z-order) entity located at the given point
     pub fn entity_at_point(&self, project: &Project, point: Point) -> Option<EntityKey> {
         project
-            .entities
+            .ordered_entities
             .iter()
-            .find(|(_, e)| (*e.data.rect * *self.zoom).contains(point))
-            .map(|(k, _)| k)
+            .rev()
+            .find(|&key| (*project.entities[*key].data.rect * *self.zoom).contains(point))
+            .copied()
     }
 }
 
@@ -180,8 +182,8 @@ impl EventTarget for Workspace {
         // Render workspace items
 
         // Entities
-        for (_, entity) in project.entities.iter() {
-            entity.render(c, state, self);
+        for entity in project.ordered_entities.iter() {
+            project.entities[*entity].render(c, state, self);
         }
 
         // Coords
@@ -252,6 +254,12 @@ impl EventTarget for Workspace {
         }) {
             ctx.state.selected_entity = None;
             ctx.state.request_redraw();
+        }
+        
+        // Move the selected entity to the top
+        if let Some(entity) = ctx.state.selected_entity {
+            ctx.project.ordered_entities.retain(|&k| k != entity);
+            ctx.project.ordered_entities.push(entity);
         }
 
         true
@@ -328,7 +336,9 @@ impl EventTarget for Workspace {
                 let pos = rect.center() / 32.;
 
                 entity.position = (pos.x.floor() as i32, pos.y.floor() as i32);
-                entity.update();
+                if entity.update() {
+                    ctx.state.request_redraw();
+                }
             }
 
             entity.on_mouseup(ctx.state, mb)
