@@ -36,6 +36,19 @@ pub struct EntityItemData {
     pub move_pos: Option<Point>,
 }
 
+impl EntityItemData {
+    pub fn new(pos: (i32, i32)) -> Self {
+        Self {
+            rect: AnimatedProperty::new(StandardAnimation::initialized(
+                Rect::ZERO.translate(pos) * Workspace::GRID_SIZE,
+                Duration::from_millis(100),
+                Easing::EaseOut,
+            )),
+            ..Default::default()
+        }
+    }
+}
+
 impl Default for EntityItemData {
     fn default() -> Self {
         Self {
@@ -70,7 +83,7 @@ impl Item for Entity {
         });
 
         // Compute the entity's position and size
-        let mut position = Point::new(self.position.0 as f64, self.position.1 as f64) * 32.;
+        let mut position: Point = Point::from(self.position) * Workspace::GRID_SIZE;
         let mut size = Size::ZERO;
 
         // Name
@@ -86,11 +99,9 @@ impl Item for Entity {
         }
 
         // Padding
-        size += (32., 32.);
+        size += (Workspace::GRID_SIZE, Workspace::GRID_SIZE);
 
-        // Add margin to the position, so it's centered in the 32px grid
-        position.x += (32. - size.x) / 2.;
-        position.y += (32. - size.y) / 2.;
+        position -= size / 2.;
 
         let rect = Rect::new(position, size);
         self.data.rect.set(rect);

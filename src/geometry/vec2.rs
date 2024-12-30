@@ -160,6 +160,21 @@ impl From<Vec2> for (f64, f64) {
     }
 }
 
+impl From<(i32, i32)> for Vec2 {
+    fn from(value: (i32, i32)) -> Self {
+        Self {
+            x: value.0 as f64,
+            y: value.1 as f64,
+        }
+    }
+}
+
+impl From<Vec2> for (i32, i32) {
+    fn from(point: Vec2) -> Self {
+        (point.x.round() as i32, point.y.round() as i32)
+    }
+}
+
 impl From<PhysicalPosition<f64>> for Vec2 {
     fn from(value: PhysicalPosition<f64>) -> Self {
         Self {

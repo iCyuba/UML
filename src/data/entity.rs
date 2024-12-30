@@ -102,7 +102,7 @@ pub struct Entity {
 }
 
 impl Entity {
-    pub fn new(name: String, ty: EntityType) -> Self {
+    pub fn new(name: String, ty: EntityType, pos: (i32, i32)) -> Self {
         Entity {
             key: Default::default(),
             name,
@@ -112,8 +112,8 @@ impl Entity {
             implements: vec![],
             attributes: HashMap::new(),
             connections: HashSet::new(),
-            position: (0, 0),
-            data: Default::default(),
+            position: pos,
+            data: EntityItemData::new(pos),
         }
     }
 }

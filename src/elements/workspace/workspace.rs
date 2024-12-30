@@ -1,4 +1,5 @@
 use super::item::Item;
+use crate::data::entity::EntityType;
 use crate::elements::node::Element;
 use crate::{
     animations::{animated_property::AnimatedProperty, delta_animation::DeltaAnimation},
@@ -48,6 +49,7 @@ pub struct Workspace {
 impl Workspace {
     const ZOOM_MIN: f64 = 0.2;
     const ZOOM_MAX: f64 = 1.5;
+    pub const GRID_SIZE: f64 = 32.;
 
     const STYLE: Style = {
         let mut style = Style::DEFAULT;
@@ -153,13 +155,15 @@ impl EventTarget for Workspace {
 
             let scale_zoom = scale * *self.zoom;
 
-            let gap = 32.0 * scale_zoom;
+            let gap = Self::GRID_SIZE * scale_zoom;
             let position = *self.position * scale;
 
-            let mut x = 0.;
-            let mut y = 0.;
+            let mut x = -gap;
+            let mut y = -gap;
 
-            let transform = Affine::translate(Point::new(gap - position.x, gap - position.y) % gap);
+            // Grid is offset by half a grid cell to simplify rendering items in the workspace
+            let offset = Point::new(gap, gap) / 2.;
+            let transform = Affine::translate(-position % gap + offset);
 
             while x < width as f64 {
                 while y < height as f64 {
@@ -233,6 +237,7 @@ impl EventTarget for Workspace {
     fn on_mousedown(&mut self, ctx: &mut EventContext, button: MouseButton) -> bool {
         let middle = button == MouseButton::Middle;
         let left = button == MouseButton::Left;
+        let point = self.cursor_to_point(ctx.state.cursor);
 
         if middle {
             self.select_hand(ctx.state);
@@ -247,7 +252,7 @@ impl EventTarget for Workspace {
 
         if !Self::entity_mut(ctx.project, self.hovered, |entity| {
             if left && ctx.state.tool == Tool::Select {
-                self.move_start_point = Some(self.cursor_to_point(ctx.state.cursor));
+                self.move_start_point = Some(point);
             }
 
             entity.on_mousedown(ctx.state, button)
@@ -255,7 +260,20 @@ impl EventTarget for Workspace {
             ctx.state.selected_entity = None;
             ctx.state.request_redraw();
         }
-        
+
+        if left && ctx.state.tool == Tool::Entity {
+            let entity = Entity::new(
+                "Empty".to_string(),
+                EntityType::Class,
+                (point / Workspace::GRID_SIZE).into(),
+            );
+            let key = ctx.project.add_entity(entity);
+
+            ctx.state.selected_entity = Some(key);
+            ctx.project.ordered_entities.push(key);
+            ctx.state.request_redraw();
+        }
+
         // Move the selected entity to the top
         if let Some(entity) = ctx.state.selected_entity {
             ctx.project.ordered_entities.retain(|&k| k != entity);
@@ -333,9 +351,7 @@ impl EventTarget for Workspace {
                 let rect = entity.data.rect.translate(pos);
                 entity.data.rect.reset(rect);
 
-                let pos = rect.center() / 32.;
-
-                entity.position = (pos.x.floor() as i32, pos.y.floor() as i32);
+                entity.position = (rect.center() / Workspace::GRID_SIZE).into();
                 if entity.update() {
                     ctx.state.request_redraw();
                 }

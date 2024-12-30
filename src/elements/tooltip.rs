@@ -159,7 +159,7 @@ impl EventTarget for Tooltip {
 
             Text::new(
                 text,
-                tooltip + PADDING,
+                tooltip.translate(PADDING),
                 Tooltip::FONT_SIZE,
                 font,
                 c.colors().workspace_text.multiply_alpha(*self.opacity),

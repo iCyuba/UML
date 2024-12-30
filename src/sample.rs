@@ -6,9 +6,7 @@ use crate::data::{
 pub fn project() -> Project {
     let mut project = Project::new("Test".to_string());
 
-    let mut basic = Entity::new("Basic".to_string(), EntityType::Class);
-
-    basic.position = (0, 4);
+    let mut basic = Entity::new("Basic".to_string(), EntityType::Class, (0, 4));
 
     basic.attributes.insert(
         "id".to_string(),
@@ -32,7 +30,7 @@ pub fn project() -> Project {
     );
 
     project.add_entity(basic);
-    project.add_entity(Entity::new("Empty".to_string(), EntityType::AbstractClass));
+    project.add_entity(Entity::new("Empty".to_string(), EntityType::AbstractClass, (0, 0)));
 
     project
 }

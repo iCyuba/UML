@@ -80,8 +80,8 @@ impl FancyBox {
             }
         });
 
-        let shadow =
-            shadow_options.map(|opts| SimpleBox::new(rect + opts.offset, offset_radii, opts.color));
+        let shadow = shadow_options
+            .map(|opts| SimpleBox::new(rect.translate(opts.offset), offset_radii, opts.color));
 
         Self {
             content,
