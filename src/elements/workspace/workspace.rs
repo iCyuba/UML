@@ -37,6 +37,11 @@ pub struct Workspace {
 
     previous_tool: Option<Tool>,
     hovered: Option<EntityKey>,
+
+    /// The point at which the mouse was pressed down
+    ///
+    /// Used for moving entities
+    move_start_point: Option<Point>,
 }
 
 impl Workspace {
@@ -62,6 +67,7 @@ impl Workspace {
 
             previous_tool: None,
             hovered: None,
+            move_start_point: None,
         };
 
         tree.set_node_context(node_id, Some(Box::new(this)))
@@ -111,17 +117,20 @@ impl Workspace {
         }
     }
 
-    fn entity_mut(
-        &mut self,
-        project: &mut Project,
+    fn entity_mut<'p>(
+        project: &'p mut Project,
         entity: Option<EntityKey>,
-        f: impl FnOnce(&mut Entity) -> bool,
+        f: impl FnOnce(&'p mut Entity) -> bool,
     ) -> bool {
         if let Some(entity) = entity.and_then(|key| project.entities.get_mut(key)) {
             return f(entity);
         }
 
         false
+    }
+
+    fn cursor_to_point(&self, cursor: Point) -> Point {
+        (cursor + *self.position) / *self.zoom
     }
 
     pub fn entity_at_point(&self, project: &Project, point: Point) -> Option<EntityKey> {
@@ -219,18 +228,6 @@ impl EventTarget for Workspace {
         }
     }
 
-    fn on_click(&mut self, ctx: &mut EventContext) -> bool {
-        ctx.state.screenshot();
-
-        if let Some(selection) = ctx.state.selected_entity {
-            let entity = ctx.project.entities.get_mut(selection).unwrap();
-            entity.name += "!";
-            ctx.state.request_redraw();
-        }
-
-        true
-    }
-
     fn on_keydown(&mut self, ctx: &mut EventContext, event: KeyEvent) -> bool {
         if matches!(event.logical_key, Key::Named(NamedKey::Space)) {
             self.select_hand(ctx.state);
@@ -264,7 +261,11 @@ impl EventTarget for Workspace {
             return true;
         }
 
-        if !self.entity_mut(ctx.project, self.hovered, |entity| {
+        if !Self::entity_mut(ctx.project, self.hovered, |entity| {
+            if left && ctx.state.tool == Tool::Select {
+                self.move_start_point = Some(self.cursor_to_point(ctx.state.cursor));
+            }
+
             entity.on_mousedown(ctx.state, button)
         }) {
             ctx.state.selected_entity = None;
@@ -283,13 +284,26 @@ impl EventTarget for Workspace {
             return true;
         }
 
+        if let Some(old) = self.move_start_point {
+            let diff = self.cursor_to_point(ctx.state.cursor) - old;
+
+            if Self::entity_mut(ctx.project, ctx.state.selected_entity, |entity| {
+                entity.data.move_pos = Some(diff);
+                ctx.state.request_redraw();
+
+                true
+            }) {
+                return true;
+            }
+        }
+
         let entity = self.entity_at_point(ctx.project, cursor + *self.position);
         if entity != self.hovered {
-            self.entity_mut(ctx.project, self.hovered, |entity| {
+            Self::entity_mut(ctx.project, self.hovered, |entity| {
                 entity.on_mouseleave(ctx.state)
             });
 
-            self.entity_mut(ctx.project, entity, |entity| {
+            Self::entity_mut(ctx.project, entity, |entity| {
                 entity.on_mouseenter(ctx.state)
             });
 
@@ -298,12 +312,14 @@ impl EventTarget for Workspace {
             self.hovered = entity;
         }
 
-        self.entity_mut(ctx.project, self.hovered, |entity| {
+        Self::entity_mut(ctx.project, self.hovered, |entity| {
             entity.on_mousemove(ctx.state, cursor)
         })
     }
 
     fn on_mouseup(&mut self, ctx: &mut EventContext, mb: MouseButton) -> bool {
+        self.move_start_point = None;
+
         let left = ctx.state.mouse_buttons.contains(&MouseButton::Left);
         let middle = ctx.state.mouse_buttons.contains(&MouseButton::Middle);
         let space = ctx.state.keys.contains(&NamedKey::Space.into());
@@ -319,7 +335,20 @@ impl EventTarget for Workspace {
             return true;
         }
 
-        self.entity_mut(ctx.project, self.hovered, |entity| {
+        Self::entity_mut(ctx.project, self.hovered, |entity| {
+            // Snap the entity to the grid
+            let pos = entity.data.move_pos.take();
+            if let Some(pos) = pos {
+                // Set the rect origin for a smooth transition
+                let rect = entity.data.rect.translate(pos);
+                entity.data.rect.reset(rect);
+
+                let pos = rect.center() / 32.;
+
+                entity.position = (pos.x.floor() as i32, pos.y.floor() as i32);
+                entity.update();
+            }
+
             entity.on_mouseup(ctx.state, mb)
         })
     }

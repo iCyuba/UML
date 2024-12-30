@@ -24,10 +24,16 @@ use winit::event::MouseButton;
 
 #[derive(Debug, AnimatedElement)]
 pub struct EntityItemData {
-    pub rect: AnimatedProperty<StandardAnimation<Rect>>,
-    pub selection_outline: AnimatedProperty<StandardAnimation<f64>>,
+    pub(super) rect: AnimatedProperty<StandardAnimation<Rect>>,
+    pub(super) selection_outline: AnimatedProperty<StandardAnimation<f64>>,
+    pub(super) opacity: AnimatedProperty<StandardAnimation<f32>>,
 
     pub is_selected: bool,
+
+    /// When moving, this will be used as the origin offset. (Only during rendering)
+    ///
+    /// This is to prevent a strange animation when moving the entity.
+    pub move_pos: Option<Point>,
 }
 
 impl Default for EntityItemData {
@@ -43,13 +49,26 @@ impl Default for EntityItemData {
                 Duration::from_millis(100),
                 Easing::EaseOut,
             )),
+            opacity: AnimatedProperty::new(StandardAnimation::initialized(
+                1.,
+                Duration::from_millis(100),
+                Easing::EaseOut,
+            )),
             is_selected: false,
+            move_pos: None,
         }
     }
 }
 
 impl Item for Entity {
     fn update(&mut self) -> bool {
+        // Set the opacity
+        self.data.opacity.set(if self.data.move_pos.is_some() {
+            0.75
+        } else {
+            1.
+        });
+
         // Compute the entity's position and size
         let mut position = Point::new(self.position.0 as f64, self.position.1 as f64) * 32.;
         let mut size = Size::ZERO;
@@ -88,23 +107,31 @@ impl Item for Entity {
         let pos = ws.position();
         let zoom = ws.zoom();
 
-        let rect = (*self.data.rect * zoom).translate(-pos);
+        // Offset the position if moving
+        let rect = self
+            .data
+            .rect
+            .translate(self.data.move_pos.unwrap_or_default());
+
+        let rect = (rect * zoom).translate(-pos);
+        let opacity = *self.data.opacity;
 
         // Background
         FancyBox::new(
             rect,
             taffy::Rect::length(2. * zoom as f32),
             8. * zoom,
-            c.colors().floating_background,
+            c.colors().floating_background.multiply_alpha(opacity),
             Some(BorderOptions {
                 color: Interpolate::interpolate(
                     &c.colors().border,
                     &c.colors().accent,
                     *self.data.selection_outline,
-                ),
+                )
+                .multiply_alpha(opacity),
             }),
             Some(ShadowOptions {
-                color: c.colors().drop_shadow,
+                color: c.colors().drop_shadow.multiply_alpha(opacity),
                 offset: (0., 1. * zoom).into(),
                 blur_radius: 5. * zoom,
             }),
@@ -119,7 +146,7 @@ impl Item for Entity {
             Rect::new(padded.origin, (padded.size.x, 16. * zoom)),
             16.0 * zoom,
             title_font(self),
-            c.colors().workspace_text,
+            c.colors().workspace_text.multiply_alpha(opacity),
         )
         .draw(c);
 
@@ -131,7 +158,7 @@ impl Item for Entity {
                 Rect::new(padded.origin + (0., y), (padded.size.x, 12. * zoom)),
                 12.0 * zoom,
                 fonts::jbmono_regular(),
-                c.colors().accent,
+                c.colors().accent.multiply_alpha(opacity),
             )
             .draw(c);
 
