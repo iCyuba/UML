@@ -15,7 +15,6 @@ use vello::{
     kurbo::{Affine, PathEl, Stroke},
     peniko::Fill,
 };
-use winit::event::MouseButton;
 
 // https://stackoverflow.com/questions/1734745/how-to-create-circle-with-b%C3%A9zier-curves
 const CONTROL_POINT_DISTANCE: f64 = 0.552284749831;
@@ -392,25 +391,5 @@ impl Item for Connection {
         let affine = Affine::scale(scale).then_translate((-pos).into());
 
         self.data.draw(c, affine);
-    }
-
-    fn on_mousedown(&mut self, _: &mut State, _: MouseButton) -> bool {
-        false
-    }
-
-    fn on_mousemove(&mut self, _: &mut State, _: Point) -> bool {
-        false
-    }
-
-    fn on_mouseup(&mut self, _: &mut State, _: MouseButton) -> bool {
-        false
-    }
-
-    fn on_mouseenter(&mut self, _: &mut State) -> bool {
-        false
-    }
-
-    fn on_mouseleave(&mut self, _: &mut State) -> bool {
-        false
     }
 }

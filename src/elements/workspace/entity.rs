@@ -20,7 +20,6 @@ use crate::{
 };
 use derive_macros::AnimatedElement;
 use std::time::Duration;
-use winit::event::MouseButton;
 
 #[derive(Debug, AnimatedElement)]
 pub struct EntityItemData {
@@ -175,13 +174,6 @@ impl Item for Entity {
 
             y += 16. * zoom;
         }
-    }
-
-    fn on_mouseup(&mut self, state: &mut State, _: MouseButton) -> bool {
-        state.selected_entity = Some(self.key);
-        state.request_redraw();
-
-        true
     }
 }
 

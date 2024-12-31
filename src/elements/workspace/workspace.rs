@@ -252,7 +252,7 @@ impl EventTarget for Workspace {
                 entity.data.move_pos = Some(Vec2::ZERO);
             }
 
-            entity.on_mousedown(ctx.state, button)
+            false
         }) {
             ctx.state.selected_entity = None;
             ctx.state.request_redraw();
@@ -312,20 +312,11 @@ impl EventTarget for Workspace {
 
         let entity = self.entity_at_point(ctx.project, cursor + *self.position);
         if entity != self.hovered {
-            ctx.project
-                .entity_mut(self.hovered, |entity| entity.on_mouseleave(ctx.state));
-
-            ctx.project
-                .entity_mut(entity, |entity| entity.on_mouseenter(ctx.state));
-
             ctx.state.request_cursor_update();
-
             self.hovered = entity;
         }
 
-        ctx.project.entity_mut(self.hovered, |entity| {
-            entity.on_mousemove(ctx.state, cursor)
-        })
+        false
     }
 
     fn on_mouseup(&mut self, ctx: &mut EventContext, _: MouseButton) -> bool {
@@ -359,6 +350,9 @@ impl EventTarget for Workspace {
                     ctx.state.request_redraw();
                 }
             }
+
+            ctx.state.selected_entity = Some(entity.key);
+            ctx.state.request_redraw();
 
             true
         }) {
