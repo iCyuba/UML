@@ -2,6 +2,7 @@ use super::context::EventContext;
 use super::Tree;
 use crate::elements::node::Element;
 use crate::elements::sidebar::Sidebar;
+use crate::elements::statusbar::Statusbar;
 use crate::elements::tooltip::Tooltip;
 use crate::elements::{toolbox::Toolbox, workspace::Workspace};
 use taffy::AlignContent::SpaceBetween;
@@ -24,12 +25,13 @@ impl Viewport {
     // Unlike elements, the viewport overrides an existing node (the root node) instead of creating a new one
     pub fn setup(tree: &mut Tree, ctx: &mut EventContext, node: NodeId) -> NodeId {
         let workspace = Workspace::setup(tree, ctx);
+        let statusbar = Statusbar::setup(tree, ctx);
         let toolbox = Toolbox::setup(tree, ctx);
         let tooltip = Tooltip::setup(tree, ctx);
         let sidebar = Sidebar::setup(tree, ctx);
 
         tree.set_style(node, Self::STYLE).unwrap();
-        tree.set_children(node, &[workspace, toolbox, sidebar, tooltip])
+        tree.set_children(node, &[workspace, statusbar, toolbox, sidebar, tooltip])
             .unwrap();
 
         node

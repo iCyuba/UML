@@ -388,7 +388,7 @@ impl Item for Connection {
         let pos = ws.position();
         let scale = c.scale() * ws.zoom() * Workspace::GRID_SIZE;
 
-        let affine = Affine::scale(scale).then_translate((-pos).into());
+        let affine = Affine::scale(scale).then_translate((-pos * c.scale()).into());
 
         self.data.draw(c, affine);
     }

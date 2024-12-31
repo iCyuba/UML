@@ -108,7 +108,11 @@ impl Item for Entity {
         // Animate the selection outline
         self.data
             .selection_outline
-            .set(if self.data.is_selected { 1. } else { 0. });
+            .set(if self.data.is_selected || self.data.move_pos.is_some() {
+                1.
+            } else {
+                0.
+            });
 
         self.data.animate()
     }

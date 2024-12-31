@@ -74,13 +74,27 @@ pub enum Attribute {
     ),
 }
 
-#[derive(Debug, Serialize, Deserialize, Default)]
+#[derive(Debug, Serialize, Deserialize, Default, Clone, Copy)]
 pub enum EntityType {
     #[default]
-    Class,
-    AbstractClass,
-    SealedClass,
-    Interface,
+    Class = 0,
+    AbstractClass = 1,
+    SealedClass = 2,
+    Interface = 3,
+}
+
+impl TryFrom<usize> for EntityType {
+    type Error = ();
+
+    fn try_from(value: usize) -> Result<Self, Self::Error> {
+        match value {
+            0 => Ok(EntityType::Class),
+            1 => Ok(EntityType::AbstractClass),
+            2 => Ok(EntityType::SealedClass),
+            3 => Ok(EntityType::Interface),
+            _ => Err(()),
+        }
+    }
 }
 
 impl Display for EntityType {

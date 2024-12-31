@@ -45,27 +45,18 @@ impl Element for SidebarType {
             ],
 
             getter: Box::new(|ctx| {
-                if let Some(entity) = sidebar_entity!(ctx => get) {
-                    match entity.ty {
-                        EntityType::Class => 0,
-                        EntityType::AbstractClass => 1,
-                        EntityType::SealedClass => 2,
-                        EntityType::Interface => 3,
-                    }
-                } else {
-                    0
-                }
+                sidebar_entity!(ctx => get)
+                    .map(|e| e.ty as usize)
+                    .unwrap_or(0)
             }),
 
             setter: Box::new(|ctx, index| {
+                let Ok(ty) = EntityType::try_from(index) else {
+                    return;
+                };
+
                 if let Some(entity) = sidebar_entity!(ctx => get_mut) {
-                    entity.ty = match index {
-                        0 => EntityType::Class,
-                        1 => EntityType::AbstractClass,
-                        2 => EntityType::SealedClass,
-                        3 => EntityType::Interface,
-                        _ => return,
-                    };
+                    entity.ty = ty;
                 }
             }),
         });

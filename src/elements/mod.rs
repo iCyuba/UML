@@ -2,6 +2,7 @@ pub mod node;
 pub mod primitives;
 pub mod segmented_control;
 pub mod sidebar;
+pub mod statusbar;
 pub mod text_element;
 pub mod toolbox;
 pub mod toolbox_item;

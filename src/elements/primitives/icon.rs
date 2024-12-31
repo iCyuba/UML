@@ -19,6 +19,9 @@ pub enum Symbol {
     Plus = b'I',
     Minus = b'J',
     Hashtag = b'K',
+    Load = b'L',
+    Save = b'M',
+    Screenshot = b'N',
 }
 
 impl From<Symbol> for char {

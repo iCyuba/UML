@@ -27,6 +27,8 @@ pub enum AppUserEvent {
     RequestTooltipUpdate,
     ModifyTree(Box<dyn FnOnce(&mut Tree)>),
     Screenshot,
+    Save,
+    Load,
 }
 
 impl fmt::Debug for AppUserEvent {
@@ -40,6 +42,8 @@ impl fmt::Debug for AppUserEvent {
             AppUserEvent::RequestTooltipUpdate => f.write_str("RequestTooltipUpdate"),
             AppUserEvent::ModifyTree(_) => f.write_str("ModifyTree"),
             AppUserEvent::Screenshot => f.write_str("Screenshot"),
+            AppUserEvent::Save => f.write_str("Save"),
+            AppUserEvent::Load => f.write_str("Load"),
         }
     }
 }
@@ -197,6 +201,14 @@ impl ApplicationHandler<AppUserEvent> for App<'_> {
                     .unwrap()
                     .write_all(&image)
                     .unwrap();
+            }
+            AppUserEvent::Save => {
+                let data = postcard::to_stdvec(&self.project).unwrap();
+                std::fs::write("project.bin", data).unwrap();
+            }
+            AppUserEvent::Load => {
+                let data = std::fs::read("project.bin").unwrap();
+                self.project = postcard::from_bytes(&data).unwrap();
             }
         }
     }

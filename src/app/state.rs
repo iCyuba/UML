@@ -107,6 +107,16 @@ impl State {
     pub fn screenshot(&self) {
         self.send_event(AppUserEvent::Screenshot);
     }
+
+    #[inline]
+    pub fn save(&self) {
+        self.send_event(AppUserEvent::Save);
+    }
+
+    #[inline]
+    pub fn load(&self) {
+        self.send_event(AppUserEvent::Load);
+    }
 }
 
 impl AsRef<State> for State {
