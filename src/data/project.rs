@@ -69,6 +69,36 @@ impl Project {
         self.entities[from].connections.remove(&key);
         self.entities[to].connections.remove(&key);
     }
+
+    /// Modifies connection based on callback
+    pub fn connection_mut(
+        &mut self,
+        connection: Option<ConnectionKey>,
+        f: impl FnOnce(&mut Connection) -> bool,
+    ) -> bool {
+        if let Some(connection) = connection.and_then(|key| self.connections.get_mut(key)) {
+            return f(connection);
+        }
+
+        false
+    }
+
+    /// Modifies entity based on callback
+    pub fn entity_mut(
+        &mut self,
+        entity: Option<EntityKey>,
+        f: impl FnOnce(&mut Entity) -> bool,
+    ) -> bool {
+        if let Some(entity) = entity.and_then(|key| self.entities.get_mut(key)) {
+            return f(entity);
+        }
+
+        false
+    }
+
+    pub fn get_entity_connections(&self, entity: EntityKey) -> Vec<ConnectionKey> {
+        self.entities[entity].connections.iter().copied().collect()
+    }
 }
 
 impl AsRef<Project> for Project {

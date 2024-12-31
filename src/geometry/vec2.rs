@@ -20,6 +20,39 @@ impl Vec2 {
     pub const fn new(x: f64, y: f64) -> Self {
         Self { x, y }
     }
+    
+    pub fn length (&self) -> f64 {
+        (self.x * self.x + self.y * self.y).sqrt()
+    }
+    
+    pub fn normalize(self) -> Self {
+        let length = self.length();
+        if length == 0. {
+            return self;
+        }
+        self / length
+    }
+    
+    pub fn floor(self) -> Self {
+        Self {
+            x: self.x.floor(),
+            y: self.y.floor(),
+        }
+    }
+    
+    pub fn ceil(self) -> Self {
+        Self {
+            x: self.x.ceil(),
+            y: self.y.ceil(),
+        }
+    }
+    
+    pub fn round(self) -> Self {
+        Self {
+            x: self.x.round(),
+            y: self.y.round(),
+        }
+    }
 }
 
 // Operations
@@ -171,7 +204,9 @@ impl From<(i32, i32)> for Vec2 {
 
 impl From<Vec2> for (i32, i32) {
     fn from(point: Vec2) -> Self {
-        (point.x.round() as i32, point.y.round() as i32)
+        let point = point.round();
+        
+        (point.x as i32, point.y as i32)
     }
 }
 

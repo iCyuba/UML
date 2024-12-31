@@ -2,6 +2,8 @@
 
 use super::project::{ConnectionKey, EntityKey};
 use crate::elements::workspace::entity::EntityItemData;
+use crate::elements::workspace::Workspace;
+use crate::geometry::Rect;
 use serde::{Deserialize, Serialize};
 use slotmap::{new_key_type, SlotMap};
 use std::{
@@ -115,6 +117,13 @@ pub struct Entity {
     pub data: EntityItemData,
 }
 
+pub enum TypeInUseError {
+    Generic,
+    Attribute(String),
+    Interface,
+    BaseType,
+}
+
 impl Entity {
     pub fn new(name: String, ty: EntityType, pos: (i32, i32)) -> Self {
         Entity {
@@ -130,16 +139,7 @@ impl Entity {
             data: EntityItemData::new(pos),
         }
     }
-}
 
-pub enum TypeInUseError {
-    Generic,
-    Attribute(String),
-    Interface,
-    BaseType,
-}
-
-impl Entity {
     pub fn add_generic(&mut self, name: String) -> InternalTypeKey {
         self.generics.insert(TypeArgument(name, None))
     }
@@ -177,5 +177,9 @@ impl Entity {
         }
 
         Ok(self.generics.remove(key))
+    }
+
+    pub(crate) fn get_rect(&self) -> Rect {
+        (*self.data.rect).translate(self.data.move_pos.unwrap_or_default()) / Workspace::GRID_SIZE
     }
 }

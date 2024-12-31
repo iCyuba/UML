@@ -1,6 +1,6 @@
 use super::{Point, Size, Vec2};
 use serde::{Deserialize, Serialize};
-use std::ops::Mul;
+use std::ops::{Div, Mul};
 use taffy::Layout;
 use vello::kurbo;
 
@@ -67,6 +67,17 @@ impl Mul<f64> for Rect {
         Self::Output {
             origin: self.origin * rhs,
             size: self.size * rhs,
+        }
+    }
+}
+
+impl Div<f64> for Rect {
+    type Output = Self;
+
+    fn div(self, rhs: f64) -> Self::Output {
+        Self::Output {
+            origin: self.origin / rhs,
+            size: self.size / rhs,
         }
     }
 }

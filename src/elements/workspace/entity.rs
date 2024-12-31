@@ -24,7 +24,7 @@ use winit::event::MouseButton;
 
 #[derive(Debug, AnimatedElement)]
 pub struct EntityItemData {
-    pub(super) rect: AnimatedProperty<StandardAnimation<Rect>>,
+    pub rect: AnimatedProperty<StandardAnimation<Rect>>,
     pub(super) selection_outline: AnimatedProperty<StandardAnimation<f64>>,
     pub(super) opacity: AnimatedProperty<StandardAnimation<f32>>,
 

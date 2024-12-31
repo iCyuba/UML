@@ -98,19 +98,6 @@ impl Workspace {
         }
     }
 
-    /// Modifies entity based on callback
-    fn entity_mut(
-        project: &mut Project,
-        entity: Option<EntityKey>,
-        f: impl FnOnce(&mut Entity) -> bool,
-    ) -> bool {
-        if let Some(entity) = entity.and_then(|key| project.entities.get_mut(key)) {
-            return f(entity);
-        }
-
-        false
-    }
-
     fn cursor_to_point(&self, cursor: Point) -> Point {
         (cursor + *self.position) / *self.zoom
     }
@@ -138,6 +125,10 @@ impl EventTarget for Workspace {
         for (key, entity) in ctx.project.entities.iter_mut() {
             entity.data.is_selected = selection == Some(key);
             redraw |= entity.update()
+        }
+
+        for (_, conn) in ctx.project.connections.iter_mut() {
+            redraw |= conn.update();
         }
 
         if redraw {
@@ -184,6 +175,11 @@ impl EventTarget for Workspace {
         }
 
         // Render workspace items
+
+        // Connections
+        for (_, conn) in project.connections.iter() {
+            conn.render(c, state, self)
+        }
 
         // Entities
         for entity in project.ordered_entities.iter() {
@@ -250,7 +246,7 @@ impl EventTarget for Workspace {
             return true;
         }
 
-        if !Self::entity_mut(ctx.project, self.hovered, |entity| {
+        if !ctx.project.entity_mut(self.hovered, |entity| {
             if left && ctx.state.tool == Tool::Select {
                 self.move_start_point = Some(point);
                 entity.data.move_pos = Some(Vec2::ZERO);
@@ -271,7 +267,6 @@ impl EventTarget for Workspace {
             let key = ctx.project.add_entity(entity);
 
             ctx.state.selected_entity = Some(key);
-            ctx.project.ordered_entities.push(key);
             ctx.state.request_redraw();
         }
 
@@ -294,39 +289,46 @@ impl EventTarget for Workspace {
         }
 
         if let Some(old) = self.move_start_point {
-            let diff = self.cursor_to_point(ctx.state.cursor) - old;
+            let cursor = self.cursor_to_point(ctx.state.cursor);
+            let diff = cursor - old;
 
-            if Self::entity_mut(ctx.project, self.hovered, |entity| {
+            // Move the selected entity
+            if ctx.project.entity_mut(self.hovered, |entity| {
                 entity.data.move_pos = Some(diff);
                 ctx.state.request_redraw();
 
                 true
             }) {
+                let key = self.hovered.unwrap();
+                let rect = ctx.project.entities[key].get_rect();
+
+                for conn in ctx.project.get_entity_connections(key) {
+                    ctx.project.connections[conn].update_origin(key, rect, true);
+                }
+
                 return true;
             }
         }
 
         let entity = self.entity_at_point(ctx.project, cursor + *self.position);
         if entity != self.hovered {
-            Self::entity_mut(ctx.project, self.hovered, |entity| {
-                entity.on_mouseleave(ctx.state)
-            });
+            ctx.project
+                .entity_mut(self.hovered, |entity| entity.on_mouseleave(ctx.state));
 
-            Self::entity_mut(ctx.project, entity, |entity| {
-                entity.on_mouseenter(ctx.state)
-            });
+            ctx.project
+                .entity_mut(entity, |entity| entity.on_mouseenter(ctx.state));
 
             ctx.state.request_cursor_update();
 
             self.hovered = entity;
         }
 
-        Self::entity_mut(ctx.project, self.hovered, |entity| {
+        ctx.project.entity_mut(self.hovered, |entity| {
             entity.on_mousemove(ctx.state, cursor)
         })
     }
 
-    fn on_mouseup(&mut self, ctx: &mut EventContext, mb: MouseButton) -> bool {
+    fn on_mouseup(&mut self, ctx: &mut EventContext, _: MouseButton) -> bool {
         self.move_start_point = None;
 
         let left = ctx.state.mouse_buttons.contains(&MouseButton::Left);
@@ -344,7 +346,7 @@ impl EventTarget for Workspace {
             return true;
         }
 
-        Self::entity_mut(ctx.project, self.hovered, |entity| {
+        if ctx.project.entity_mut(self.hovered, |entity| {
             // Snap the entity to the grid
             let pos = entity.data.move_pos.take();
             if let Some(pos) = pos {
@@ -358,8 +360,25 @@ impl EventTarget for Workspace {
                 }
             }
 
-            entity.on_mouseup(ctx.state, mb)
-        })
+            true
+        }) {
+            let key = self.hovered.unwrap();
+            let rect = ctx.project.entities[key].get_rect();
+            let rect = Rect::new(rect.center().round() - rect.size / 2., rect.size);
+            
+            for conn in ctx.project.get_entity_connections(key) {
+                let connection = &mut ctx.project.connections[conn];
+                connection.update_origin(key, rect, false);
+                
+                if connection.update() {
+                    ctx.state.request_redraw();
+                }
+            }
+            
+            true
+        } else {
+            false
+        }
     }
 
     fn on_wheel(&mut self, ctx: &mut EventContext, event: WheelEvent) -> bool {

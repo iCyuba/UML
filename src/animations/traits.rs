@@ -73,7 +73,7 @@ numeric_impl!(usize u8 u16 u32 u64 u128 isize i8 i16 i32 i64 i128 f32 f64);
 
 impl Magnitude for Vec2 {
     fn magnitude(&self) -> f64 {
-        (self.x.powi(2) + self.y.powi(2)).sqrt()
+        self.length()
     }
 }
 
