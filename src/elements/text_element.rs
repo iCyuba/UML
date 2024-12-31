@@ -6,7 +6,7 @@ use super::{
 use crate::{
     app::{
         context::{EventContext, GetterContext, RenderContext},
-        EventTarget, Tree,
+        ctx, EventTarget, Tree,
     },
     presentation::FontResource,
 };
@@ -24,17 +24,32 @@ pub struct TextElementProps {
 }
 
 pub struct TextElement {
+    layout: Layout,
+    node_id: NodeId,
+
     pub props: TextElementProps,
-    pub layout: Layout,
+
+    // Cache the text so the element can be marked as "dirty" when it changes
+    text: String,
 }
 
 impl EventTarget for TextElement {
+    fn update(&mut self, ctx: &mut EventContext) {
+        let text = self.props.text.as_ref()(ctx!(ctx => GetterContext));
+
+        if text != self.text {
+            self.text = text;
+
+            let node = self.node_id;
+
+            ctx.state.modify_tree(move |tree| {
+                tree.mark_dirty(node).unwrap();
+            });
+        }
+    }
+
     fn render(&self, ctx: &mut RenderContext) {
-        let text = self.props.text.as_ref()(&GetterContext {
-            state: &ctx.state,
-            project: &ctx.project,
-            c: &ctx.c,
-        });
+        let text = self.props.text.as_ref()(ctx!(ctx => GetterContext));
 
         Text::new(
             &text,
@@ -99,9 +114,11 @@ impl ElementWithProps for TextElement {
                 ..<_>::default()
             },
             None,
-            |_, _| TextElement {
-                props,
+            |node_id, _| TextElement {
                 layout: Default::default(),
+                node_id,
+                props,
+                text: String::new(),
             },
         )
     }

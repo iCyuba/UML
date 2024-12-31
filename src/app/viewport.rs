@@ -29,7 +29,7 @@ impl Viewport {
         let sidebar = Sidebar::setup(tree, ctx);
 
         tree.set_style(node, Self::STYLE).unwrap();
-        tree.set_children(node, &[workspace, toolbox, tooltip, sidebar])
+        tree.set_children(node, &[workspace, toolbox, sidebar, tooltip])
             .unwrap();
 
         node

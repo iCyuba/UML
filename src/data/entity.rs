@@ -4,7 +4,10 @@ use super::project::{ConnectionKey, EntityKey};
 use crate::elements::workspace::entity::EntityItemData;
 use serde::{Deserialize, Serialize};
 use slotmap::{new_key_type, SlotMap};
-use std::collections::{HashMap, HashSet};
+use std::{
+    collections::{HashMap, HashSet},
+    fmt::Display,
+};
 
 new_key_type! {
     pub struct InternalTypeKey;
@@ -76,6 +79,17 @@ pub enum EntityType {
     AbstractClass,
     SealedClass,
     Interface,
+}
+
+impl Display for EntityType {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            EntityType::Class => write!(f, "Class"),
+            EntityType::AbstractClass => write!(f, "Abstract class"),
+            EntityType::SealedClass => write!(f, "Sealed class"),
+            EntityType::Interface => write!(f, "Interface"),
+        }
+    }
 }
 
 #[derive(Debug, Serialize, Deserialize)]

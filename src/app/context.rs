@@ -33,7 +33,14 @@ impl_from_mutcontext!(RenderContext);
 impl_from_mutcontext!(GetterContext);
 
 macro_rules! ctx {
-    // Expects a mutable reference to App
+    // Converts one context to another
+    ($ctx:expr => $target:ident) => {
+        &$target {
+            project: $ctx.project,
+            state: $ctx.state,
+            c: $ctx.c,
+        }
+    };
     ($app:expr) => {
         &mut $crate::app::context::MutContext {
             project: &mut $app.project,

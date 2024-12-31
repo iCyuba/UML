@@ -1,10 +1,8 @@
 use super::{
-    node::ElementWithProps,
     primitives::{
         fancy_box::{BorderOptions, FancyBox, ShadowOptions},
         traits::Draw,
     },
-    text_element::{TextElement, TextElementProps},
     Node,
 };
 use crate::{
@@ -18,16 +16,20 @@ use crate::{
     },
     data::project::EntityKey,
     elements::node::Element,
-    presentation::fonts,
 };
 use derive_macros::AnimatedElement;
+use name::sidebar_name;
+use r#type::SidebarType;
 use std::time::Duration;
 use taffy::{
     prelude::{auto, length, zero},
     Display::Flex,
     FlexDirection::Column,
-    Layout, NodeId, Size, Style,
+    Layout, NodeId, Position, Rect, Size, Style,
 };
+
+mod name;
+mod r#type;
 
 #[derive(Default)]
 pub struct SidebarState {
@@ -35,6 +37,18 @@ pub struct SidebarState {
     // Will contain the old entity id when the sidebar is closing
     pub(self) entity: Option<EntityKey>,
 }
+
+// Macro for getting the entity from the sidebar state, cuz it's long
+macro_rules! sidebar_entity {
+    ($ctx:expr => $get:ident) => {
+        $ctx.state
+            .sidebar
+            .entity
+            .and_then(|e| $ctx.project.entities.$get(e))
+    };
+}
+
+pub(super) use sidebar_entity;
 
 #[derive(AnimatedElement)]
 pub struct Sidebar {
@@ -90,7 +104,6 @@ impl EventTarget for Sidebar {
         // Hide the sidebar if no entity is selected
         if cached!().is_none() {
             self.layout.size = zero();
-            dbg!(real!());
         }
         // Animate out the sidebar if the entity is deselected
         else if real!().is_none() {
@@ -137,6 +150,13 @@ impl Element for Sidebar {
             ctx,
             Style {
                 display: Flex,
+                position: Position::Absolute,
+                inset: Rect {
+                    top: length(0.),
+                    right: length(0.),
+                    bottom: length(0.),
+                    left: auto(),
+                },
                 flex_direction: Column,
                 border: length(1.),
                 margin: length(12.),
@@ -148,18 +168,12 @@ impl Element for Sidebar {
                 },
                 ..Default::default()
             },
-            Some(vec![TextElement::create(TextElementProps {
-                text: Box::new(|ctx| {
-                    if let Some(entity) = ctx.state.sidebar.entity {
-                        let entity = ctx.project.entities.get(entity).unwrap();
-                        entity.name.clone()
-                    } else {
-                        "".to_string()
-                    }
-                }),
-                size: 24.,
-                font: fonts::jbmono_bold(),
-            })]),
+            Some(vec![
+                // Type
+                SidebarType::create(),
+                // Name
+                sidebar_name(),
+            ]),
             |_, _| Self {
                 layout: Default::default(),
 

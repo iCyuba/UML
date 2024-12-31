@@ -99,7 +99,8 @@ impl EventTarget for Tooltip {
             const PADDING: Size = Size::new(Tooltip::FONT_SIZE, Tooltip::FONT_SIZE / 2.);
 
             let screen_size = c.size();
-            let screen_size = Size::new(screen_size.0 as f64, screen_size.1 as f64) / c.scale();
+            let screen_size = Size::new(screen_size.0 as f64, screen_size.1 as f64) / c.scale()
+                - (MARGIN, MARGIN);
 
             let tooltip_size = text_size + PADDING * 2.;
 
@@ -111,15 +112,10 @@ impl EventTarget for Tooltip {
 
             // Check the if the tooltip fits in the screen
             let position = match position {
-                TooltipPosition::Top if origin.y < MARGIN => TooltipPosition::Bottom,
-                TooltipPosition::Bottom if tooltip_end.y > screen_size.y - MARGIN => {
-                    TooltipPosition::Top
-                }
-
                 TooltipPosition::Left if origin.x < MARGIN => TooltipPosition::Right,
-                TooltipPosition::Right if tooltip_end.x > screen_size.x - MARGIN => {
-                    TooltipPosition::Left
-                }
+                TooltipPosition::Top if origin.y < MARGIN => TooltipPosition::Bottom,
+                TooltipPosition::Right if tooltip_end.x > screen_size.x => TooltipPosition::Left,
+                TooltipPosition::Bottom if tooltip_end.y > screen_size.y => TooltipPosition::Top,
 
                 _ => *position,
             };
@@ -131,13 +127,15 @@ impl EventTarget for Tooltip {
                 TooltipPosition::Top | TooltipPosition::Bottom => center.x - (tooltip_size.x / 2.),
                 TooltipPosition::Left => origin.x - margin,
                 TooltipPosition::Right => end.x + margin,
-            };
+            }
+            .clamp(MARGIN, screen_size.x - tooltip_size.x);
 
             let tooltip_origin_y = match position {
                 TooltipPosition::Top => origin.y - margin,
                 TooltipPosition::Bottom => end.y + margin,
                 TooltipPosition::Left | TooltipPosition::Right => center.y - (tooltip_size.y / 2.),
-            };
+            }
+            .clamp(MARGIN, screen_size.y - tooltip_size.y);
 
             let tooltip = Rect::new((tooltip_origin_x, tooltip_origin_y), tooltip_size);
 

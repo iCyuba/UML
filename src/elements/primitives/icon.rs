@@ -12,6 +12,13 @@ pub enum Symbol {
     PlusSquare = b'B',
     Workflow = b'C',
     Hand = b'D',
+    Class = b'E',
+    AbstractClass = b'F',
+    SealedClass = b'G',
+    Interface = b'H',
+    Plus = b'I',
+    Minus = b'J',
+    Hashtag = b'K',
 }
 
 impl From<Symbol> for char {
