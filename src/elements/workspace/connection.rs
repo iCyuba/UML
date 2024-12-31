@@ -213,11 +213,18 @@ impl PathItemData {
 
         // Helper function that helps avoid 360 degree and non 90 degree turns
         fn add_implicit_point(result: &mut Vec<PathPoint>, first: Point, second: Point) {
-            if first.x != second.x && first.y != second.y {
+            if (first.x - second.x).abs() >= 0.5 && (first.y - second.y).abs() >= 0.5 {
                 let mut implicit_point = Point::new(first.x, second.y);
                 if let Some(second_last) = result.get(result.len().wrapping_sub(2)) {
                     let second_last: Point = second_last.into();
-                    if second_last.x == implicit_point.x || second_last.y == implicit_point.y {
+
+                    // If the second to last point goes in the opposite direction, invert the implicit point position
+                    if (((second_last.x > first.x) == (implicit_point.x > first.x)
+                        && (second_last.y - implicit_point.y).abs() <= 1.5)
+                        || ((second_last.y > first.y) == (implicit_point.y > first.y)
+                            && (second_last.x - implicit_point.x).abs() <= 1.5))
+                        && (first - implicit_point).length() >= 2.
+                    {
                         implicit_point = Point::new(second.x, first.y);
                     }
                 }
