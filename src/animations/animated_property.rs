@@ -23,6 +23,7 @@ impl<A: Animatable> AnimatedProperty<A> {
         self.animation.get_target()
     }
 
+    // Returns true if the property was initialized for the first time -> thus needs to be redrawn
     fn initialize(&mut self, value: A::Value) -> bool {
         let initialized = self.animation.is_initialized();
         if !initialized {
@@ -32,23 +33,34 @@ impl<A: Animatable> AnimatedProperty<A> {
         !initialized
     }
 
-    pub fn set(&mut self, value: A::Value) {
+    // Returns true if the value was changed
+    pub fn set(&mut self, value: A::Value) -> bool {
         if !self.initialize(value) && value != *self.animation.get_target() {
             self.animation.continue_animation();
             self.animation.set_target(value);
+            true
+        } else {
+            false
         }
     }
 
-    pub fn reset(&mut self, value: A::Value) {
-        if !self.initialize(value) {
-            self.animation.stop_animation();
+    // Returns true if the value was changed
+    pub fn reset(&mut self, value: A::Value) -> bool {
+        if self.initialize(value) {
+            return true;
+        }
 
-            if value != *self.animation.get_target() {
-                self.animation.set_target(value);
-            }
+        self.animation.stop_animation();
+
+        if value != *self.animation.get_target() {
+            self.animation.set_target(value);
+            true
+        } else {
+            false
         }
     }
 
+    // Returns true if the property is currently animating
     pub fn animate(&mut self) -> bool {
         self.animation.update();
         self.animation.is_animating()

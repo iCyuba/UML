@@ -35,13 +35,22 @@ impl Rect {
         let insets = insets.into();
         Self {
             origin: self.origin + insets.origin,
-            size: self.size - insets.size,
+            size: self.size - insets.size - insets.origin,
         }
     }
 
     pub fn inset_uniform(self, inset: f64) -> Self {
         let inset = Vec2::new(inset, inset);
         self.inset(Rect::new(inset, inset))
+    }
+    
+    // Inset the rect using precalculated directional insets - needed for taffy::Rect
+    pub fn inset_directional(self, insets: impl Into<Rect>) -> Self {
+        let insets = insets.into();
+        Self {
+            origin: self.origin + insets.origin,
+            size: self.size - insets.size,
+        }
     }
 
     pub fn translate(self, offset: impl Into<Vec2>) -> Self {

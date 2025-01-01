@@ -27,8 +27,6 @@ pub struct EntityItemData {
     pub(super) selection_outline: AnimatedProperty<StandardAnimation<f64>>,
     pub(super) opacity: AnimatedProperty<StandardAnimation<f32>>,
 
-    pub is_selected: bool,
-
     /// When moving, this will be used as the origin offset. (Only during rendering)
     ///
     /// This is to prevent a strange animation when moving the entity.
@@ -66,14 +64,13 @@ impl Default for EntityItemData {
                 Duration::from_millis(100),
                 Easing::EaseOut,
             )),
-            is_selected: false,
             move_pos: None,
         }
     }
 }
 
 impl Item for Entity {
-    fn update(&mut self) -> bool {
+    fn update(&mut self, state: &State, _: &Workspace) -> bool {
         // Set the opacity
         self.data.opacity.set(if self.data.move_pos.is_some() {
             0.75
@@ -106,13 +103,13 @@ impl Item for Entity {
         self.data.rect.set(rect);
 
         // Animate the selection outline
-        self.data
-            .selection_outline
-            .set(if self.data.is_selected || self.data.move_pos.is_some() {
+        self.data.selection_outline.set(
+            if state.selected_entity == Some(self.key) || self.data.move_pos.is_some() {
                 1.
             } else {
                 0.
-            });
+            },
+        );
 
         self.data.animate()
     }

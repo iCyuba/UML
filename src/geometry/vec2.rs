@@ -53,6 +53,15 @@ impl Vec2 {
             y: self.y.round(),
         }
     }
+    
+    pub fn rotate(self, direction: Vec2) -> Self {
+        let Vec2 { x: dx, y: dy } = direction.normalize();
+        
+        Self {
+            x: self.x * dx - self.y * dy,
+            y: self.x * dy + self.y * dx,
+        }
+    }
 }
 
 // Operations

@@ -71,7 +71,7 @@ impl FancyBox {
 
         let offset_radii = Self::offset_radii(radii, border);
 
-        let content = SimpleBox::new(rect.inset(border), radii, color);
+        let content = SimpleBox::new(rect.inset_directional(border), radii, color);
         let border = border_options.and_then(|opts| {
             if border != taffy::Rect::ZERO {
                 Some(SimpleBox::new(rect, offset_radii, opts.color))

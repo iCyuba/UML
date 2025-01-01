@@ -52,7 +52,11 @@ impl Project {
         let from = connection.from.entity;
         let to = connection.to.entity;
 
-        let key = self.connections.insert(connection);
+        let key = self.connections.insert_with_key(|key| {
+            let mut connection = connection;
+            connection.key = key;
+            connection
+        });
 
         self.entities[from].connections.insert(key);
         self.entities[to].connections.insert(key);

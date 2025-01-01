@@ -72,7 +72,7 @@ impl Draw for Text<'_> {
         let safe_width_offset = metrics.advance_width(ellipsis).unwrap_or_default() as f64;
 
         let last_char = self.text.len() - 1;
-        let max_width = self.rect.size.x;
+        let max_width = self.rect.size.x + 0.1; // Add a small offset to prevent overflow caused by floating point errors
 
         c.scene()
             .draw_glyphs(&font.font)

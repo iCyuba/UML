@@ -38,7 +38,7 @@ pub struct Workspace {
     zoom: AnimatedProperty<DeltaAnimation<f64>>,
 
     previous_tool: Option<Tool>,
-    hovered: Option<EntityKey>,
+    pub(crate) hovered: Option<EntityKey>,
 
     /// The point at which the mouse was pressed down
     ///
@@ -120,15 +120,20 @@ impl EventTarget for Workspace {
         }
 
         // Entities
-        let selection = ctx.state.selected_entity;
         let mut redraw = false;
-        for (key, entity) in ctx.project.entities.iter_mut() {
-            entity.data.is_selected = selection == Some(key);
-            redraw |= entity.update()
+        for (_, entity) in ctx.project.entities.iter_mut() {
+            if entity.update(ctx.state, self) {
+                // Update connections in case the entity was resized
+                for conn in entity.connections.iter() {
+                    ctx.project.connections[*conn].update_origin(entity.key, entity.get_rect(), true);
+                }
+                
+                redraw = true;
+            }
         }
 
         for (_, conn) in ctx.project.connections.iter_mut() {
-            redraw |= conn.update();
+            redraw |= conn.update(ctx.state, self);
         }
 
         if redraw {
@@ -313,6 +318,7 @@ impl EventTarget for Workspace {
         let entity = self.entity_at_point(ctx.project, cursor + *self.position);
         if entity != self.hovered {
             ctx.state.request_cursor_update();
+            ctx.state.request_redraw();
             self.hovered = entity;
         }
 
@@ -346,7 +352,7 @@ impl EventTarget for Workspace {
                 entity.data.rect.reset(rect);
 
                 entity.position = (rect.center() / Workspace::GRID_SIZE).into();
-                if entity.update() {
+                if entity.update(ctx.state, self) {
                     ctx.state.request_redraw();
                 }
             }
@@ -363,10 +369,6 @@ impl EventTarget for Workspace {
             for conn in ctx.project.get_entity_connections(key) {
                 let connection = &mut ctx.project.connections[conn];
                 connection.update_origin(key, rect, false);
-                
-                if connection.update() {
-                    ctx.state.request_redraw();
-                }
             }
             
             true

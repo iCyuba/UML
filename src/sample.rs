@@ -7,8 +7,9 @@ use crate::data::{
 pub fn project() -> Project {
     let mut project = Project::new("Test".to_string());
 
-    let pos1 = (0, 20);
+    let pos1 = (-5, 20);
     let mut basic = Entity::new("Basic".to_string(), EntityType::Class, pos1);
+    
 
     basic.attributes.insert(
         "id".to_string(),
@@ -31,11 +32,11 @@ pub fn project() -> Project {
         ),
     );
 
-    let pos2 = (0, 0);
-
-    let conn = Connection::new(
+    let pos2 = (13, 15);
+    let entity1 = project.add_entity(basic);
+    let conn1 = Connection::new(
         Relation {
-            entity: project.add_entity(basic),
+            entity: entity1,
             relation: RelationType::Association,
             multiplicity: Multiplicity::One,
         },
@@ -53,7 +54,31 @@ pub fn project() -> Project {
         pos2.into(),
     );
 
-    project.connect(conn);
+    project.connect(conn1);
+    
+    let pos3 = (-15, -10);
+
+    let conn2 = Connection::new(
+        Relation {
+            entity: entity1,
+            relation: RelationType::Composition,
+            multiplicity: Multiplicity::One,
+        },
+        Relation {
+            entity: project.add_entity(Entity::new(
+                "Idk2".to_string(),
+                EntityType::AbstractClass,
+                pos3,
+            )),
+            relation: RelationType::Association,
+            multiplicity: Multiplicity::Many,
+        },
+        vec![],
+        pos1.into(),
+        pos3.into(),
+    );
+
+    project.connect(conn2);
 
     project
 }

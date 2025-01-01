@@ -1,13 +1,12 @@
 #![allow(dead_code)]
 
-use super::project::EntityKey;
-use crate::elements::workspace::connection::{PathItemData, PathUpdate};
+use super::project::{ConnectionKey, EntityKey};
+use crate::elements::workspace::connection::{ConnectionItemData, PathUpdate};
 use crate::geometry::{Point, Rect};
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Serialize, Deserialize)]
 pub enum Multiplicity {
-    Zero,
     One,
     Many,
 }
@@ -31,11 +30,13 @@ pub struct Relation {
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Connection {
+    pub key: ConnectionKey,
+    
     pub from: Relation,
     pub to: Relation,
     pub points: Vec<(i32, i32)>,
     #[serde(skip)]
-    pub data: PathItemData,
+    pub data: ConnectionItemData,
 }
 
 impl Connection {
@@ -47,9 +48,10 @@ impl Connection {
         end: Point,
     ) -> Self {
         Self {
+            key: Default::default(),
             from,
             to,
-            data: PathItemData::new(&points, start, end),
+            data: ConnectionItemData::new(&points, start, end),
             points,
         }
     }
