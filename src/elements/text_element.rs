@@ -15,10 +15,8 @@ use taffy::{
     AvailableSpace, Layout, NodeId, Size, Style,
 };
 
-pub type TextGetter = Box<dyn Fn(&GetterContext) -> String>;
-
 pub struct TextElementProps {
-    pub text: TextGetter,
+    pub getter: fn(&GetterContext) -> String,
     pub size: f64,
     pub font: &'static FontResource<'static>,
 }
@@ -35,7 +33,7 @@ pub struct TextElement {
 
 impl EventTarget for TextElement {
     fn update(&mut self, ctx: &mut EventContext) {
-        let text = self.props.text.as_ref()(ctx!(ctx => GetterContext));
+        let text = (self.props.getter)(ctx!(ctx => GetterContext));
 
         if text != self.text {
             self.text = text;
@@ -49,14 +47,12 @@ impl EventTarget for TextElement {
     }
 
     fn render(&self, ctx: &mut RenderContext) {
-        let text = self.props.text.as_ref()(ctx!(ctx => GetterContext));
-
         Text::new(
-            &text,
+            &self.text,
             self.layout,
             self.props.size,
             self.props.font,
-            ctx.c.colors().workspace_text,
+            ctx.c.colors().text,
         )
         .draw(ctx.c);
     }
@@ -76,15 +72,9 @@ impl Node for TextElement {
         known_dimensions: taffy::Size<Option<f32>>,
         available_space: taffy::Size<taffy::AvailableSpace>,
         _: &Style,
-        ctx: &mut EventContext,
+        _: &mut EventContext,
     ) -> taffy::Size<f32> {
-        let text = self.props.text.as_ref()(&GetterContext {
-            state: ctx.state,
-            project: ctx.project,
-            c: ctx.c,
-        });
-
-        let size = Text::measure(&text, self.props.size, self.props.font);
+        let size = Text::measure(&self.text, self.props.size, self.props.font);
 
         let mut width = size.x as f32;
         if let AvailableSpace::Definite(max) = available_space.width {

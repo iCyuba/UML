@@ -71,7 +71,7 @@ impl Workspace {
 
     #[inline]
     fn is_dragging(&self, state: &State) -> bool {
-        state.focused == Some(self.node_id)
+        state.capturing == Some(self.node_id)
     }
 
     fn select_hand(&mut self, state: &mut State) {
@@ -125,9 +125,13 @@ impl EventTarget for Workspace {
             if entity.update(ctx.state, self) {
                 // Update connections in case the entity was resized
                 for conn in entity.connections.iter() {
-                    ctx.project.connections[*conn].update_origin(entity.key, entity.get_rect(), true);
+                    ctx.project.connections[*conn].update_origin(
+                        entity.key,
+                        entity.get_rect(),
+                        true,
+                    );
                 }
-                
+
                 redraw = true;
             }
         }
@@ -200,7 +204,7 @@ impl EventTarget for Workspace {
             Rect::new((10., 10.), (c.size().0 as f64 - 20., 16.)),
             16.0,
             fonts::inter_black_italic(),
-            colors.workspace_text,
+            colors.text,
         )
         .draw(c);
     }
@@ -245,7 +249,7 @@ impl EventTarget for Workspace {
         }
 
         if (left || middle) && ctx.state.tool == Tool::Hand {
-            ctx.state.focused = Some(self.node_id);
+            ctx.state.capturing = Some(self.node_id);
             ctx.state.request_cursor_update();
 
             return true;
@@ -333,7 +337,7 @@ impl EventTarget for Workspace {
         let space = ctx.state.keys.contains(&NamedKey::Space.into());
 
         if self.is_dragging(ctx.state) && !left && !middle {
-            ctx.state.focused = None;
+            ctx.state.capturing = None;
             ctx.state.request_cursor_update();
 
             if !space {
@@ -365,12 +369,12 @@ impl EventTarget for Workspace {
             let key = self.hovered.unwrap();
             let rect = ctx.project.entities[key].get_rect();
             let rect = Rect::new(rect.center().round() - rect.size / 2., rect.size);
-            
+
             for conn in ctx.project.get_entity_connections(key) {
                 let connection = &mut ctx.project.connections[conn];
                 connection.update_origin(key, rect, false);
             }
-            
+
             true
         } else {
             false

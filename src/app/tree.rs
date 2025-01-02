@@ -2,7 +2,7 @@ use super::{
     context::{EventContext, GetterContext},
     event_target::WheelEvent,
     viewport::Viewport,
-    EventTarget,
+    EventTarget, State,
 };
 use crate::elements::node::CurriedSetup;
 use crate::elements::tooltip::TooltipState;
@@ -196,6 +196,11 @@ impl Tree {
 
         node_id
     }
+
+    #[inline]
+    fn target(state: &State) -> Option<NodeId> {
+        state.capturing.or(state.hovered)
+    }
 }
 
 impl EventTarget for Tree {
@@ -257,7 +262,7 @@ impl EventTarget for Tree {
     fn cursor(&self, ctx: &GetterContext) -> Option<CursorIcon> {
         let mut result = None;
 
-        self.bubble(ctx.state.hovered, |_, el| {
+        self.bubble(Self::target(ctx.state), |_, el| {
             result = el.cursor(ctx);
 
             result.is_some()
@@ -269,7 +274,7 @@ impl EventTarget for Tree {
     fn tooltip(&self, ctx: &GetterContext) -> Option<TooltipState> {
         let mut result = None;
 
-        self.bubble(ctx.state.hovered, |_, el| {
+        self.bubble(Self::target(ctx.state), |_, el| {
             result = el.tooltip(ctx);
 
             result.is_some()
@@ -281,19 +286,20 @@ impl EventTarget for Tree {
     // Events
 
     fn on_click(&mut self, ctx: &mut EventContext) -> bool {
-        let (Some(hovered), Some(md)) = (ctx.state.hovered, self.hovered_on_mouse_down) else {
+        let (Some(target), Some(md)) = (Self::target(ctx.state), self.hovered_on_mouse_down) else {
             return false;
         };
 
-        let node = self.lowest_common_ancestor(hovered, md);
+        let node = self.lowest_common_ancestor(target, md);
         self.bubble_mut(node, |_, el| el.on_click(ctx))
     }
 
     fn on_keydown(&mut self, ctx: &mut EventContext, event: KeyEvent) -> bool {
-        // If there's a focused element, fire the event there. If not, fire it on all key listeners.
+        // If there's a focused / capturing element, fire the event there. If not, fire it on all key listeners.
         if let Some(focused) = ctx
             .state
-            .focused
+            .capturing
+            .or(ctx.state.focused)
             .and_then(|node| self.get_node_context_mut(node))
         {
             focused.on_keydown(ctx, event)
@@ -314,7 +320,8 @@ impl EventTarget for Tree {
     fn on_keyup(&mut self, ctx: &mut EventContext, event: KeyEvent) -> bool {
         if let Some(focused) = ctx
             .state
-            .focused
+            .capturing
+            .or(ctx.state.focused)
             .and_then(|node| self.get_node_context_mut(node))
         {
             focused.on_keyup(ctx, event)
@@ -338,14 +345,31 @@ impl EventTarget for Tree {
             self.hovered_on_mouse_down = ctx.state.hovered;
         }
 
-        self.bubble_mut(ctx.state.hovered, |_, el| el.on_mousedown(ctx, button))
+        let focused = ctx.state.focused;
+        let mut focus = false;
+
+        let handled = self.bubble_mut(Self::target(ctx.state), |id, el| {
+            if Some(id) == focused {
+                focus = true;
+            }
+
+            el.on_mousedown(ctx, button)
+        });
+
+        // If the click wasn't on the focused element, clear the focus (unless a new element was focused)
+        if !focus && ctx.state.focused == focused {
+            ctx.state.focused = None;
+            ctx.state.request_redraw();
+        }
+
+        handled
     }
 
     // `on_mouseenter` doesn't need to be handled here when the cursor enters the window
     // cuz a mouse move event will be fired immediately after that
 
     fn on_mouseleave(&mut self, ctx: &mut EventContext) -> bool {
-        self.bubble_mut(ctx.state.hovered, |_, el| {
+        self.bubble_mut(Self::target(ctx.state), |_, el| {
             el.on_mouseleave(ctx);
 
             // This event should always bubble up
@@ -359,8 +383,8 @@ impl EventTarget for Tree {
     }
 
     fn on_mousemove(&mut self, ctx: &mut EventContext, cursor: Point) -> bool {
-        // Update the active element or the element under the cursor
-        let node = ctx.state.focused.or_else(|| self.node_at_point(cursor));
+        // Update the capturing element or the element under the cursor
+        let node = ctx.state.capturing.or_else(|| self.node_at_point(cursor));
 
         // Set the hovered element
         let old = ctx.state.hovered;
@@ -402,7 +426,8 @@ impl EventTarget for Tree {
     }
 
     fn on_mouseup(&mut self, ctx: &mut EventContext, button: MouseButton) -> bool {
-        let mut captured = self.bubble_mut(ctx.state.hovered, |_, el| el.on_mouseup(ctx, button));
+        let mut captured =
+            self.bubble_mut(Self::target(ctx.state), |_, el| el.on_mouseup(ctx, button));
 
         // Fire the on_click event
         if button == MouseButton::Left && self.hovered_on_mouse_down.is_some() {
@@ -416,7 +441,7 @@ impl EventTarget for Tree {
     }
 
     fn on_wheel(&mut self, ctx: &mut EventContext, event: WheelEvent) -> bool {
-        self.bubble_mut(ctx.state.hovered, |_, el| el.on_wheel(ctx, event))
+        self.bubble_mut(Self::target(ctx.state), |_, el| el.on_wheel(ctx, event))
     }
 }
 

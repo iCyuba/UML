@@ -3,7 +3,6 @@ use vello::peniko::Color;
 pub struct Colors {
     pub workspace_background: Color,
     pub workspace_dot: Color,
-    pub workspace_text: Color,
 
     pub floating_background: Color,
     pub border: Color,
@@ -13,13 +12,15 @@ pub struct Colors {
 
     pub drop_shadow: Color,
     pub hover: Color,
+
+    pub text: Color,
+    pub text_secondary: Color,
 }
 
 impl Colors {
     pub const LIGHT: Colors = Colors {
         workspace_background: Color::WHITE,
         workspace_dot: Color::rgb8(203, 213, 225),
-        workspace_text: Color::BLACK,
 
         floating_background: Color::rgb8(255, 255, 255),
         border: Color::rgb8(230, 230, 230),
@@ -29,12 +30,14 @@ impl Colors {
 
         drop_shadow: Color::rgba8(0, 0, 0, 30),
         hover: Color::BLACK,
+
+        text: Color::BLACK,
+        text_secondary: Color::rgb8(100, 100, 100),
     };
 
     pub const DARK: Colors = Colors {
         workspace_background: Color::rgb8(24, 24, 27),
         workspace_dot: Color::rgb8(63, 63, 70),
-        workspace_text: Color::WHITE,
 
         floating_background: Color::rgb8(44, 44, 44),
         border: Color::rgb8(68, 68, 68),
@@ -44,5 +47,8 @@ impl Colors {
 
         drop_shadow: Color::rgba8(0, 0, 0, 200),
         hover: Color::WHITE,
+
+        text: Color::WHITE,
+        text_secondary: Color::rgb8(150, 150, 150),
     };
 }

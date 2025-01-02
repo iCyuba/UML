@@ -4,6 +4,7 @@ pub mod segmented_control;
 pub mod sidebar;
 pub mod statusbar;
 pub mod text_element;
+pub mod text_input;
 pub mod toolbox;
 pub mod toolbox_item;
 pub mod toolbox_item_icon;

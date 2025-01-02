@@ -25,7 +25,8 @@ pub struct State {
 
     // Elements
     pub hovered: Option<NodeId>,
-    pub focused: Option<NodeId>,
+    pub focused: Option<NodeId>,   // Has priority over key listeners
+    pub capturing: Option<NodeId>, // Unlike focus, capturing receives all events and is set as the hovered element, regardless of cursor position
     pub key_listeners: HashSet<NodeId>,
 
     // App state
@@ -52,6 +53,7 @@ impl State {
 
             hovered: None,
             focused: None,
+            capturing: None,
             key_listeners: HashSet::new(),
 
             tool: Tool::Select,

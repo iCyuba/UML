@@ -4,6 +4,7 @@ use crate::app::renderer::Canvas;
 use crate::elements::primitives::traits::Draw;
 use crate::geometry::{Rect, Size};
 use crate::presentation::FontResource;
+use std::str::Chars;
 use vello::kurbo::Affine;
 use vello::peniko::{BrushRef, Fill, StyleRef};
 use vello::Glyph;
@@ -40,15 +41,20 @@ impl<'a> Text<'a> {
         }
     }
 
-    pub fn measure(text: &str, size: f64, font: &FontResource) -> Size {
+    pub fn measure_chars(chars: Chars, size: f64, font: &FontResource) -> Vec<f32> {
         let metrics = font.metrics(size as f32);
-        let width = text
-            .chars()
+        chars
             .map(|c| {
                 metrics
                     .advance_width(font.char_map.map(c).unwrap_or_default())
                     .unwrap_or_default()
             })
+            .collect()
+    }
+
+    pub fn measure(text: &str, size: f64, font: &FontResource) -> Size {
+        let width = Self::measure_chars(text.chars(), size, font)
+            .into_iter()
             .sum::<f32>();
 
         Size::new(width as f64, size * 1.2)

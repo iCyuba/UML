@@ -157,7 +157,7 @@ impl Item for Entity {
             Rect::new(padded.origin, (padded.size.x, 16. * zoom)),
             16.0 * zoom,
             title_font(self),
-            c.colors().workspace_text.multiply_alpha(opacity),
+            c.colors().text.multiply_alpha(opacity),
         )
         .draw(c);
 

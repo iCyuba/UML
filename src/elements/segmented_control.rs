@@ -100,7 +100,7 @@ impl EventTarget for SegmentedControl {
         let mut icon = Rect::new(rect.origin + (4., 4.), (16., 16.));
 
         for (symbol, _) in &self.props.items {
-            Icon::new(*symbol, icon, 16., ctx.c.colors().workspace_text).draw(ctx.c);
+            Icon::new(*symbol, icon, 16., ctx.c.colors().text).draw(ctx.c);
             icon.origin.x += 24.; // 16 = icon size, 8 = gap
         }
     }

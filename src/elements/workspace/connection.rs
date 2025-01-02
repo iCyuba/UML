@@ -448,7 +448,7 @@ impl Item for Connection {
 
         let affine = Affine::scale(scale).then_translate((-pos * c.scale()).into());
 
-        let color = c.colors().workspace_text;
+        let color = c.colors().text;
         let accent = c.colors().accent;
         let stroke = Stroke::new(ConnectionItemData::STROKE_THICKNESS);
 

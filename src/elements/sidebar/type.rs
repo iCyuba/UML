@@ -20,7 +20,7 @@ pub struct SidebarType;
 impl Element for SidebarType {
     fn setup(tree: &mut Tree, ctx: &mut EventContext) -> NodeId {
         let type_name = TextElement::create(TextElementProps {
-            text: Box::new(|ctx| {
+            getter: |ctx| {
                 if let Some(entity) = ctx
                     .state
                     .sidebar
@@ -31,7 +31,7 @@ impl Element for SidebarType {
                 } else {
                     "".to_string()
                 }
-            }),
+            },
             size: 16.,
             font: fonts::jbmono_regular(),
         });
