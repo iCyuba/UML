@@ -1,9 +1,10 @@
 use super::item::Item;
 use crate::animations::animated_property::AnimatedProperty;
 use crate::animations::standard_animation::{Easing, StandardAnimation};
-use crate::animations::traits::{Animatable, Magnitude};
+use crate::animations::traits::Magnitude;
 use crate::app::renderer::Canvas;
 use crate::app::State;
+use crate::elements::toolbox_item::Tool;
 use crate::elements::workspace::Workspace;
 use crate::geometry::{Rect, Vec2};
 use crate::{data::Connection, geometry::Point};
@@ -11,6 +12,7 @@ use derive_macros::AnimatedElement;
 use std::collections::VecDeque;
 use std::time::Duration;
 use vello::kurbo::{BezPath, Circle};
+use vello::peniko::Color;
 use vello::{
     kurbo::{Affine, PathEl, Stroke},
     peniko::Fill,
@@ -25,7 +27,8 @@ pub struct ConnectionItemData {
     pub end_rect: AnimatedProperty<StandardAnimation<Rect>>,
     pub opacity: AnimatedProperty<StandardAnimation<f32>>,
 
-    pub points: Vec<Point>,
+    pub ghost_point: Option<Point>,
+
     pub path: BezPath,
     pub path_points: Vec<PathPoint>,
 }
@@ -46,9 +49,9 @@ impl Default for ConnectionItemData {
                 Duration::from_millis(100),
                 Easing::EaseOut,
             )),
-            points: Vec::new(),
             path: BezPath::new(),
             path_points: Vec::new(),
+            ghost_point: None,
         }
     }
 }
@@ -74,80 +77,37 @@ impl From<&PathPoint> for Point {
 
 #[derive(Clone)]
 pub enum PathUpdate {
-    Start(Rect, bool),
-    Point(usize, Point),
-    End(Rect, bool),
+    MoveStartRect(Rect, bool),
+    AddPoint(usize, Point),
+    MovePoint(usize, Point),
+    RemovePoint(usize),
+    MoveEndRect(Rect, bool),
 }
 
 impl ConnectionItemData {
     const STROKE_THICKNESS: f64 = 0.05;
     const RECT_MARGIN: f64 = 1.5;
 
-    pub fn new(points: &[(i32, i32)], start: Point, end: Point) -> Self {
+    pub fn new(points: &[(i32, i32)], start: Rect, end: Rect) -> Self {
         let points: Vec<Point> = points.iter().map(|&p| p.into()).collect();
-        let start_rect = Rect::new(start, Vec2::ZERO);
-        let end_rect = Rect::new(end, Vec2::ZERO);
 
-        let path_points = Self::points_to_path_points(&points, &start_rect, &end_rect);
+        let path_points = Self::points_to_path_points(&points, &start, &end);
         let path = Self::points_to_path(&path_points);
 
         Self {
-            points,
             path,
             path_points,
             start_rect: AnimatedProperty::new(StandardAnimation::initialized(
-                start_rect,
+                start,
                 Duration::from_millis(100),
                 Easing::EaseOut,
             )),
             end_rect: AnimatedProperty::new(StandardAnimation::initialized(
-                end_rect,
+                end,
                 Duration::from_millis(100),
                 Easing::EaseOut,
             )),
             ..Default::default()
-        }
-    }
-
-    fn animate_property<TVal, TAni>(
-        prop: &mut AnimatedProperty<TAni>,
-        val: TVal,
-        reset: bool,
-    ) -> bool
-    where
-        TAni: Animatable<Value = TVal>,
-    {
-        if reset {
-            prop.reset(val)
-        } else {
-            prop.set(val)
-        }
-    }
-
-    pub fn update(&mut self, value: Option<PathUpdate>) -> bool {
-        let updated = match value {
-            Some(PathUpdate::Start(rect, reset)) => {
-                Self::animate_property(&mut self.start_rect, rect, reset)
-            }
-            Some(PathUpdate::Point(index, value)) => {
-                self.points[index] = value;
-                true
-            }
-            Some(PathUpdate::End(rect, reset)) => {
-                Self::animate_property(&mut self.end_rect, rect, reset)
-            }
-            _ => false,
-        };
-
-        if self.start_rect.animate() | self.end_rect.animate() | updated {
-            self.path_points =
-                Self::points_to_path_points(&self.points, &self.start_rect, &self.end_rect);
-
-            self.path = Self::points_to_path(&self.path_points);
-
-            true
-        } else {
-            false
         }
     }
 
@@ -258,7 +218,7 @@ impl ConnectionItemData {
         rect.inset_uniform(-Self::RECT_MARGIN)
     }
 
-    fn points_to_path_points(points: &[Point], start: &Rect, end: &Rect) -> Vec<PathPoint> {
+    pub(crate) fn points_to_path_points(points: &[Point], start: &Rect, end: &Rect) -> Vec<PathPoint> {
         let mut result = Vec::with_capacity(points.len() * 2 + 5); // Estimate capacity
 
         // Special case where no explicit points are defined
@@ -354,7 +314,7 @@ impl ConnectionItemData {
         Self::merge_close_points(&result, 1.)
     }
 
-    fn points_to_path(points: &[PathPoint]) -> BezPath {
+    pub(crate) fn points_to_path(points: &[PathPoint]) -> BezPath {
         let points: Vec<Point> = points.iter().map(Into::into).collect();
 
         match points.len() {
@@ -433,42 +393,62 @@ impl PathBuilder {
 
 impl Item for Connection {
     fn update(&mut self, state: &State, ws: &Workspace) -> bool {
-        let highlighted = [self.from.entity, self.to.entity]
-            .iter()
-            .any(|&entity| ws.hovered == Some(entity) || state.selected_entity == Some(entity));
+        let highlighted = state.selected_point.is_some_and(|(key, _)| key == self.key)
+            || ws.hovered_connection == Some(self.key)
+            || [self.from.entity, self.to.entity].iter().any(|&entity| {
+                ws.hovered_entity == Some(entity) || state.selected_entity == Some(entity)
+            });
 
-        self.data.opacity.set(if highlighted { 0.75 } else { 0.5 });
+        self.data.opacity.set(if highlighted { 0.8 } else { 0.5 });
 
-        self.data.update(None) | self.data.animate()
+        self.data.animate() | self.update_data(None)
     }
 
-    fn render(&self, c: &mut Canvas, _: &State, ws: &Workspace) {
+    fn render(&self, c: &mut Canvas, state: &State, ws: &Workspace) {
         let pos = ws.position();
-        let scale = c.scale() * ws.zoom() * Workspace::GRID_SIZE;
+        let zoom_adjustment = c.scale() * ws.zoom();
+        let scale = zoom_adjustment * Workspace::GRID_SIZE;
 
         let affine = Affine::scale(scale).then_translate((-pos * c.scale()).into());
 
-        let color = c.colors().text;
-        let accent = c.colors().accent;
+        let border_color = c.colors().text;
+        let accent_color = c.colors().accent;
         let stroke = Stroke::new(ConnectionItemData::STROKE_THICKNESS);
 
         c.scene().stroke(
             &stroke,
             affine,
-            color.multiply_alpha(*self.data.opacity),
+            border_color.multiply_alpha(*self.data.opacity),
             None,
             &self.data.path,
         );
 
-        for point in &self.data.path_points {
-            if let PathPoint::Explicit(point) = point {
-                c.scene().fill(
-                    Fill::NonZero,
-                    affine,
-                    accent,
-                    None,
-                    &Circle::new(*point, 0.1),
-                );
+        let mut render_point = |point: Point, accent: Color, border: Color| {
+            let circle = Circle::new(point, 0.15 / zoom_adjustment);
+            let stroke = Stroke::new(0.05 / zoom_adjustment);
+
+            c.scene().fill(Fill::NonZero, affine, accent, None, &circle);
+            c.scene().stroke(&stroke, affine, border, None, &circle);
+        };
+
+        if state.tool == Tool::Pen || ws.previous_tool == Some(Tool::Pen) {
+            let mut show_ghost_point = true;
+            let ghost_point = self.data.ghost_point;
+
+            for point in &self.data.path_points {
+                if let PathPoint::Explicit(point) = point {
+                    render_point(*point, accent_color, Color::WHITE);
+
+                    if ghost_point == Some(*point) {
+                        show_ghost_point = false
+                    }
+                }
+            }
+
+            if ws.hovered_connection == Some(self.key) && show_ghost_point {
+                if let Some(ghost_point) = ghost_point {
+                    render_point(ghost_point, Color::DARK_GRAY, Color::WHITE);
+                }
             }
         }
     }

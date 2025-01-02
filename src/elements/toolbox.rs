@@ -51,6 +51,10 @@ impl EventTarget for Toolbox {
             || matches!(char, Some('r') | Some('R'))
         {
             Tool::Relation
+        } else if matches!(pk, PhysicalKey::Code(KeyCode::Digit5))
+            || matches!(char, Some('p') | Some('P'))
+        {
+            Tool::Pen
         } else {
             return false;
         };
@@ -91,6 +95,7 @@ impl Element for Toolbox {
                 ToolboxItem::create(Tool::Hand),
                 ToolboxItem::create(Tool::Entity),
                 ToolboxItem::create(Tool::Relation),
+                ToolboxItem::create(Tool::Pen)
             ]),
             |node_id, ctx| {
                 ctx.state.key_listeners.insert(node_id);

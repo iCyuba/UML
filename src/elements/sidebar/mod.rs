@@ -49,6 +49,7 @@ macro_rules! sidebar_entity {
 }
 
 pub(super) use sidebar_entity;
+use crate::elements::toolbox_item::Tool;
 
 #[derive(AnimatedElement)]
 pub struct Sidebar {
@@ -71,7 +72,10 @@ impl EventTarget for Sidebar {
 
         macro_rules! real {
             () => {
-                ctx.state.selected_entity
+                match ctx.state.tool {
+                    Tool::Relation | Tool::Pen => None,
+                    _ => ctx.state.selected_entity,
+                }
             };
         }
 

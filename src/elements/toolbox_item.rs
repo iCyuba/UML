@@ -28,6 +28,7 @@ pub enum Tool {
     Hand,
     Entity,
     Relation,
+    Pen
 }
 
 impl Display for Tool {
@@ -37,6 +38,7 @@ impl Display for Tool {
             Tool::Hand => write!(f, "Hand tool"),
             Tool::Entity => write!(f, "Entity"),
             Tool::Relation => write!(f, "Relation"),
+            Tool::Pen => write!(f, "Pen tool"),
         }
     }
 }

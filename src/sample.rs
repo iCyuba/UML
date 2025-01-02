@@ -3,6 +3,7 @@ use crate::data::{
     entity::{AccessModifier, Argument, Attribute, EntityType, Type},
     Connection, Entity, Project,
 };
+use crate::geometry::{Rect, Size};
 
 pub fn project() -> Project {
     let mut project = Project::new("Test".to_string());
@@ -50,8 +51,8 @@ pub fn project() -> Project {
             multiplicity: Multiplicity::Many,
         },
         vec![(20, 20), (10, 13), (10, 7), (0, 0)],
-        pos1.into(),
-        pos2.into(),
+        Rect::new(pos1, Size::ZERO),
+        Rect::new(pos2, Size::ZERO),
     );
 
     project.connect(conn1);
@@ -74,8 +75,8 @@ pub fn project() -> Project {
             multiplicity: Multiplicity::Many,
         },
         vec![],
-        pos1.into(),
-        pos3.into(),
+        Rect::new(pos1, Size::ZERO),
+        Rect::new(pos3, Size::ZERO),
     );
 
     project.connect(conn2);

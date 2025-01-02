@@ -22,6 +22,9 @@ pub enum Symbol {
     Load = b'L',
     Save = b'M',
     Screenshot = b'N',
+    Pen = b'O',
+    One = b'P',
+    Many = b'Q',
 }
 
 impl From<Symbol> for char {

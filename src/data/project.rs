@@ -51,6 +51,16 @@ impl Project {
     pub fn connect(&mut self, connection: Connection) -> ConnectionKey {
         let from = connection.from.entity;
         let to = connection.to.entity;
+        
+        // Check if connection already exists
+        for &key in self.entities[from].connections.iter() {
+            let existing = &self.connections[key];
+            if (existing.from.entity == from && existing.to.entity == to)
+                || (existing.from.entity == to && existing.to.entity == from)
+            {
+                return key;
+            }
+        }
 
         let key = self.connections.insert_with_key(|key| {
             let mut connection = connection;
@@ -72,19 +82,6 @@ impl Project {
 
         self.entities[from].connections.remove(&key);
         self.entities[to].connections.remove(&key);
-    }
-
-    /// Modifies connection based on callback
-    pub fn connection_mut(
-        &mut self,
-        connection: Option<ConnectionKey>,
-        f: impl FnOnce(&mut Connection) -> bool,
-    ) -> bool {
-        if let Some(connection) = connection.and_then(|key| self.connections.get_mut(key)) {
-            return f(connection);
-        }
-
-        false
     }
 
     /// Modifies entity based on callback

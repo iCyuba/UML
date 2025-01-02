@@ -1,5 +1,8 @@
 use super::item::Item;
+use crate::data::connection::Relation;
 use crate::data::entity::EntityType;
+use crate::data::project::ConnectionKey;
+use crate::data::Connection;
 use crate::elements::node::Element;
 use crate::{
     animations::{animated_property::AnimatedProperty, delta_animation::DeltaAnimation},
@@ -37,8 +40,9 @@ pub struct Workspace {
     position: AnimatedProperty<DeltaAnimation<Vec2>>,
     zoom: AnimatedProperty<DeltaAnimation<f64>>,
 
-    previous_tool: Option<Tool>,
-    pub(crate) hovered: Option<EntityKey>,
+    pub previous_tool: Option<Tool>,
+    pub hovered_entity: Option<EntityKey>,
+    pub hovered_connection: Option<ConnectionKey>,
 
     /// The point at which the mouse was pressed down
     ///
@@ -98,7 +102,7 @@ impl Workspace {
         }
     }
 
-    fn cursor_to_point(&self, cursor: Point) -> Point {
+    pub fn cursor_to_point(&self, cursor: Point) -> Point {
         (cursor + *self.position) / *self.zoom
     }
 
@@ -166,7 +170,7 @@ impl EventTarget for Workspace {
             let transform = Affine::translate(-position % gap + offset);
 
             while x < width as f64 {
-                while y < height as f64 {
+                while y < (height + gap as u32) as f64 {
                     c.scene().fill(
                         Fill::NonZero,
                         transform,
@@ -179,7 +183,7 @@ impl EventTarget for Workspace {
                 }
 
                 x += gap;
-                y = 0.;
+                y = -gap;
             }
         }
 
@@ -243,6 +247,7 @@ impl EventTarget for Workspace {
     fn on_mousedown(&mut self, ctx: &mut EventContext, button: MouseButton) -> bool {
         let middle = button == MouseButton::Middle;
         let left = button == MouseButton::Left;
+        let right = button == MouseButton::Right;
         let point = self.cursor_to_point(ctx.state.cursor);
 
         if middle {
@@ -256,7 +261,81 @@ impl EventTarget for Workspace {
             return true;
         }
 
-        if !ctx.project.entity_mut(self.hovered, |entity| {
+        if ctx.state.tool == Tool::Relation {
+            // Connect entities
+            if match (self.hovered_entity, ctx.state.selected_entity) {
+                (Some(old), Some(new)) => {
+                    if old == new {
+                        return false;
+                    }
+                    
+                    let from_rect = ctx.project.entities[old].get_rect();
+                    let to_rect = ctx.project.entities[new].get_rect();
+
+                    ctx.project.connect(Connection::new(
+                        Relation::new(old),
+                        Relation::new(new),
+                        Vec::new(),
+                        from_rect,
+                        to_rect,
+                    ));
+
+                    true
+                }
+                _ => false,
+            } {
+                self.hovered_entity = None;
+                ctx.state.selected_entity = None;
+                ctx.state.request_redraw();
+                return true;
+            }
+            
+            // Disconnect entities
+            if let Some(connection) = self.hovered_connection {
+                if right {
+                    ctx.project.disconnect(connection);
+                    ctx.state.request_redraw();
+                    return true;
+                }
+            }
+        }
+
+        if ctx.state.tool == Tool::Pen {
+            // Set hovered point
+            if let Some(key) = self.hovered_connection {
+                let connection = &mut ctx.project.connections[key];
+                let cursor = self.cursor_to_point(ctx.state.cursor) / Workspace::GRID_SIZE;
+                let zoom_adjustment = ctx.c.scale() * self.zoom();
+
+                if let Some(point) =
+                    connection.get_hovered_path_point(&cursor, 0.5 / zoom_adjustment)
+                {
+                    if left {
+                        // Select point
+                        ctx.state.selected_point = Some((key, point));
+                        return true;
+                    } else if right {
+                        // Remove point
+                        connection.remove_point(point);
+                        ctx.state.request_redraw();
+                        return true;
+                    }
+                } else if let Some((index, point)) =
+                    connection.get_hovered_line(&cursor, 0.5 / zoom_adjustment)
+                {
+                    if left {
+                        // Add point
+                        connection.add_point(index, point.round());
+                        ctx.state.selected_point = Some((key, index));
+                        ctx.state.request_redraw();
+                        return true;
+                    }
+                }
+            }
+        }
+
+        // Move entity
+        if !ctx.project.entity_mut(self.hovered_entity, |entity| {
             if left && ctx.state.tool == Tool::Select {
                 self.move_start_point = Some(point);
                 entity.data.move_pos = Some(Vec2::ZERO);
@@ -268,6 +347,7 @@ impl EventTarget for Workspace {
             ctx.state.request_redraw();
         }
 
+        // Create new entity
         if left && ctx.state.tool == Tool::Entity {
             let entity = Entity::new(
                 "Empty".to_string(),
@@ -281,7 +361,7 @@ impl EventTarget for Workspace {
         }
 
         // Move the selected entity to the top
-        if let Some(entity) = self.hovered {
+        if let Some(entity) = self.hovered_entity {
             ctx.project.ordered_entities.retain(|&k| k != entity);
             ctx.project.ordered_entities.push(entity);
         }
@@ -303,13 +383,13 @@ impl EventTarget for Workspace {
             let diff = cursor - old;
 
             // Move the selected entity
-            if ctx.project.entity_mut(self.hovered, |entity| {
+            if ctx.project.entity_mut(self.hovered_entity, |entity| {
                 entity.data.move_pos = Some(diff);
                 ctx.state.request_redraw();
 
                 true
             }) {
-                let key = self.hovered.unwrap();
+                let key = self.hovered_entity.unwrap();
                 let rect = ctx.project.entities[key].get_rect();
 
                 for conn in ctx.project.get_entity_connections(key) {
@@ -320,11 +400,55 @@ impl EventTarget for Workspace {
             }
         }
 
+        // Hovered entity
         let entity = self.entity_at_point(ctx.project, cursor + *self.position);
-        if entity != self.hovered {
+        if entity != self.hovered_entity {
             ctx.state.request_cursor_update();
             ctx.state.request_redraw();
-            self.hovered = entity;
+            self.hovered_entity = entity;
+            return true;
+        }
+        
+        // Hovered connection point
+        let zoom_adjustment = ctx.c.scale() * self.zoom();
+        let point = self.cursor_to_point(ctx.state.cursor) / Workspace::GRID_SIZE;
+        let mut connection = None;
+
+        if ctx.state.selected_point.is_none() {
+            for (key, conn) in ctx.project.connections.iter_mut() {
+                if let Some((_, point)) = conn.get_hovered_line(&point, 0.5 / zoom_adjustment) {
+                    conn.data.ghost_point = Some(point.round());
+                    connection = Some(key);
+                } else {
+                    conn.data.ghost_point = None;
+                }
+            }
+        }
+
+        if connection != self.hovered_connection {
+            ctx.state.request_cursor_update();
+            ctx.state.request_redraw();
+            self.hovered_connection = connection;
+            return true;
+        }
+
+        // Force update when the connection line is hovered
+        if self.hovered_connection.is_some() {
+            ctx.state.request_redraw();
+            return true;
+        }
+
+        // Connection point dragging
+        if ctx.state.tool == Tool::Pen {
+            if let Some((connection, index)) = ctx.state.selected_point {
+                let connection = &mut ctx.project.connections[connection];
+                let cursor =
+                    (self.cursor_to_point(ctx.state.cursor) / Workspace::GRID_SIZE).round();
+
+                connection.update_point(index, cursor);
+                ctx.state.request_redraw();
+                return true;
+            }
         }
 
         false
@@ -348,7 +472,19 @@ impl EventTarget for Workspace {
             return true;
         }
 
-        if ctx.project.entity_mut(self.hovered, |entity| {
+        // Release connection point
+        if let Some((connection, index)) = ctx.state.selected_point {
+            let connection = &mut ctx.project.connections[connection];
+            let cursor = (self.cursor_to_point(ctx.state.cursor) / Workspace::GRID_SIZE).round();
+
+            connection.update_point(index, cursor);
+
+            ctx.state.selected_point = None;
+            ctx.state.request_redraw();
+            return true;
+        }
+
+        if ctx.project.entity_mut(self.hovered_entity, |entity| {
             // Snap the entity to the grid
             let pos = entity.data.move_pos.take();
             if let Some(pos) = pos {
@@ -367,7 +503,7 @@ impl EventTarget for Workspace {
 
             true
         }) {
-            let key = self.hovered.unwrap();
+            let key = self.hovered_entity.unwrap();
             let rect = ctx.project.entities[key].get_rect();
             let rect = Rect::new(rect.center().round() - rect.size / 2., rect.size);
 
@@ -376,10 +512,10 @@ impl EventTarget for Workspace {
                 connection.update_origin(key, rect, false);
             }
 
-            true
-        } else {
-            false
+            return true;
         }
+
+        false
     }
 
     fn on_wheel(&mut self, ctx: &mut EventContext, event: WheelEvent) -> bool {
@@ -439,7 +575,8 @@ impl Element for Workspace {
                 zoom: AnimatedProperty::new(DeltaAnimation::initialized(1., 30.)),
 
                 previous_tool: None,
-                hovered: None,
+                hovered_entity: None,
+                hovered_connection: None,
                 move_start_point: None,
             }
         })
