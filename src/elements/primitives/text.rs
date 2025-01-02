@@ -17,6 +17,8 @@ pub struct Text<'a> {
 
     font: &'a FontResource<'a>,
     brush: BrushRef<'a>,
+
+    ellipsis: bool,
 }
 
 impl<'a> Text<'a> {
@@ -28,6 +30,7 @@ impl<'a> Text<'a> {
         size: f64,
         font: &'a FontResource<'a>,
         brush: impl Into<BrushRef<'a>>,
+        ellipsis: bool,
     ) -> Self {
         let rect = rect.into();
         let brush = brush.into();
@@ -38,6 +41,7 @@ impl<'a> Text<'a> {
             size,
             font,
             brush,
+            ellipsis,
         }
     }
 
@@ -75,9 +79,13 @@ impl Draw for Text<'_> {
         let metrics = font.metrics(self.size as f32);
 
         let ellipsis = font.char_map.map(Self::ELLIPSIS).unwrap_or_default();
-        let safe_width_offset = metrics.advance_width(ellipsis).unwrap_or_default() as f64;
+        let safe_width_offset = if self.ellipsis {
+            metrics.advance_width(ellipsis).unwrap_or_default() as f64
+        } else {
+            0.
+        };
 
-        let last_char = self.text.len() - 1;
+        let last_char = self.text.chars().count() - 1;
         let max_width = self.rect.size.x + 0.1; // Add a small offset to prevent overflow caused by floating point errors
 
         c.scene()
@@ -99,7 +107,12 @@ impl Draw for Text<'_> {
                         None
                     } else {
                         Some(Glyph {
-                            id: (if overflow { ellipsis } else { glyph_id }).to_u32(),
+                            id: (if overflow && self.ellipsis {
+                                ellipsis
+                            } else {
+                                glyph_id
+                            })
+                            .to_u32(),
                             x: (x * scale) as f32,
                             y: 0.,
                         })

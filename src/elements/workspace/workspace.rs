@@ -205,6 +205,7 @@ impl EventTarget for Workspace {
             16.0,
             fonts::inter_black_italic(),
             colors.text,
+            true,
         )
         .draw(c);
     }

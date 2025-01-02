@@ -161,6 +161,7 @@ impl EventTarget for Tooltip {
                 Tooltip::FONT_SIZE,
                 font,
                 c.colors().text.multiply_alpha(*self.opacity),
+                true,
             )
             .draw(c);
         }

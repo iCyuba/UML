@@ -158,6 +158,7 @@ impl Item for Entity {
             16.0 * zoom,
             title_font(self),
             c.colors().text.multiply_alpha(opacity),
+            false,
         )
         .draw(c);
 
@@ -170,6 +171,7 @@ impl Item for Entity {
                 12.0 * zoom,
                 fonts::jbmono_regular(),
                 c.colors().accent.multiply_alpha(opacity),
+                false,
             )
             .draw(c);
 

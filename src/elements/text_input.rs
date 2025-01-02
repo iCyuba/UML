@@ -150,13 +150,23 @@ impl TextInput {
 
     /// Select the entire text
     fn select_all(&mut self) {
-        let len = self.text.len();
+        let len = self.text.chars().count();
 
         self.selection = -(len as isize);
         self.cursor = len;
 
         self.view = 0;
         self.update_view();
+    }
+
+    /// Get the byte index of the character at the given index
+    fn idx(&self, char: usize) -> usize {
+        self.text.char_indices().nth(char).map(|(idx, _)| idx).unwrap_or(self.text.len())
+    }
+
+    /// Get the byte index of the character at the cursor position
+    fn cursor_idx(&self) -> usize {
+        self.idx(self.cursor)
     }
 }
 
@@ -206,7 +216,7 @@ impl EventTarget for TextInput {
             &self.text.chars().skip(offset).collect::<String>()
         };
 
-        Text::new(text, self.layout, font_size, self.props.font, color).draw(ctx.c);
+        Text::new(text, self.layout, font_size, self.props.font, color, true).draw(ctx.c);
 
         if !self.focused(ctx.state) {
             return;
@@ -284,7 +294,10 @@ impl EventTarget for TextInput {
             {
                 let size = end - start;
 
-                self.text.replace_range(start..end, "");
+                let start_idx = self.idx(start);
+                let end_idx = self.idx(end);
+
+                self.text.replace_range(start_idx..end_idx, "");
 
                 self.cursor = start;
                 self.view = self.view.saturating_sub(size);
@@ -293,17 +306,17 @@ impl EventTarget for TextInput {
             }
 
             Key::Named(NamedKey::Backspace) => {
-                if self.cursor > 0 {
-                    self.text.remove(self.cursor - 1);
-                    self.cursor -= 1;
-                    self.view = self.view.saturating_sub(1);
+                if self.cursor == 0 {
+                    return false;
                 }
+
+                self.text.remove(self.idx(self.cursor - 1));
+                self.cursor -= 1;
+                self.view = self.view.saturating_sub(1);
             }
 
             Key::Named(NamedKey::Delete) => {
-                if self.cursor < self.text.len() {
-                    self.text.remove(self.cursor);
-                }
+                self.text.remove(self.cursor_idx());
             }
 
             Key::Named(NamedKey::ArrowLeft) | Key::Named(NamedKey::ArrowRight) => {
@@ -314,7 +327,7 @@ impl EventTarget for TextInput {
                     self.selection += jump;
 
                     // This will overflow when below 0
-                    if self.selection() > self.text.len() {
+                    if self.selection() > self.text.chars().count() {
                         self.selection -= jump;
                     }
                 } else if self.selection != 0 {
@@ -324,7 +337,7 @@ impl EventTarget for TextInput {
                     self.cursor = if left {
                         self.cursor.saturating_sub(1)
                     } else {
-                        self.cursor.saturating_add(1).min(self.text.len())
+                        self.cursor.saturating_add(1).min(self.text.chars().count())
                     };
                 }
 
@@ -352,17 +365,21 @@ impl EventTarget for TextInput {
                     }
 
                     if self.selection != 0 {
-                        self.text.replace_range(start..end, &text);
-                        self.cursor = start + text.len();
+                        self.cursor = start + text.chars().count();
                         self.selection = 0;
+
+                        let start = self.idx(start);
+                        let end = self.idx(end);
+
+                        self.text.replace_range(start..end, &text);
                     } else {
-                        if self.cursor < self.text.len() {
-                            self.text.insert_str(self.cursor, &text);
+                        if self.cursor < self.text.chars().count() {
+                            self.text.insert_str(self.cursor_idx(), &text);
                         } else {
                             self.text.push_str(&text);
                         }
 
-                        self.cursor += text.len();
+                        self.cursor += text.chars().count();
                     }
                 }
             }

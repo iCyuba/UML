@@ -58,6 +58,7 @@ impl Draw for Icon {
             self.size,
             fonts::icons(),
             self.color,
+            false,
         )
         .draw(c);
     }

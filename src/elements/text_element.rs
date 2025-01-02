@@ -53,6 +53,7 @@ impl EventTarget for TextElement {
             self.props.size,
             self.props.font,
             ctx.c.colors().text,
+            true,
         )
         .draw(ctx.c);
     }

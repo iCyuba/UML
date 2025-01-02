@@ -72,6 +72,7 @@ impl Element for Statusbar {
                     icon: Symbol::Load,
                     on_click: |ctx| ctx.state.load(),
                 }),
+                #[cfg(not(target_arch = "wasm32"))]
                 StatusbarButton::create(StatusbarButtonProps {
                     tooltip: "Screenshot",
                     icon: Symbol::Screenshot,
