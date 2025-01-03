@@ -17,7 +17,7 @@ use crate::{
         context::{EventContext, GetterContext, RenderContext},
         ctx, EventTarget, Tree,
     },
-    geometry::{Point, Rect},
+    geometry::{Point, Rect, Size},
 };
 use derive_macros::AnimatedElement;
 use std::time::Duration;
@@ -80,6 +80,10 @@ impl EventTarget for SegmentedControl {
 
     fn render(&self, ctx: &mut RenderContext) {
         let rect: Rect = self.layout.into();
+
+        if rect.size == Size::ZERO {
+            return;
+        }
 
         // Background
         SimpleBox::new(rect, 5., ctx.c.colors().border).draw(ctx.c);

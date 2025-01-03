@@ -9,6 +9,12 @@ use crate::geometry::{Rect, Size};
 pub fn project() -> Project {
     let mut project = Project::new("Test".to_string());
 
+    let parent = project.add_entity(Entity::new(
+        "Parent".to_string(),
+        EntityType::AbstractClass,
+        (0, 0),
+    ));
+
     let pos1 = (-5, 20);
     let mut basic = Entity::new("Basic".to_string(), EntityType::Class, pos1);
 
@@ -39,8 +45,10 @@ pub fn project() -> Project {
 
     let pos2 = (13, 15);
     let entity1 = project.add_entity(basic);
+    project.set_parent(entity1, Some(parent));
+
     let conn1 = Connection::new(
-        RelationType::Generalization,
+        RelationType::Composition,
         Relation {
             entity: entity1,
             multiplicity: Multiplicity::One,

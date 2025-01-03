@@ -13,12 +13,24 @@ use crate::{
     },
     presentation::fonts,
 };
-use taffy::{
-    prelude::{auto, length, percent},
-    JustifyContent, Layout, NodeId, Size, Style,
-};
+use taffy::{Display, JustifyContent, Layout, LengthPercentage, NodeId, Size, Style};
 
-pub struct SidebarConnection(Layout);
+pub struct SidebarConnection {
+    layout: Layout,
+    node_id: NodeId,
+    idx: usize,
+}
+
+impl SidebarConnection {
+    const STYLE: Style = Style {
+        justify_content: Some(JustifyContent::Start),
+        gap: Size {
+            width: LengthPercentage::Length(4.),
+            height: LengthPercentage::Length(0.),
+        },
+        ..Style::DEFAULT
+    };
+}
 
 impl Countable for SidebarConnection {
     fn count(ctx: &EventContext) -> usize {
@@ -44,15 +56,40 @@ macro_rules! get_connection {
     };
 }
 
-impl EventTarget for SidebarConnection {}
+impl EventTarget for SidebarConnection {
+    fn update(&mut self, ctx: &mut EventContext) {
+        // Hide if the current connection type is Generalization or Realization
+        if let Some((_, conn)) = get_connection!(ctx, self.idx => get) {
+            let hide = matches!(
+                conn.relation,
+                RelationType::Generalization //| RelationType::Realization
+            );
+
+            let style = Style {
+                display: if hide { Display::None } else { Display::Flex },
+                ..Self::STYLE
+            };
+
+            let node_id = self.node_id;
+            ctx.state.modify_tree(move |tree, ctx| {
+                let old = tree.style(node_id).unwrap();
+
+                if old.display != style.display {
+                    tree.set_style(node_id, style).unwrap();
+                    ctx.state.request_redraw();
+                }
+            });
+        }
+    }
+}
 
 impl Node for SidebarConnection {
     fn layout(&self) -> &Layout {
-        &self.0
+        &self.layout
     }
 
     fn layout_mut(&mut self) -> &mut Layout {
-        &mut self.0
+        &mut self.layout
     }
 }
 
@@ -62,20 +99,13 @@ impl ElementWithProps for SidebarConnection {
     fn setup(tree: &mut Tree, ctx: &mut EventContext, idx: usize) -> NodeId {
         tree.add_element(
             ctx,
-            Style {
-                max_size: Size {
-                    width: percent(1.),
-                    height: auto(),
-                },
-                justify_content: Some(JustifyContent::Start),
-                gap: length(4.),
-                ..<_>::default()
-            },
+            Self::STYLE,
             Some(vec![
                 // Type
                 SegmentedControl::create(SegmentedControlProps {
                     items: vec![
                         (Symbol::Association, "Association"),
+                        (Symbol::OneWayAssociation, "One way association"),
                         (Symbol::Aggregation, "Aggregation"),
                         (Symbol::Composition, "Composition"),
                     ],
@@ -83,8 +113,9 @@ impl ElementWithProps for SidebarConnection {
                         get_connection!(ctx, idx => get)
                             .map(|(_, conn)| match conn.relation {
                                 RelationType::Association => 0,
-                                RelationType::Aggregation => 1,
-                                RelationType::Composition => 2,
+                                RelationType::OneWayAssociation => 1,
+                                RelationType::Aggregation => 2,
+                                RelationType::Composition => 3,
                                 _ => 0,
                             })
                             .unwrap_or(0)
@@ -93,8 +124,9 @@ impl ElementWithProps for SidebarConnection {
                         if let Some((_, conn)) = get_connection!(ctx, idx => get_mut) {
                             conn.relation = match index {
                                 0 => RelationType::Association,
-                                1 => RelationType::Aggregation,
-                                2 => RelationType::Composition,
+                                1 => RelationType::OneWayAssociation,
+                                2 => RelationType::Aggregation,
+                                3 => RelationType::Composition,
                                 _ => return,
                             };
                         }
@@ -173,7 +205,11 @@ impl ElementWithProps for SidebarConnection {
                     style: ButtonStyle::Segmented,
                 }),
             ]),
-            |_, _| Self(<_>::default()),
+            |node_id, _| Self {
+                layout: <_>::default(),
+                node_id,
+                idx,
+            },
         )
     }
 }

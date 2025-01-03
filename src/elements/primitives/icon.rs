@@ -26,13 +26,14 @@ pub enum Symbol {
     One = b'P',
     Many = b'Q',
     Trash = b'R',
-    Association = b'S',
+    OneWayAssociation = b'S',
     Aggregation = b'T',
     Composition = b'U',
     Generalization = b'V',
     Swap = b'W',
     Field = b'X',
     Method = b'Y',
+    Association = b'Z',
 }
 
 impl From<Symbol> for char {

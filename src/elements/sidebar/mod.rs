@@ -26,6 +26,7 @@ use field::SidebarField;
 use list::List;
 use methods::SidebarMethod;
 use name::sidebar_name;
+use parent::SidebarParent;
 use r#type::SidebarType;
 use std::time::Duration;
 use taffy::{
@@ -41,6 +42,7 @@ mod field;
 mod list;
 mod methods;
 mod name;
+mod parent;
 mod r#type;
 
 #[derive(Default)]
@@ -188,6 +190,8 @@ impl Element for Sidebar {
                 SidebarType::create(),
                 // Name
                 sidebar_name(),
+                // Parent
+                SidebarParent::create(),
                 // Connections
                 List::<SidebarConnection>::create(CategoryProps {
                     icon: Symbol::Workflow,

@@ -108,6 +108,8 @@ pub struct Entity {
     pub name: String,
     pub entity_type: EntityType,
 
+    pub parent: Option<ConnectionKey>, // Connection of type "Generalization"
+
     pub fields: Vec<Field>,
     pub methods: Vec<Method>,
 
@@ -127,6 +129,7 @@ impl Entity {
             key: Default::default(),
             name,
             entity_type,
+            parent: None,
             fields: vec![],
             methods: vec![],
             connections: IndexSet::new(),

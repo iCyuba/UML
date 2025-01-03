@@ -1,6 +1,10 @@
 #![allow(dead_code)]
 
-use super::{Connection, Entity};
+use super::{
+    connection::{Relation, RelationType},
+    entity::EntityType,
+    Connection, Entity,
+};
 use serde::{Deserialize, Serialize};
 use slotmap::{new_key_type, SlotMap};
 
@@ -50,6 +54,32 @@ impl Project {
             let other = self.entities.get_mut(other.entity).unwrap();
 
             other.connections.shift_remove(&connection.key);
+        }
+    }
+
+    pub fn set_parent(&mut self, entity: EntityKey, parent: Option<EntityKey>) {
+        if let Some(parent) = parent {
+            if self.entities[entity].parent.is_some() {
+                self.set_parent(entity, None);
+            }
+
+            match self.entities[parent].entity_type {
+                EntityType::Interface | EntityType::SealedClass => return,
+                _ => {}
+            }
+
+            let conn = self.connect(Connection::new(
+                RelationType::Generalization,
+                Relation::new(entity),
+                Relation::new(parent),
+                vec![],
+                self.entities[entity].get_rect(),
+                self.entities[parent].get_rect(),
+            ));
+
+            self.entities[entity].parent = Some(conn);
+        } else if let Some(parent) = self.entities[entity].parent.take() {
+            self.disconnect(parent);
         }
     }
 
