@@ -125,18 +125,12 @@ impl EventTarget for Workspace {
 
         // Entities
         let mut redraw = false;
-        for (_, entity) in ctx.project.entities.iter_mut() {
-            if entity.update(ctx.state, self) {
-                // Update connections in case the entity was resized
-                for conn in entity.connections.iter() {
-                    ctx.project.connections[*conn].update_origin(
-                        entity.key,
-                        entity.get_rect(),
-                        true,
-                    );
-                }
+        for (key, entity) in ctx.project.entities.iter_mut() {
+            redraw |= entity.update(ctx.state, self);
 
-                redraw = true;
+            for conn in entity.connections.iter() {
+                redraw |=
+                    ctx.project.connections[*conn].update_origin(key, entity.get_rect(), true);
             }
         }
 

@@ -40,6 +40,7 @@ pub enum RelationType {
     Aggregation,
     Composition,
     Generalization,
+    Realization,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -121,14 +122,14 @@ impl Connection {
         self.update_data(Some(PathUpdate::RemovePoint(index)));
     }
 
-    pub fn update_origin(&mut self, entity: EntityKey, rect: Rect, reset: bool) {
+    pub fn update_origin(&mut self, entity: EntityKey, rect: Rect, reset: bool) -> bool {
         self.update_data(if self.from.entity == entity {
             Some(PathUpdate::MoveStartRect(rect, reset))
         } else if self.to.entity == entity {
             Some(PathUpdate::MoveEndRect(rect, reset))
         } else {
             None
-        });
+        })
     }
 
     pub fn get_hovered_path_point(&self, point: &Point, distance: f64) -> Option<usize> {
@@ -203,7 +204,7 @@ impl Connection {
             _ => false,
         };
 
-        if self.data.start_rect.animate() | self.data.end_rect.animate() | updated {
+        if self.data.update() | updated {
             let points = self.points.iter().map(|&p| p.into()).collect::<Vec<_>>();
             self.data.path_points = ConnectionItemData::points_to_path_points(
                 &points,
@@ -276,7 +277,7 @@ impl Connection {
                 );
                 path.close_path();
             }
-            RelationType::Generalization => {
+            RelationType::Generalization | RelationType::Realization => {
                 path.line_to(tail + direction * (1. - 3f64.sqrt() / 2.) * arrow_size);
                 path.move_to(head);
                 path.line_to(head - direction.rotate_by_angle(FRAC_PI_6) * arrow_size);
@@ -335,7 +336,7 @@ impl Item for Connection {
 
         self.data.opacity.set(if highlighted { 0.8 } else { 0.5 });
 
-        self.data.animate() | self.update_data(None)
+        self.update_data(None)
     }
 
     fn render(&self, c: &mut Canvas, state: &State, ws: &Workspace) {
@@ -350,10 +351,23 @@ impl Item for Connection {
         let stroke = Stroke::new(ConnectionItemData::STROKE_THICKNESS)
             .with_caps(Cap::Butt)
             .with_join(Join::Round);
+        let dashed_stroke = Stroke::new(ConnectionItemData::STROKE_THICKNESS)
+            .with_caps(Cap::Round)
+            .with_join(Join::Round)
+            .with_dashes(0., vec![0.75, 0.5]);
 
         // Draw line
-        c.scene()
-            .stroke(&stroke, affine, line_color, None, &self.data.path);
+        c.scene().stroke(
+            if self.relation == RelationType::Realization {
+                &dashed_stroke
+            } else {
+                &stroke
+            },
+            affine,
+            line_color,
+            None,
+            &self.data.path,
+        );
 
         // Draw arrow
         self.render_arrow(c, affine, line_color, &stroke);

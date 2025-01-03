@@ -104,6 +104,10 @@ impl ConnectionItemData {
             ..Default::default()
         }
     }
+    
+    pub fn update(&mut self) -> bool {
+        self.animate()
+    }
 
     fn round_vector(v: Vec2, dir: Vec2) -> Vec2 {
         match dir {

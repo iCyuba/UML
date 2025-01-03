@@ -71,7 +71,7 @@ pub fn project() -> Project {
     let pos3 = (-15, -10);
 
     let conn2 = Connection::new(
-        RelationType::OneWayAssociation,
+        RelationType::Realization,
         Relation {
             entity: entity1,
             multiplicity: Multiplicity::One,
