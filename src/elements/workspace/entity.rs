@@ -6,10 +6,7 @@ use crate::{
         traits::Interpolate,
     },
     app::{renderer::Canvas, State},
-    data::{
-        entity::{Attribute, EntityType},
-        Entity,
-    },
+    data::{entity::EntityType, Entity},
     elements::primitives::{
         fancy_box::{BorderOptions, FancyBox, ShadowOptions},
         text::Text,
@@ -85,13 +82,23 @@ impl Item for Entity {
         // Name
         let name = Text::measure(&self.name, 16., title_font(self));
         size.x = size.x.max(name.x);
-        size.y += name.y + 8.; // 8px gap
+        size.y += name.y;
 
         // Attributes
-        for (name, attr) in self.attributes.iter() {
-            let attr = Text::measure(&attr_to_string(name, attr), 12., fonts::jbmono_regular());
+        for field in self.fields.iter() {
+            let attr = Text::measure(&field.to_string(), 12., fonts::jbmono_regular());
             size.x = size.x.max(attr.x);
-            size.y += attr.y + 4.; // 4px gap
+            size.y += attr.y + 8.; // 4px margin
+        }
+
+        if !self.methods.is_empty() {
+            size.y += 8.; // 8px gap between fields and methods
+        }
+
+        for method in self.methods.iter() {
+            let attr = Text::measure(&method.to_string(), 12., fonts::jbmono_regular());
+            size.x = size.x.max(attr.x);
+            size.y += attr.y + 8.; // 4px margin
         }
 
         // Padding
@@ -162,11 +169,9 @@ impl Item for Entity {
         )
         .draw(c);
 
-        // Attributes
-        let mut y = 24. * zoom; // 8px gap
-        for (name, attr) in self.attributes.iter() {
+        let mut render_property = |str: String, y| {
             Text::new(
-                &attr_to_string(name, attr),
+                &str,
                 Rect::new(padded.origin + (0., y), (padded.size.x, 12. * zoom)),
                 12.0 * zoom,
                 fonts::jbmono_regular(),
@@ -174,23 +179,32 @@ impl Item for Entity {
                 false,
             )
             .draw(c);
+        };
 
-            y += 16. * zoom;
+        // Attributes
+        let mut y = (16. + Workspace::GRID_SIZE / 2.) * zoom; // 8px gap
+        for field in self.fields.iter() {
+            render_property(field.to_string(), y);
+
+            y += 20. * zoom;
+        }
+
+        if !self.methods.is_empty() {
+            y += 8. * zoom; // 8px gap
+        }
+
+        for method in self.methods.iter() {
+            render_property(method.to_string(), y);
+
+            y += 20. * zoom;
         }
     }
 }
 
 #[inline]
 fn title_font(ent: &Entity) -> &FontResource {
-    match ent.ty {
+    match ent.entity_type {
         EntityType::AbstractClass => fonts::jbmono_bold_italic(),
         _ => fonts::jbmono_bold(),
-    }
-}
-
-fn attr_to_string(name: &str, attr: &Attribute) -> String {
-    match attr {
-        Attribute::Field(am, t) => format!("{} {:?} {}", am.as_char(), t, name),
-        Attribute::Method(am, _, t, _) => format!("{} {:?} {}()", am.as_char(), t, name),
     }
 }

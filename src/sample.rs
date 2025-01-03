@@ -1,6 +1,7 @@
+use crate::data::entity::{Field, Method};
 use crate::data::{
     connection::{Multiplicity, Relation, RelationType},
-    entity::{AccessModifier, Argument, Attribute, EntityType, Type},
+    entity::{AccessModifier, EntityType},
     Connection, Entity, Project,
 };
 use crate::geometry::{Rect, Size};
@@ -10,28 +11,32 @@ pub fn project() -> Project {
 
     let pos1 = (-5, 20);
     let mut basic = Entity::new("Basic".to_string(), EntityType::Class, pos1);
+
+    basic.fields.push(Field {
+        name: "count".to_string(),
+        r#type: "int".to_string(),
+        modifier: AccessModifier::Public,
+    });
+    basic.fields.push(Field {
+        name: "name".to_string(),
+        r#type: "string".to_string(),
+        modifier: AccessModifier::Private,
+    });
+
+    basic.methods.push(Method {
+        name: "toString".to_string(),
+        return_type: "string".to_string(),
+        modifier: AccessModifier::Public,
+        arguments: vec![],
+    });
     
-
-    basic.attributes.insert(
-        "id".to_string(),
-        Attribute::Field(
-            AccessModifier::Private,
-            Type::External("int".to_string(), vec![]),
-        ),
-    );
-
-    basic.attributes.insert(
-        "method".to_string(),
-        Attribute::Method(
-            AccessModifier::Public,
-            None,
-            Type::External("st".to_string(), vec![]),
-            vec![Argument(
-                "arg".to_string(),
-                Type::External("int".to_string(), vec![]),
-            )],
-        ),
-    );
+    basic.methods.push(Method {
+        name: "increment".to_string(),
+        return_type: "void".to_string(),
+        modifier: AccessModifier::Public,
+        arguments: vec!["amount".to_string()],
+    });
+    
 
     let pos2 = (13, 15);
     let entity1 = project.add_entity(basic);
@@ -56,7 +61,7 @@ pub fn project() -> Project {
     );
 
     project.connect(conn1);
-    
+
     let pos3 = (-15, -10);
 
     let conn2 = Connection::new(

@@ -27,7 +27,7 @@ impl Element for SidebarType {
                     .entity
                     .and_then(|e| ctx.project.entities.get(e))
                 {
-                    format!("{}", entity.ty)
+                    format!("{}", entity.entity_type)
                 } else {
                     "".to_string()
                 }
@@ -46,7 +46,7 @@ impl Element for SidebarType {
 
             getter: Box::new(|ctx| {
                 sidebar_entity!(ctx => get)
-                    .map(|e| e.ty as usize)
+                    .map(|e| e.entity_type as usize)
                     .unwrap_or(0)
             }),
 
@@ -56,7 +56,7 @@ impl Element for SidebarType {
                 };
 
                 if let Some(entity) = sidebar_entity!(ctx => get_mut) {
-                    entity.ty = ty;
+                    entity.entity_type = ty;
                 }
             }),
         });

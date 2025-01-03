@@ -16,11 +16,10 @@ pub enum Multiplicity {
 #[derive(Debug, Serialize, Deserialize)]
 pub enum RelationType {
     Association,
-    Inheritance,
-    Realization,
-    Dependency,
+    OneWayAssociation,
     Aggregation,
     Composition,
+    Generalization,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -169,6 +168,12 @@ impl Connection {
         } else {
             false
         }
+    }
+    
+    pub fn swap(&mut self) {
+        std::mem::swap(&mut self.from, &mut self.to);
+        
+        self.points.reverse();
     }
 
     fn animate_property<TVal, TAni>(

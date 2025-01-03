@@ -5,11 +5,9 @@ use crate::elements::workspace::entity::EntityItemData;
 use crate::elements::workspace::Workspace;
 use crate::geometry::Rect;
 use serde::{Deserialize, Serialize};
-use slotmap::{new_key_type, SlotMap};
-use std::{
-    collections::{HashMap, HashSet},
-    fmt::Display,
-};
+use slotmap::new_key_type;
+use std::fmt::Formatter;
+use std::{collections::HashSet, fmt::Display};
 
 new_key_type! {
     pub struct InternalTypeKey;
@@ -33,45 +31,44 @@ impl AccessModifier {
 }
 
 #[derive(Debug, Serialize, Deserialize)]
-pub enum ImplementationModifier {
-    Abstract,
-    Virtual,
-    Sealed,
-    Override,
+pub struct Field {
+    pub name: String,
+    pub modifier: AccessModifier,
+    pub r#type: String,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
-pub struct TypeArgument(pub String, pub Option<Type>);
-
-#[derive(Debug, Serialize, Deserialize)]
-pub struct Argument(pub String, pub Type);
-
-#[derive(Debug, Serialize, Deserialize)]
-pub enum Type {
-    Custom(EntityKey),
-    Internal(InternalTypeKey),
-    External(String, Vec<Type>),
-}
-
-impl Type {
-    pub fn uses_internal(&self, key: InternalTypeKey) -> bool {
-        match self {
-            Type::Internal(internal_key) => *internal_key == key,
-            Type::External(_, types) => types.iter().any(|ty| ty.uses_internal(key)),
-            _ => false,
-        }
+impl Display for Field {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "{}{}: {}",
+            self.modifier.as_char(),
+            self.name,
+            self.r#type
+        )
     }
 }
 
 #[derive(Debug, Serialize, Deserialize)]
-pub enum Attribute {
-    Field(AccessModifier, Type),
-    Method(
-        AccessModifier,
-        Option<ImplementationModifier>,
-        Type,
-        Vec<Argument>,
-    ),
+pub struct Method {
+    pub name: String,
+    pub modifier: AccessModifier,
+    pub return_type: String,
+    pub arguments: Vec<String>,
+}
+
+impl Display for Method {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        let args = self.arguments.join(", ");
+        write!(
+            f,
+            "{}{}({}): {}",
+            self.modifier.as_char(),
+            self.name,
+            args,
+            self.return_type
+        )
+    }
 }
 
 #[derive(Debug, Serialize, Deserialize, Default, Clone, Copy)]
@@ -113,13 +110,10 @@ pub struct Entity {
     pub key: EntityKey,
 
     pub name: String,
-    pub ty: EntityType,
-    pub generics: SlotMap<InternalTypeKey, TypeArgument>,
+    pub entity_type: EntityType,
 
-    pub inherits: Option<Type>,
-    pub implements: Vec<Type>,
-
-    pub attributes: HashMap<String, Attribute>,
+    pub fields: Vec<Field>,
+    pub methods: Vec<Method>,
 
     pub connections: HashSet<ConnectionKey>,
 
@@ -131,69 +125,21 @@ pub struct Entity {
     pub data: EntityItemData,
 }
 
-pub enum TypeInUseError {
-    Generic,
-    Attribute(String),
-    Interface,
-    BaseType,
-}
-
 impl Entity {
-    pub fn new(name: String, ty: EntityType, pos: (i32, i32)) -> Self {
+    pub fn new(name: String, entity_type: EntityType, pos: (i32, i32)) -> Self {
         Entity {
             key: Default::default(),
             name,
-            ty,
-            generics: SlotMap::with_key(),
-            inherits: None,
-            implements: vec![],
-            attributes: HashMap::new(),
+            entity_type,
+            fields: vec![],
+            methods: vec![],
             connections: HashSet::new(),
             position: pos,
             data: EntityItemData::new(pos),
         }
     }
 
-    pub fn add_generic(&mut self, name: String) -> InternalTypeKey {
-        self.generics.insert(TypeArgument(name, None))
-    }
-
-    pub fn get_generic(&self, key: InternalTypeKey) -> &TypeArgument {
-        &self.generics[key]
-    }
-
-    pub fn remove_generic(
-        &mut self,
-        key: InternalTypeKey,
-    ) -> Result<Option<TypeArgument>, TypeInUseError> {
-        let uses_internal = |ty: &Type| ty.uses_internal(key);
-
-        if self
-            .generics
-            .values()
-            .any(|generic| generic.1.as_ref().map_or(false, uses_internal))
-        {
-            return Err(TypeInUseError::Generic);
-        }
-
-        if let Some((name, _)) = self.attributes.iter().find(|(_, attr)| match attr {
-            Attribute::Field(_, ty) | Attribute::Method(_, _, ty, _) => uses_internal(ty),
-        }) {
-            return Err(TypeInUseError::Attribute(name.to_string()));
-        }
-
-        if self.implements.iter().any(uses_internal) {
-            return Err(TypeInUseError::Interface);
-        }
-
-        if self.inherits.as_ref().map_or(false, uses_internal) {
-            return Err(TypeInUseError::BaseType);
-        }
-
-        Ok(self.generics.remove(key))
-    }
-
-    pub(crate) fn get_rect(&self) -> Rect {
+    pub fn get_rect(&self) -> Rect {
         (*self.data.rect).translate(self.data.move_pos.unwrap_or_default()) / Workspace::GRID_SIZE
     }
 }
