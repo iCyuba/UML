@@ -6,13 +6,17 @@ use super::{
         icon::Symbol,
         traits::Draw,
     },
+    text_input::{TextInput, TextInputProps},
     Node,
 };
-use crate::app::{
-    context::{EventContext, RenderContext},
-    EventTarget, Tree,
+use crate::{
+    app::{
+        context::{EventContext, RenderContext},
+        EventTarget, Tree,
+    },
+    presentation::fonts,
 };
-use taffy::{prelude::length, Layout, NodeId, Position, Style};
+use taffy::{prelude::length, AlignItems, Layout, NodeId, Position, Style};
 
 pub struct Actionbar {
     layout: Layout,
@@ -57,6 +61,7 @@ impl Element for Actionbar {
                 margin: length(12.),
                 padding: length(8.),
                 gap: length(8.),
+                align_items: Some(AlignItems::Center),
                 ..<_>::default()
             },
             Some(vec![
@@ -78,6 +83,13 @@ impl Element for Actionbar {
                     icon: Symbol::Screenshot,
                     on_click: Box::new(|ctx| ctx.state.screenshot()),
                     style: ButtonStyle::Default,
+                }),
+                TextInput::create(TextInputProps {
+                    size: 20.,
+                    font: fonts::jbmono_bold(),
+                    placeholder: Some("Project name".to_string()),
+                    getter: Box::new(|ctx| ctx.project.name.clone()),
+                    setter: Box::new(|ctx, value| ctx.project.name = value.to_string()),
                 }),
             ]),
             |_, _| Actionbar {

@@ -117,11 +117,12 @@ impl TextInput {
 
         let mut total = 0.;
         let mut end: usize = 0;
+        let mut leftover = 0;
 
         for char in self.measurements.iter().skip(self.view) {
             total += char;
 
-            if total > max {
+            if total > max + 0.1 {
                 end = end.saturating_sub(1);
                 break;
             }
@@ -129,11 +130,24 @@ impl TextInput {
             end += 1;
         }
 
+        for char in self.measurements.iter().take(self.view).rev() {
+            total += char;
+
+            if total > max + 0.1 {
+                break;
+            }
+
+            leftover += 1;
+        }
+
         let cursor = self.selection(); // Selection end or cursor
         if cursor < self.view {
             self.view = cursor;
         } else if cursor > end + self.view {
             self.view = cursor - end;
+        } else {
+            // Don't waste space
+            self.view = self.view.saturating_sub(leftover);
         }
     }
 
@@ -190,6 +204,8 @@ impl EventTarget for TextInput {
         } else if *self.cursor_opacity == 1. {
             self.cursor_opacity.set(0.);
         }
+
+        self.update_view();
 
         self.animate();
 
@@ -321,6 +337,10 @@ impl EventTarget for TextInput {
             }
 
             Key::Named(NamedKey::Delete) => {
+                if self.cursor == self.text.chars().count() {
+                    return false;
+                }
+
                 self.text.remove(self.cursor_idx());
             }
 
