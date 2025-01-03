@@ -122,6 +122,11 @@ impl State {
     pub fn load(&self) {
         self.send_event(AppUserEvent::Load);
     }
+
+    #[inline]
+    pub fn set_tool(&self, tool: Tool) {
+        self.send_event(AppUserEvent::SetTool(tool));
+    }
 }
 
 impl AsRef<State> for State {

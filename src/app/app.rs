@@ -6,7 +6,8 @@ use super::{
 };
 use crate::{
     app::{context::RenderContext, event_target::WheelEvent},
-    data::Project,
+    data::{entity::EntityType, Project},
+    elements::toolbox_item::Tool,
     geometry::{Point, Vec2},
     sample::project,
 };
@@ -29,6 +30,7 @@ pub enum AppUserEvent {
     Screenshot,
     Save,
     Load,
+    SetTool(Tool),
 }
 
 impl fmt::Debug for AppUserEvent {
@@ -44,6 +46,7 @@ impl fmt::Debug for AppUserEvent {
             AppUserEvent::Screenshot => f.write_str("Screenshot"),
             AppUserEvent::Save => f.write_str("Save"),
             AppUserEvent::Load => f.write_str("Load"),
+            AppUserEvent::SetTool(tool) => f.debug_tuple("SetTool").field(tool).finish(),
         }
     }
 }
@@ -97,6 +100,11 @@ impl App<'_> {
 
         // Draw the scene onto the screen
         self.window.render().unwrap();
+    }
+
+    pub fn update_cursor(&mut self) {
+        let cursor = self.tree.cursor(ctx!(self)).unwrap_or(CursorIcon::Default);
+        self.window.set_cursor(cursor);
     }
 }
 
@@ -162,10 +170,7 @@ impl ApplicationHandler<AppUserEvent> for App<'_> {
             }
 
             AppUserEvent::RequestRedraw => self.window.request_redraw(),
-            AppUserEvent::RequestCursorUpdate => {
-                let cursor = self.tree.cursor(ctx!()).unwrap_or(CursorIcon::Default);
-                self.window.set_cursor(cursor);
-            }
+            AppUserEvent::RequestCursorUpdate => self.update_cursor(),
             AppUserEvent::RequestTooltipUpdate => {
                 self.state.tooltip_state = self.tree.tooltip(ctx!());
                 self.window.request_redraw();
@@ -208,6 +213,23 @@ impl ApplicationHandler<AppUserEvent> for App<'_> {
             AppUserEvent::Load => {
                 let data = std::fs::read("project.bin").unwrap();
                 self.project = postcard::from_bytes(&data).unwrap();
+            }
+            AppUserEvent::SetTool(tool) => {
+                self.state.tool = tool;
+
+                // Interfaces can't have parent relations, so deselect the entity if the tool parent is used
+                if self
+                    .state
+                    .selected_entity
+                    .and_then(|e| self.project.entities.get(e))
+                    .is_some_and(|e| e.entity_type == EntityType::Interface)
+                    && tool == Tool::Parent
+                {
+                    self.state.selected_entity = None;
+                }
+
+                self.update_cursor();
+                self.window.request_redraw();
             }
         }
     }

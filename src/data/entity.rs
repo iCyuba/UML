@@ -9,8 +9,9 @@ use serde::{Deserialize, Serialize};
 use std::fmt::Display;
 use std::fmt::Formatter;
 
-#[derive(Debug, Serialize, Deserialize, Clone, Copy)]
+#[derive(Debug, Serialize, Deserialize, Clone, Copy, Default)]
 pub enum AccessModifier {
+    #[default]
     Public,
     Private,
     Protected,
@@ -26,7 +27,7 @@ impl AccessModifier {
     }
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, Default)]
 pub struct Field {
     pub name: String,
     pub modifier: AccessModifier,
@@ -45,7 +46,7 @@ impl Display for Field {
     }
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, Default)]
 pub struct Method {
     pub name: String,
     pub modifier: AccessModifier,
@@ -67,7 +68,7 @@ impl Display for Method {
     }
 }
 
-#[derive(Debug, Serialize, Deserialize, Default, Clone, Copy)]
+#[derive(Debug, Serialize, Deserialize, Default, Clone, Copy, PartialEq)]
 pub enum EntityType {
     #[default]
     Class = 0,
@@ -109,6 +110,7 @@ pub struct Entity {
     pub entity_type: EntityType,
 
     pub parent: Option<ConnectionKey>, // Connection of type "Generalization"
+    pub implements: Vec<ConnectionKey>, // Connections of type "Implementation"
 
     pub fields: Vec<Field>,
     pub methods: Vec<Method>,
@@ -130,6 +132,7 @@ impl Entity {
             name,
             entity_type,
             parent: None,
+            implements: vec![],
             fields: vec![],
             methods: vec![],
             connections: IndexSet::new(),

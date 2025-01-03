@@ -28,7 +28,9 @@ pub enum Tool {
     Hand,
     Entity,
     Relation,
-    Pen
+    Parent,
+    Implementation,
+    Pen,
 }
 
 impl Display for Tool {
@@ -38,6 +40,8 @@ impl Display for Tool {
             Tool::Hand => write!(f, "Hand tool"),
             Tool::Entity => write!(f, "Entity"),
             Tool::Relation => write!(f, "Relation"),
+            Tool::Parent => write!(f, "Parent relation"),
+            Tool::Implementation => write!(f, "Implementation"),
             Tool::Pen => write!(f, "Pen tool"),
         }
     }
@@ -97,9 +101,8 @@ impl EventTarget for ToolboxItem {
     }
 
     fn on_click(&mut self, ctx: &mut EventContext) -> bool {
-        ctx.state.tool = self.tool_type;
+        ctx.state.set_tool(self.tool_type);
         ctx.state.tooltip_state = None; // Hide the tooltip after clicking
-        ctx.state.request_redraw();
 
         true
     }

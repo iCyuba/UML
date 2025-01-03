@@ -29,6 +29,8 @@ fn get_icon(tool_type: Tool) -> Symbol {
         Tool::Hand => Symbol::Hand,
         Tool::Entity => Symbol::PlusSquare,
         Tool::Relation => Symbol::Workflow,
+        Tool::Parent => Symbol::Generalization,
+        Tool::Implementation => Symbol::Interface,
         Tool::Pen => Symbol::Pen,
     }
 }

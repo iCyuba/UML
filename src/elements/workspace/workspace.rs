@@ -1,9 +1,4 @@
 use super::item::Item;
-use crate::data::connection::{Relation, RelationType};
-use crate::data::entity::EntityType;
-use crate::data::project::ConnectionKey;
-use crate::data::Connection;
-use crate::elements::node::Element;
 use crate::{
     animations::{animated_property::AnimatedProperty, delta_animation::DeltaAnimation},
     app::{
@@ -11,8 +6,13 @@ use crate::{
         event_target::WheelEvent,
         EventTarget, State, Tree,
     },
-    data::{project::EntityKey, Entity, Project},
+    data::{
+        entity::EntityType,
+        project::{ConnectionKey, EntityKey},
+        Entity, Project,
+    },
     elements::{
+        node::Element,
         primitives::{text::Text, traits::Draw},
         toolbox_item::Tool,
         Node,
@@ -255,34 +255,26 @@ impl EventTarget for Workspace {
             return true;
         }
 
-        if ctx.state.tool == Tool::Relation {
+        if matches!(
+            ctx.state.tool,
+            Tool::Relation | Tool::Parent | Tool::Implementation
+        ) {
             // Connect entities
-            if match (self.hovered_entity, ctx.state.selected_entity) {
-                (Some(old), Some(new)) => {
-                    if old == new {
-                        return false;
-                    }
-
-                    let from_rect = ctx.project.entities[old].get_rect();
-                    let to_rect = ctx.project.entities[new].get_rect();
-
-                    ctx.project.connect(Connection::new(
-                        RelationType::Association,
-                        Relation::new(old),
-                        Relation::new(new),
-                        Vec::new(),
-                        from_rect,
-                        to_rect,
-                    ));
-
-                    true
+            if let (Some(from), Some(to)) = (ctx.state.selected_entity, self.hovered_entity) {
+                if from == to {
+                    return false;
                 }
-                _ => false,
-            } {
-                self.hovered_entity = None;
-                ctx.state.selected_entity = None;
-                ctx.state.request_redraw();
-                return true;
+
+                if match ctx.state.tool {
+                    Tool::Relation => ctx.project.associate(from, to),
+                    Tool::Parent => ctx.project.set_parent(from, Some(to)),
+                    Tool::Implementation => ctx.project.implement(from, to),
+                    _ => unreachable!(),
+                } {
+                    ctx.state.selected_entity = Some(to);
+                    ctx.state.request_redraw();
+                    return true;
+                }
             }
 
             // Disconnect entities
@@ -330,17 +322,14 @@ impl EventTarget for Workspace {
         }
 
         // Move entity
-        if !ctx.project.entity_mut(self.hovered_entity, |entity| {
+        ctx.project.entity_mut(self.hovered_entity, |entity| {
             if left && ctx.state.tool == Tool::Select {
                 self.move_start_point = Some(point);
                 entity.data.move_pos = Some(Vec2::ZERO);
             }
 
             false
-        }) {
-            ctx.state.selected_entity = None;
-            ctx.state.request_redraw();
-        }
+        });
 
         // Create new entity
         if left && ctx.state.tool == Tool::Entity {
@@ -493,7 +482,10 @@ impl EventTarget for Workspace {
                 }
             }
 
-            ctx.state.selected_entity = Some(entity.key);
+            if ctx.state.tool == Tool::Select || ctx.state.selected_entity.is_none() {
+                ctx.state.selected_entity = Some(entity.key);
+            }
+
             ctx.state.request_redraw();
 
             true
@@ -510,7 +502,10 @@ impl EventTarget for Workspace {
             return true;
         }
 
-        false
+        ctx.state.selected_entity = None;
+        ctx.state.request_redraw();
+
+        true
     }
 
     fn on_wheel(&mut self, ctx: &mut EventContext, event: WheelEvent) -> bool {

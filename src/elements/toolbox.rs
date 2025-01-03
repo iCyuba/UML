@@ -35,29 +35,40 @@ impl EventTarget for Toolbox {
         let pk = event.physical_key;
         let char = event.text.and_then(|t| t.chars().next());
 
-        ctx.state.tool = if matches!(pk, PhysicalKey::Code(KeyCode::Digit1))
-            || matches!(char, Some('v') | Some('V'))
-        {
-            Tool::Select
-        } else if matches!(pk, PhysicalKey::Code(KeyCode::Digit2))
-            || matches!(char, Some('h') | Some('H'))
-        {
-            Tool::Hand
-        } else if matches!(pk, PhysicalKey::Code(KeyCode::Digit3))
-            || matches!(char, Some('e') | Some('E'))
-        {
-            Tool::Entity
-        } else if matches!(pk, PhysicalKey::Code(KeyCode::Digit4))
-            || matches!(char, Some('r') | Some('R'))
-        {
-            Tool::Relation
-        } else if matches!(pk, PhysicalKey::Code(KeyCode::Digit5))
-            || matches!(char, Some('p') | Some('P'))
-        {
-            Tool::Pen
-        } else {
-            return false;
-        };
+        ctx.state.set_tool(
+            if matches!(pk, PhysicalKey::Code(KeyCode::Digit1))
+                || matches!(char, Some('v') | Some('V'))
+            {
+                Tool::Select
+            } else if matches!(pk, PhysicalKey::Code(KeyCode::Digit2))
+                || matches!(char, Some('h') | Some('H'))
+            {
+                Tool::Hand
+            } else if matches!(pk, PhysicalKey::Code(KeyCode::Digit3))
+                || matches!(char, Some('e') | Some('E'))
+            {
+                Tool::Entity
+            } else if matches!(pk, PhysicalKey::Code(KeyCode::Digit4))
+                || matches!(char, Some('r') | Some('R'))
+            {
+                Tool::Relation
+            } else if matches!(pk, PhysicalKey::Code(KeyCode::Digit5))
+                // G for Generalization
+                || matches!(char, Some('g') | Some('G'))
+            {
+                Tool::Parent
+            } else if matches!(pk, PhysicalKey::Code(KeyCode::Digit6))
+                || matches!(char, Some('i') | Some('I'))
+            {
+                Tool::Implementation
+            } else if matches!(pk, PhysicalKey::Code(KeyCode::Digit7))
+                || matches!(char, Some('p') | Some('P'))
+            {
+                Tool::Pen
+            } else {
+                return false;
+            },
+        );
 
         ctx.state.request_redraw();
         ctx.state.request_cursor_update();
@@ -95,7 +106,9 @@ impl Element for Toolbox {
                 ToolboxItem::create(Tool::Hand),
                 ToolboxItem::create(Tool::Entity),
                 ToolboxItem::create(Tool::Relation),
-                ToolboxItem::create(Tool::Pen)
+                ToolboxItem::create(Tool::Parent),
+                ToolboxItem::create(Tool::Implementation),
+                ToolboxItem::create(Tool::Pen),
             ]),
             |node_id, ctx| {
                 ctx.state.key_listeners.insert(node_id);

@@ -7,10 +7,13 @@ use crate::{
     },
     app::{renderer::Canvas, State},
     data::{entity::EntityType, Entity},
-    elements::primitives::{
-        fancy_box::{BorderOptions, FancyBox, ShadowOptions},
-        text::Text,
-        traits::Draw,
+    elements::{
+        primitives::{
+            fancy_box::{BorderOptions, FancyBox, ShadowOptions},
+            text::Text,
+            traits::Draw,
+        },
+        toolbox_item::Tool,
     },
     geometry::{Point, Rect, Size},
     presentation::{fonts, FontResource},
@@ -69,8 +72,26 @@ impl Default for EntityItemData {
 impl Item for Entity {
     fn update(&mut self, state: &State, _: &Workspace) -> bool {
         // Set the opacity
+        let invalid = {
+            let parent_tool = state.tool == Tool::Parent;
+            let impl_tool = state.tool == Tool::Implementation;
+
+            let has_selection = state.selected_entity.is_some_and(|key| key != self.key);
+
+            let is_interface = self.entity_type == EntityType::Interface;
+            let is_sealed = self.entity_type == EntityType::SealedClass;
+
+            // Interfaces can't have children and can't be parents
+            // Sealed classes can't have children but can be parents
+            // Only interfaces can be implemented
+            (parent_tool && (is_interface || (is_sealed && has_selection)))
+                || (impl_tool && has_selection && !is_interface)
+        };
+
         self.data.opacity.set(if self.data.move_pos.is_some() {
             0.75
+        } else if invalid {
+            0.5
         } else {
             1.
         });
