@@ -11,7 +11,8 @@ use crate::{
     geometry::{Point, Vec2},
     sample::project,
 };
-use std::{cell::RefCell, fmt, fs::File, io::Write, rc::Rc};
+use rfd::FileDialog;
+use std::{cell::RefCell, fmt, fs, rc::Rc};
 use winit::{
     application::ApplicationHandler,
     event::{ElementState, WindowEvent},
@@ -201,18 +202,56 @@ impl ApplicationHandler<AppUserEvent> for App<'_> {
                 let image = self.png.render().unwrap();
 
                 // Save the image
-                File::create("screenshot.png")
-                    .unwrap()
-                    .write_all(&image)
-                    .unwrap();
+                let Some(path) = FileDialog::new()
+                    .add_filter("png", &["png"])
+                    .set_file_name("screenshot")
+                    .save_file()
+                else {
+                    return;
+                };
+
+                _ = fs::write(path, image);
             }
             AppUserEvent::Save => {
-                let data = postcard::to_stdvec(&self.project).unwrap();
-                std::fs::write("project.bin", data).unwrap();
+                let Some(path) = FileDialog::new()
+                    .add_filter("binary", &["bin"])
+                    .add_filter("json", &["json"])
+                    .set_file_name(self.project.name.to_lowercase() + ".bin")
+                    .save_file()
+                else {
+                    return;
+                };
+
+                let extension = path.extension().and_then(|ext| ext.to_str());
+
+                let data = match extension {
+                    Some("json") => serde_json::to_vec_pretty(&self.project).unwrap(),
+                    _ => postcard::to_stdvec(&self.project).unwrap(),
+                };
+
+                _ = fs::write(path, data);
             }
             AppUserEvent::Load => {
-                let data = std::fs::read("project.bin").unwrap();
-                self.project = postcard::from_bytes(&data).unwrap();
+                let Some(path) = FileDialog::new()
+                    .add_filter("binary", &["bin"])
+                    .add_filter("json", &["json"])
+                    .set_directory("data")
+                    .set_file_name("project.bin")
+                    .pick_file()
+                else {
+                    return;
+                };
+
+                let extension = path.extension().and_then(|ext| ext.to_str());
+
+                let Some(data) = fs::read(&path).ok().and_then(|data| match extension {
+                    Some("json") => serde_json::from_slice(&data).ok(),
+                    _ => postcard::from_bytes(&data).ok(),
+                }) else {
+                    return;
+                };
+
+                self.project = data;
             }
             AppUserEvent::SetTool(tool) => {
                 self.state.tool = tool;
