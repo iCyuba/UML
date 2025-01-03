@@ -24,6 +24,7 @@ use connection::SidebarConnection;
 use derive_macros::AnimatedElement;
 use field::SidebarField;
 use list::List;
+use methods::SidebarMethod;
 use name::sidebar_name;
 use r#type::SidebarType;
 use std::time::Duration;
@@ -38,6 +39,7 @@ mod category;
 mod connection;
 mod field;
 mod list;
+mod methods;
 mod name;
 mod r#type;
 
@@ -195,6 +197,11 @@ impl Element for Sidebar {
                 List::<SidebarField>::create(CategoryProps {
                     icon: Symbol::Field,
                     name: "Fields".to_string(),
+                }),
+                // Methods
+                List::<SidebarMethod>::create(CategoryProps {
+                    icon: Symbol::Method,
+                    name: "Methods".to_string(),
                 }),
             ]),
             |_, _| Self {

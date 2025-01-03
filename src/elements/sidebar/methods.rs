@@ -15,22 +15,22 @@ use crate::{
 };
 use taffy::{
     prelude::{auto, length, percent},
-    JustifyContent, Layout, NodeId, Size, Style,
+    Layout, NodeId, Size, Style,
 };
 
-pub struct SidebarField(Layout);
+pub struct SidebarMethod(Layout);
 
-impl Countable for SidebarField {
+impl Countable for SidebarMethod {
     fn count(ctx: &EventContext) -> usize {
         sidebar_entity!(ctx => get)
-            .map(|ent| ent.fields.len())
+            .map(|ent| ent.methods.len())
             .unwrap_or(0)
     }
 }
 
-impl EventTarget for SidebarField {}
+impl EventTarget for SidebarMethod {}
 
-impl Node for SidebarField {
+impl Node for SidebarMethod {
     fn layout(&self) -> &Layout {
         &self.0
     }
@@ -40,7 +40,7 @@ impl Node for SidebarField {
     }
 }
 
-impl ElementWithProps for SidebarField {
+impl ElementWithProps for SidebarMethod {
     type Props = usize; // idx
 
     fn setup(tree: &mut Tree, ctx: &mut EventContext, idx: usize) -> NodeId {
@@ -51,8 +51,6 @@ impl ElementWithProps for SidebarField {
                     width: percent(1.),
                     height: auto(),
                 },
-                justify_content: Some(JustifyContent::Start),
-                flex_wrap: taffy::FlexWrap::Wrap,
                 gap: length(4.),
                 ..<_>::default()
             },
@@ -65,19 +63,19 @@ impl ElementWithProps for SidebarField {
                         (Symbol::Hashtag, "Protected"),
                     ],
                     getter: Box::new(move |ctx| {
-                        if let Some(field) =
-                            sidebar_entity!(ctx => get).and_then(|e| e.fields.get(idx))
+                        if let Some(method) =
+                            sidebar_entity!(ctx => get).and_then(|e| e.methods.get(idx))
                         {
-                            field.modifier as usize
+                            method.modifier as usize
                         } else {
                             0
                         }
                     }),
                     setter: Box::new(move |ctx, index| {
-                        if let Some(field) =
-                            sidebar_entity!(ctx => get_mut).and_then(|e| e.fields.get_mut(idx))
+                        if let Some(method) =
+                            sidebar_entity!(ctx => get_mut).and_then(|e| e.methods.get_mut(idx))
                         {
-                            field.modifier = match index {
+                            method.modifier = match index {
                                 0 => AccessModifier::Public,
                                 1 => AccessModifier::Private,
                                 2 => AccessModifier::Protected,
@@ -89,24 +87,35 @@ impl ElementWithProps for SidebarField {
                 // Name
                 TextInput::create(TextInputProps {
                     getter: Box::new(move |ctx| {
-                        if let Some(field) =
-                            sidebar_entity!(ctx => get).and_then(|e| e.fields.get(idx))
+                        if let Some(method) =
+                            sidebar_entity!(ctx => get).and_then(|e| e.methods.get(idx))
                         {
-                            format!("{}: {}", field.name, field.r#type)
+                            format!(
+                                "{name}({args}): {ret}",
+                                name = method.name,
+                                args = method.arguments.join(", "),
+                                ret = method.return_type
+                            )
                         } else {
                             "".to_string()
                         }
                     }),
                     setter: Box::new(move |ctx, str| {
-                        if let Some(field) =
-                            sidebar_entity!(ctx => get_mut).and_then(|e| e.fields.get_mut(idx))
+                        if let Some(method) =
+                            sidebar_entity!(ctx => get_mut).and_then(|e| e.methods.get_mut(idx))
                         {
-                            let Some((name, ty)) = str.split_once(':') else {
+                            let Some((name, args_ret)) = str.split_once('(') else {
                                 return;
                             };
 
-                            field.name = name.trim().to_string();
-                            field.r#type = ty.trim().to_string();
+                            let Some((args, ret)) = args_ret.split_once("):") else {
+                                return;
+                            };
+
+                            method.name = name.trim().to_string();
+                            method.arguments =
+                                args.split(',').map(|s| s.trim().to_string()).collect();
+                            method.return_type = ret.trim().to_string();
                         }
                     }),
                     size: 16.,
@@ -115,11 +124,11 @@ impl ElementWithProps for SidebarField {
                 }),
                 // Delete button
                 Button::create(ButtonProps {
-                    tooltip: "Delete field",
+                    tooltip: "Delete method",
                     icon: Symbol::Trash,
                     on_click: Box::new(move |ctx| {
                         if let Some(entity) = sidebar_entity!(ctx => get_mut) {
-                            entity.fields.remove(idx);
+                            entity.methods.remove(idx);
                             ctx.state.request_redraw();
                         }
                     }),

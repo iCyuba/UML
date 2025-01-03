@@ -1,5 +1,3 @@
-use std::default;
-
 use super::sidebar_entity;
 use crate::{
     app::{context::EventContext, Tree},
