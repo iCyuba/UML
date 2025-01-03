@@ -31,6 +31,8 @@ pub enum Symbol {
     Composition = b'U',
     Generalization = b'V',
     Swap = b'W',
+    Field = b'X',
+    Method = b'Y',
 }
 
 impl From<Symbol> for char {

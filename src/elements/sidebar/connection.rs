@@ -1,18 +1,7 @@
-use taffy::{
-    prelude::{auto, length, percent},
-    FlexDirection, JustifyContent, Layout, NodeId, Size, Style,
-};
-
+use super::list::Countable;
 use crate::{
-    app::{
-        context::{EventContext, RenderContext},
-        EventTarget, Tree,
-    },
-    data::{
-        connection::{Multiplicity, RelationType},
-        project::ConnectionKey,
-        Project,
-    },
+    app::{context::EventContext, EventTarget, Tree},
+    data::connection::{Multiplicity, RelationType},
     elements::{
         button::{Button, ButtonProps, ButtonStyle},
         node::ElementWithProps,
@@ -24,10 +13,19 @@ use crate::{
     },
     presentation::fonts,
 };
+use taffy::{
+    prelude::{auto, length, percent},
+    JustifyContent, Layout, NodeId, Size, Style,
+};
 
-pub struct ConnectionsListItem {
-    layout: Layout,
-    idx: usize,
+pub struct SidebarConnection(Layout);
+
+impl Countable for SidebarConnection {
+    fn count(ctx: &EventContext) -> usize {
+        sidebar_entity!(ctx => get)
+            .map(|ent| ent.connections.len())
+            .unwrap_or(0)
+    }
 }
 
 macro_rules! get_connection {
@@ -46,23 +44,19 @@ macro_rules! get_connection {
     };
 }
 
-impl EventTarget for ConnectionsListItem {
-    fn update(&mut self, ctx: &mut EventContext) {}
+impl EventTarget for SidebarConnection {}
 
-    fn render(&self, ctx: &mut RenderContext) {}
-}
-
-impl Node for ConnectionsListItem {
+impl Node for SidebarConnection {
     fn layout(&self) -> &Layout {
-        &self.layout
+        &self.0
     }
 
     fn layout_mut(&mut self) -> &mut Layout {
-        &mut self.layout
+        &mut self.0
     }
 }
 
-impl ElementWithProps for ConnectionsListItem {
+impl ElementWithProps for SidebarConnection {
     type Props = usize; // idx
 
     fn setup(tree: &mut Tree, ctx: &mut EventContext, idx: usize) -> NodeId {
@@ -179,10 +173,7 @@ impl ElementWithProps for ConnectionsListItem {
                     style: ButtonStyle::Segmented,
                 }),
             ]),
-            |_, _| Self {
-                layout: <_>::default(),
-                idx,
-            },
+            |_, _| Self(<_>::default()),
         )
     }
 }

@@ -1,6 +1,8 @@
 use super::{
+    node::ElementWithProps,
     primitives::{
         fancy_box::{BorderOptions, FancyBox, ShadowOptions},
+        icon::Symbol,
         traits::Draw,
     },
     Node,
@@ -17,8 +19,11 @@ use crate::{
     data::project::EntityKey,
     elements::{node::Element, toolbox_item::Tool},
 };
-use connections::ConnectionsList;
+use category::CategoryProps;
+use connection::SidebarConnection;
 use derive_macros::AnimatedElement;
+use field::SidebarField;
+use list::List;
 use name::sidebar_name;
 use r#type::SidebarType;
 use std::time::Duration;
@@ -30,7 +35,9 @@ use taffy::{
 };
 
 mod category;
-mod connections;
+mod connection;
+mod field;
+mod list;
 mod name;
 mod r#type;
 
@@ -180,7 +187,15 @@ impl Element for Sidebar {
                 // Name
                 sidebar_name(),
                 // Connections
-                ConnectionsList::create(),
+                List::<SidebarConnection>::create(CategoryProps {
+                    icon: Symbol::Workflow,
+                    name: "Relations".to_string(),
+                }),
+                // Fields
+                List::<SidebarField>::create(CategoryProps {
+                    icon: Symbol::Field,
+                    name: "Fields".to_string(),
+                }),
             ]),
             |_, _| Self {
                 layout: Default::default(),

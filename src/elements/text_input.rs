@@ -19,7 +19,7 @@ use derive_macros::AnimatedElement;
 use std::time::Duration;
 use taffy::{
     prelude::{auto, length},
-    Layout, NodeId, Size, Style,
+    AvailableSpace, Layout, NodeId, Size, Style,
 };
 use vello::kurbo::{Affine, Line, Stroke};
 use winit::{
@@ -469,7 +469,7 @@ impl Node for TextInput {
     fn measure(
         &self,
         _: taffy::Size<Option<f32>>,
-        _: taffy::Size<taffy::AvailableSpace>,
+        available_space: taffy::Size<taffy::AvailableSpace>,
         _: &Style,
         _: &mut EventContext,
     ) -> taffy::Size<f32> {
@@ -479,7 +479,14 @@ impl Node for TextInput {
         }
 
         let size = Text::measure(text, self.props.size, self.props.font);
-        let width = size.x as f32;
+        let mut width = size.x as f32;
+        if let AvailableSpace::Definite(max) = available_space.width {
+            width = width.min(max);
+        };
+
+        if matches!(available_space.width, AvailableSpace::MinContent) {
+            width = 0.;
+        }
 
         Size {
             width,
@@ -499,6 +506,11 @@ impl ElementWithProps for TextInput {
                     width: auto(),
                     height: length((props.size * 1.2) as f32),
                 },
+                max_size: Size {
+                    width: auto(),
+                    height: length((props.size * 1.2) as f32),
+                },
+                flex_grow: 1.,
                 ..<_>::default()
             },
             None,
