@@ -40,7 +40,7 @@ pub fn project() -> Project {
     let pos2 = (13, 15);
     let entity1 = project.add_entity(basic);
     let conn1 = Connection::new(
-        RelationType::Association,
+        RelationType::Generalization,
         Relation {
             entity: entity1,
             multiplicity: Multiplicity::One,
@@ -63,7 +63,7 @@ pub fn project() -> Project {
     let pos3 = (-15, -10);
 
     let conn2 = Connection::new(
-        RelationType::Composition,
+        RelationType::OneWayAssociation,
         Relation {
             entity: entity1,
             multiplicity: Multiplicity::One,

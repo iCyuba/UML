@@ -434,7 +434,7 @@ impl EventTarget for Workspace {
         }
 
         // Force update when the connection line is hovered
-        if self.hovered_connection.is_some() {
+        if self.hovered_connection.is_some() && ctx.state.tool == Tool::Pen {
             ctx.state.request_redraw();
             return true;
         }

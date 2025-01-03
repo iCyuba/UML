@@ -1,22 +1,14 @@
-use super::item::Item;
 use crate::animations::animated_property::AnimatedProperty;
 use crate::animations::standard_animation::{Easing, StandardAnimation};
 use crate::animations::traits::Magnitude;
-use crate::app::renderer::Canvas;
-use crate::app::State;
-use crate::elements::toolbox_item::Tool;
-use crate::elements::workspace::Workspace;
+use crate::geometry::Point;
 use crate::geometry::{Rect, Vec2};
-use crate::{data::Connection, geometry::Point};
 use derive_macros::AnimatedElement;
 use std::collections::VecDeque;
+use std::f64::consts::SQRT_2;
 use std::time::Duration;
-use vello::kurbo::{BezPath, Circle};
-use vello::peniko::Color;
-use vello::{
-    kurbo::{Affine, PathEl, Stroke},
-    peniko::Fill,
-};
+use vello::kurbo::BezPath;
+use vello::kurbo::PathEl;
 
 // https://stackoverflow.com/questions/1734745/how-to-create-circle-with-b%C3%A9zier-curves
 const CONTROL_POINT_DISTANCE: f64 = 0.552284749831;
@@ -58,16 +50,18 @@ impl Default for ConnectionItemData {
 
 #[derive(Clone, Copy, Debug)]
 pub enum PathPoint {
-    Edge(Point),     // Directly connected to the edge of an entity
-    Margin(Point),   // Offset from the closest edge point, aligned to grid
-    Implicit(Point), // Created automatically to keep lines orthogonal
-    Explicit(Point), // Created by the user
+    Edge(Point),      // Directly connected to the edge of an entity
+    ArrowTail(Point), // Arrow tail - only on one side, just between Edge and Margin points
+    Margin(Point),    // Offset from the closest edge point, aligned to grid
+    Implicit(Point),  // Created automatically to keep lines orthogonal
+    Explicit(Point),  // Created by the user
 }
 
 impl From<&PathPoint> for Point {
     fn from(point: &PathPoint) -> Self {
         match point {
             PathPoint::Edge(p) => *p,
+            PathPoint::ArrowTail(p) => *p,
             PathPoint::Margin(p) => *p,
             PathPoint::Implicit(p) => *p,
             PathPoint::Explicit(p) => *p,
@@ -85,8 +79,8 @@ pub enum PathUpdate {
 }
 
 impl ConnectionItemData {
-    const STROKE_THICKNESS: f64 = 0.05;
-    const RECT_MARGIN: f64 = 1.5;
+    pub const STROKE_THICKNESS: f64 = 0.05;
+    pub const ARROW_SIZE: f64 = SQRT_2 * 0.5;
 
     pub fn new(points: &[(i32, i32)], start: Rect, end: Rect) -> Self {
         let points: Vec<Point> = points.iter().map(|&p| p.into()).collect();
@@ -113,10 +107,10 @@ impl ConnectionItemData {
 
     fn round_vector(v: Vec2, dir: Vec2) -> Vec2 {
         match dir {
-            Vec2 { x: 0., y: 1. } => Vec2::new(v.x, v.y.ceil()),
-            Vec2 { x: 0., y: -1. } => Vec2::new(v.x, v.y.floor()),
-            Vec2 { x: 1., y: 0. } => Vec2::new(v.x.ceil(), v.y),
-            Vec2 { x: -1., y: 0. } => Vec2::new(v.x.floor(), v.y),
+            Vec2 { x: _, y: 1. } => Vec2::new(v.x, v.y.ceil()),
+            Vec2 { x: _, y: -1. } => Vec2::new(v.x, v.y.floor()),
+            Vec2 { x: 1., y: _ } => Vec2::new(v.x.ceil(), v.y),
+            Vec2 { x: -1., y: _ } => Vec2::new(v.x.floor(), v.y),
             _ => v,
         }
     }
@@ -177,7 +171,6 @@ impl ConnectionItemData {
                 (PathPoint::Explicit(p1), PathPoint::Implicit(_)) => Some(PathPoint::Explicit(*p1)),
                 (PathPoint::Explicit(p1), PathPoint::Margin(_)) => Some(PathPoint::Explicit(*p1)),
                 (PathPoint::Edge(p1), PathPoint::Implicit(_)) => Some(PathPoint::Edge(*p1)),
-                (PathPoint::Margin(_), PathPoint::Implicit(p2)) => Some(PathPoint::Implicit(*p2)),
                 (PathPoint::Implicit(_), PathPoint::Implicit(_)) => {
                     Some(PathPoint::Implicit(center))
                 }
@@ -214,24 +207,20 @@ impl ConnectionItemData {
         merged_points.into_iter().collect()
     }
 
-    fn get_margin_rect(rect: &Rect) -> Rect {
-        rect.inset_uniform(-Self::RECT_MARGIN)
-    }
-
-    pub(crate) fn points_to_path_points(points: &[Point], start: &Rect, end: &Rect) -> Vec<PathPoint> {
+    pub fn points_to_path_points(points: &[Point], start: &Rect, end: &Rect) -> Vec<PathPoint> {
         let mut result = Vec::with_capacity(points.len() * 2 + 5); // Estimate capacity
 
         // Special case where no explicit points are defined
         if points.is_empty() {
-            let start_rect = Self::get_margin_rect(start);
-            let end_rect = Self::get_margin_rect(end);
+            let end_rect = &end.inset_uniform(-Self::ARROW_SIZE * 1.5);
 
-            let (start_margin, end_margin) = Self::get_closest_edges(&start_rect, &end_rect);
+            let (start_margin, end_margin) = Self::get_closest_edges(start, end_rect);
 
-            let start_margin =
-                Self::round_vector(start_margin, (start_margin - start.center()).normalize());
-            let end_margin =
-                Self::round_vector(end_margin, (end_margin - end.center()).normalize());
+            let start_direction = (start_margin - start.center()).normalize();
+            let end_direction = (end_margin - end_rect.center()).normalize();
+
+            let start_margin = Self::round_vector(start_margin, start_direction);
+            let end_margin = Self::round_vector(end_margin, end_direction);
 
             let start_edge = Self::get_closest_edge_to_point(start_margin, start);
             let end_edge = Self::get_closest_edge_to_point(end_margin, end);
@@ -242,6 +231,9 @@ impl ConnectionItemData {
             add_implicit_point(&mut result, start_margin, end_margin);
 
             result.push(PathPoint::Margin(end_margin));
+            result.push(PathPoint::ArrowTail(
+                end_edge + end_direction * Self::ARROW_SIZE,
+            ));
             result.push(PathPoint::Edge(end_edge));
 
             return result;
@@ -276,7 +268,7 @@ impl ConnectionItemData {
         result.push(PathPoint::Edge(edge));
 
         // First margin point
-        let start_margin = Self::round_vector(edge + direction * Self::RECT_MARGIN, direction);
+        let start_margin = Self::round_vector(edge, direction);
         result.push(PathPoint::Margin(start_margin));
 
         // Implicit point between the first margin point and the next explicit point
@@ -300,7 +292,7 @@ impl ConnectionItemData {
         let edge = Self::get_closest_edge_to_point(last, end);
         let direction = (edge - end.center()).normalize();
 
-        let end_margin = Self::round_vector(edge + direction * Self::RECT_MARGIN, direction);
+        let end_margin = Self::round_vector(edge + direction * Self::ARROW_SIZE * 1.5, direction);
 
         // Last implicit point between the last explicit point and the last margin point
         add_implicit_point(&mut result, last, end_margin);
@@ -308,13 +300,16 @@ impl ConnectionItemData {
         // Last margin point
         result.push(PathPoint::Margin(end_margin));
 
+        // Arrow tail
+        result.push(PathPoint::ArrowTail(edge + direction * Self::ARROW_SIZE));
+
         // Last edge point
         result.push(PathPoint::Edge(edge));
 
         Self::merge_close_points(&result, 1.)
     }
 
-    pub(crate) fn points_to_path(points: &[PathPoint]) -> BezPath {
+    pub fn points_to_path(points: &[PathPoint]) -> BezPath {
         let points: Vec<Point> = points.iter().map(Into::into).collect();
 
         match points.len() {
@@ -323,7 +318,8 @@ impl ConnectionItemData {
                 PathEl::MoveTo(points[0].into()),
                 PathEl::LineTo(points[1].into()),
             ]),
-            _ => PathBuilder::from_points(&points, Self::STROKE_THICKNESS).build(),
+            _ => PathBuilder::from_points(&points[..points.len() - 1], Self::STROKE_THICKNESS)
+                .build(),
         }
     }
 }
@@ -388,68 +384,5 @@ impl PathBuilder {
 
     pub fn add_line_segment(&mut self, current: Point, direction: Point) {
         self.path.line_to(current - direction / 2.);
-    }
-}
-
-impl Item for Connection {
-    fn update(&mut self, state: &State, ws: &Workspace) -> bool {
-        let highlighted = state.selected_point.is_some_and(|(key, _)| key == self.key)
-            || ws.hovered_connection == Some(self.key)
-            || [self.from.entity, self.to.entity].iter().any(|&entity| {
-                ws.hovered_entity == Some(entity) || state.selected_entity == Some(entity)
-            });
-
-        self.data.opacity.set(if highlighted { 0.8 } else { 0.5 });
-
-        self.data.animate() | self.update_data(None)
-    }
-
-    fn render(&self, c: &mut Canvas, state: &State, ws: &Workspace) {
-        let pos = ws.position();
-        let zoom_adjustment = c.scale() * ws.zoom();
-        let scale = zoom_adjustment * Workspace::GRID_SIZE;
-
-        let affine = Affine::scale(scale).then_translate((-pos * c.scale()).into());
-
-        let border_color = c.colors().text;
-        let accent_color = c.colors().accent;
-        let stroke = Stroke::new(ConnectionItemData::STROKE_THICKNESS);
-
-        c.scene().stroke(
-            &stroke,
-            affine,
-            border_color.multiply_alpha(*self.data.opacity),
-            None,
-            &self.data.path,
-        );
-
-        let mut render_point = |point: Point, accent: Color, border: Color| {
-            let circle = Circle::new(point, 0.15 / zoom_adjustment);
-            let stroke = Stroke::new(0.05 / zoom_adjustment);
-
-            c.scene().fill(Fill::NonZero, affine, accent, None, &circle);
-            c.scene().stroke(&stroke, affine, border, None, &circle);
-        };
-
-        if state.tool == Tool::Pen || ws.previous_tool == Some(Tool::Pen) {
-            let mut show_ghost_point = true;
-            let ghost_point = self.data.ghost_point;
-
-            for point in &self.data.path_points {
-                if let PathPoint::Explicit(point) = point {
-                    render_point(*point, accent_color, Color::WHITE);
-
-                    if ghost_point == Some(*point) {
-                        show_ghost_point = false
-                    }
-                }
-            }
-
-            if ws.hovered_connection == Some(self.key) && show_ghost_point {
-                if let Some(ghost_point) = ghost_point {
-                    render_point(ghost_point, Color::DARK_GRAY, Color::WHITE);
-                }
-            }
-        }
     }
 }
