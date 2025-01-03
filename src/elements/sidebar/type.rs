@@ -65,7 +65,7 @@ impl Element for SidebarType {
                 if let Some(entity) = ctx.state.sidebar.entity {
                     ctx.project.remove_entity(entity);
                     ctx.state.selected_entity = None;
-                    ctx.state.request_redraw();
+                    ctx.state.request_tooltip_update();
                 }
             }),
             style: ButtonStyle::Segmented,

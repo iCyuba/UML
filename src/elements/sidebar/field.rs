@@ -120,7 +120,7 @@ impl ElementWithProps for SidebarField {
                     on_click: Box::new(move |ctx| {
                         if let Some(entity) = sidebar_entity!(ctx => get_mut) {
                             entity.fields.remove(idx);
-                            ctx.state.request_redraw();
+                            ctx.state.request_tooltip_update();
                         }
                     }),
                     style: ButtonStyle::Segmented,

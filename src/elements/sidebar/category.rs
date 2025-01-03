@@ -1,6 +1,7 @@
 use crate::{
     app::{context::EventContext, EventTarget, Tree},
     elements::{
+        button::{Button, ButtonProps, ButtonStyle},
         node::ElementWithProps,
         primitives::{
             icon::{Icon, Symbol},
@@ -20,6 +21,8 @@ use taffy::{
 pub struct CategoryProps {
     pub name: String,
     pub icon: Symbol,
+
+    pub add: Box<dyn Fn(&mut EventContext) + 'static>,
 }
 
 pub struct Category {
@@ -67,7 +70,14 @@ impl ElementWithProps for Category {
                 TextElement::create(TextElementProps {
                     getter: Box::new(move |_| props.name.clone()),
                     size: 16.,
-                    font: fonts::inter_regular(),
+                    font: fonts::inter_bold(),
+                }),
+                // Add button
+                Button::create(ButtonProps {
+                    tooltip: "Add",
+                    icon: Symbol::Plus,
+                    style: ButtonStyle::Segmented,
+                    on_click: props.add,
                 }),
             ]),
             |_, _| Category {

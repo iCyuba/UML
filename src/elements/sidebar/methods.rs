@@ -129,7 +129,7 @@ impl ElementWithProps for SidebarMethod {
                     on_click: Box::new(move |ctx| {
                         if let Some(entity) = sidebar_entity!(ctx => get_mut) {
                             entity.methods.remove(idx);
-                            ctx.state.request_redraw();
+                            ctx.state.request_tooltip_update();
                         }
                     }),
                     style: ButtonStyle::Segmented,

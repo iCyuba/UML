@@ -62,7 +62,7 @@ impl EventTarget for SidebarConnection {
         if let Some((_, conn)) = get_connection!(ctx, self.idx => get) {
             let hide = matches!(
                 conn.relation,
-                RelationType::Generalization //| RelationType::Realization
+                RelationType::Generalization | RelationType::Realization
             );
 
             let style = Style {
@@ -192,14 +192,14 @@ impl ElementWithProps for SidebarConnection {
                 }),
                 // Delete button
                 Button::create(ButtonProps {
-                    tooltip: "Delete relation",
+                    tooltip: "Remove relation",
                     icon: Symbol::Trash,
                     on_click: Box::new(move |ctx| {
                         if let Some(key) = sidebar_entity!(ctx => get)
                             .and_then(|ent| ent.connections.get_index(idx))
                         {
                             ctx.project.disconnect(*key);
-                            ctx.state.request_redraw();
+                            ctx.state.request_tooltip_update();
                         };
                     }),
                     style: ButtonStyle::Segmented,

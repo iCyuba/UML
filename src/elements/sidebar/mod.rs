@@ -23,6 +23,7 @@ use category::CategoryProps;
 use connection::SidebarConnection;
 use derive_macros::AnimatedElement;
 use field::SidebarField;
+use implementation::SidebarImplementation;
 use list::List;
 use methods::SidebarMethod;
 use name::sidebar_name;
@@ -39,6 +40,7 @@ use taffy::{
 mod category;
 mod connection;
 mod field;
+mod implementation;
 mod list;
 mod methods;
 mod name;
@@ -86,7 +88,7 @@ impl EventTarget for Sidebar {
         macro_rules! real {
             () => {
                 match ctx.state.tool {
-                    Tool::Relation | Tool::Pen => None,
+                    Tool::Relation | Tool::Parent | Tool::Implementation | Tool::Pen => None,
                     _ => ctx.state.selected_entity,
                 }
             };
@@ -95,9 +97,9 @@ impl EventTarget for Sidebar {
         if animate {
             ctx.state.request_redraw();
 
-            // When the sidebar is animating in and the entity changes, we can allow it
-            if *self.position.get_target() == 0. && real!().is_some() {
-                cached!() = real!();
+            // If the entity changes mid-animation, stop the animation
+            if real!() != cached!() {
+                self.position.set(1.);
             }
 
             return;
@@ -112,9 +114,13 @@ impl EventTarget for Sidebar {
 
         // If a new entity is selected, update the sidebar
         if real!().is_some() && real!() != cached!() {
-            cached!() = real!();
+            if cached!().is_some() {
+                self.position.set(1.);
+            } else {
+                cached!() = real!();
+                self.position.set(0.);
+            }
 
-            self.position.set(0.);
             ctx.state.request_redraw();
         }
 
@@ -192,20 +198,45 @@ impl Element for Sidebar {
                 sidebar_name(),
                 // Parent
                 SidebarParent::create(),
+                // Implementations
+                List::<SidebarImplementation>::create(CategoryProps {
+                    icon: Symbol::Interface,
+                    name: "Implements".to_string(),
+                    add: Box::new(|ctx| {
+                        ctx.state.set_tool(Tool::Implementation);
+                        ctx.state.request_redraw();
+                    }),
+                }),
                 // Connections
                 List::<SidebarConnection>::create(CategoryProps {
                     icon: Symbol::Workflow,
                     name: "Relations".to_string(),
+                    add: Box::new(|ctx| {
+                        ctx.state.set_tool(Tool::Relation);
+                        ctx.state.request_redraw();
+                    }),
                 }),
                 // Fields
                 List::<SidebarField>::create(CategoryProps {
                     icon: Symbol::Field,
                     name: "Fields".to_string(),
+                    add: Box::new(|ctx| {
+                        if let Some(entity) = sidebar_entity!(ctx => get_mut) {
+                            entity.fields.push(Default::default());
+                            ctx.state.request_redraw();
+                        }
+                    }),
                 }),
                 // Methods
                 List::<SidebarMethod>::create(CategoryProps {
                     icon: Symbol::Method,
                     name: "Methods".to_string(),
+                    add: Box::new(|ctx| {
+                        if let Some(entity) = sidebar_entity!(ctx => get_mut) {
+                            entity.methods.push(Default::default());
+                            ctx.state.request_redraw();
+                        }
+                    }),
                 }),
             ]),
             |_, _| Self {
