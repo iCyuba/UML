@@ -25,7 +25,7 @@ pub enum AppUserEvent {
     RequestRedraw,
     RequestCursorUpdate,
     RequestTooltipUpdate,
-    ModifyTree(Box<dyn FnOnce(&mut Tree)>),
+    ModifyTree(Box<dyn FnOnce(&mut Tree, &mut EventContext) + 'static>),
     Screenshot,
     Save,
     Load,
@@ -171,8 +171,7 @@ impl ApplicationHandler<AppUserEvent> for App<'_> {
                 self.window.request_redraw();
             }
             AppUserEvent::ModifyTree(f) => {
-                f(&mut self.tree);
-                self.window.request_redraw();
+                f(&mut self.tree, ctx!());
             }
             AppUserEvent::Screenshot => {
                 #[cfg(target_arch = "wasm32")]

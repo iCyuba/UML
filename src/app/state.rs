@@ -1,3 +1,4 @@
+use super::context::EventContext;
 use super::{AppUserEvent, Tree};
 use crate::data::project::{ConnectionKey, EntityKey};
 use crate::elements::sidebar::SidebarState;
@@ -103,7 +104,7 @@ impl State {
     }
 
     #[inline]
-    pub fn modify_tree(&self, f: impl FnOnce(&mut Tree) + 'static) {
+    pub fn modify_tree(&self, f: impl FnOnce(&mut Tree, &mut EventContext) + 'static) {
         self.send_event(AppUserEvent::ModifyTree(Box::new(f)));
     }
 

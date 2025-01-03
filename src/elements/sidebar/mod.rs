@@ -15,8 +15,9 @@ use crate::{
         EventTarget, Tree,
     },
     data::project::EntityKey,
-    elements::node::Element,
+    elements::{node::Element, toolbox_item::Tool},
 };
+use connections::ConnectionsList;
 use derive_macros::AnimatedElement;
 use name::sidebar_name;
 use r#type::SidebarType;
@@ -28,6 +29,8 @@ use taffy::{
     Layout, NodeId, Position, Rect, Size, Style,
 };
 
+mod category;
+mod connections;
 mod name;
 mod r#type;
 
@@ -35,7 +38,7 @@ mod r#type;
 pub struct SidebarState {
     // Used for animating the sidebar in and out
     // Will contain the old entity id when the sidebar is closing
-    pub(self) entity: Option<EntityKey>,
+    pub entity: Option<EntityKey>,
 }
 
 // Macro for getting the entity from the sidebar state, cuz it's long
@@ -49,7 +52,6 @@ macro_rules! sidebar_entity {
 }
 
 pub(super) use sidebar_entity;
-use crate::elements::toolbox_item::Tool;
 
 #[derive(AnimatedElement)]
 pub struct Sidebar {
@@ -177,6 +179,8 @@ impl Element for Sidebar {
                 SidebarType::create(),
                 // Name
                 sidebar_name(),
+                // Connections
+                ConnectionsList::create(),
             ]),
             |_, _| Self {
                 layout: Default::default(),

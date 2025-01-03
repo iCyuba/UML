@@ -16,7 +16,7 @@ use taffy::{
 };
 
 pub struct TextElementProps {
-    pub getter: fn(&GetterContext) -> String,
+    pub getter: Box<dyn Fn(&GetterContext) -> String + 'static>,
     pub size: f64,
     pub font: &'static FontResource<'static>,
 }
@@ -40,8 +40,9 @@ impl EventTarget for TextElement {
 
             let node = self.node_id;
 
-            ctx.state.modify_tree(move |tree| {
+            ctx.state.modify_tree(move |tree, ctx| {
                 tree.mark_dirty(node).unwrap();
+                ctx.state.request_redraw();
             });
         }
     }
@@ -70,7 +71,7 @@ impl Node for TextElement {
 
     fn measure(
         &self,
-        known_dimensions: taffy::Size<Option<f32>>,
+        _: taffy::Size<Option<f32>>,
         available_space: taffy::Size<taffy::AvailableSpace>,
         _: &Style,
         _: &mut EventContext,
@@ -82,11 +83,13 @@ impl Node for TextElement {
             width = width.min(max);
         };
 
+        if matches!(available_space.width, AvailableSpace::MinContent) {
+            width = 0.;
+        }
+
         Size {
             width,
-            height: known_dimensions
-                .height
-                .unwrap_or(self.props.size as f32 * 1.2),
+            height: self.props.size as f32 * 1.2,
         }
     }
 }
@@ -102,6 +105,7 @@ impl ElementWithProps for TextElement {
                     width: auto(),
                     height: length((props.size * 1.2) as f32),
                 },
+                flex_grow: 1.,
                 ..<_>::default()
             },
             None,

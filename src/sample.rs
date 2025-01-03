@@ -29,21 +29,20 @@ pub fn project() -> Project {
         modifier: AccessModifier::Public,
         arguments: vec![],
     });
-    
+
     basic.methods.push(Method {
         name: "increment".to_string(),
         return_type: "void".to_string(),
         modifier: AccessModifier::Public,
         arguments: vec!["amount".to_string()],
     });
-    
 
     let pos2 = (13, 15);
     let entity1 = project.add_entity(basic);
     let conn1 = Connection::new(
+        RelationType::Association,
         Relation {
             entity: entity1,
-            relation: RelationType::Association,
             multiplicity: Multiplicity::One,
         },
         Relation {
@@ -52,7 +51,6 @@ pub fn project() -> Project {
                 EntityType::AbstractClass,
                 pos2,
             )),
-            relation: RelationType::Association,
             multiplicity: Multiplicity::Many,
         },
         vec![(20, 20), (10, 13), (10, 7), (0, 0)],
@@ -65,9 +63,9 @@ pub fn project() -> Project {
     let pos3 = (-15, -10);
 
     let conn2 = Connection::new(
+        RelationType::Composition,
         Relation {
             entity: entity1,
-            relation: RelationType::Composition,
             multiplicity: Multiplicity::One,
         },
         Relation {
@@ -76,7 +74,6 @@ pub fn project() -> Project {
                 EntityType::AbstractClass,
                 pos3,
             )),
-            relation: RelationType::Association,
             multiplicity: Multiplicity::Many,
         },
         vec![],

@@ -24,21 +24,27 @@ use std::time::Duration;
 use taffy::{prelude::length, Layout, NodeId, Style};
 use winit::window::CursorIcon;
 
-pub struct StatusbarButtonProps {
+pub enum ButtonStyle {
+    Default,
+    Segmented,
+}
+
+pub struct ButtonProps {
     pub tooltip: &'static str,
     pub icon: Symbol,
-    pub on_click: fn(&mut EventContext),
+    pub on_click: Box<dyn Fn(&mut EventContext)>,
+    pub style: ButtonStyle,
 }
 
 #[derive(AnimatedElement)]
-pub struct StatusbarButton {
+pub struct Button {
     layout: Layout,
-    props: StatusbarButtonProps,
+    props: ButtonProps,
 
     hover_opacity: AnimatedProperty<StandardAnimation<f32>>,
 }
 
-impl EventTarget for StatusbarButton {
+impl EventTarget for Button {
     fn update(&mut self, ctx: &mut EventContext) {
         if self.animate() {
             ctx.state.request_redraw();
@@ -61,14 +67,24 @@ impl EventTarget for StatusbarButton {
         let rect: Rect = self.layout.into();
         let hover = ctx.c.colors().hover.multiply_alpha(*self.hover_opacity);
 
-        SimpleBox::new(rect, 5., ctx.c.colors().floating_background).draw(ctx.c);
+        let bg = match self.props.style {
+            ButtonStyle::Default => ctx.c.colors().floating_background,
+            ButtonStyle::Segmented => ctx.c.colors().border,
+        };
+
+        SimpleBox::new(rect, 5., bg).draw(ctx.c);
         SimpleBox::new(rect, 5., hover).draw(ctx.c);
 
         // Icon
+        let (size, inset) = match self.props.style {
+            ButtonStyle::Default => (20., 6.),
+            ButtonStyle::Segmented => (16., 4.),
+        };
+
         Icon::new(
             self.props.icon,
-            rect.inset_uniform(6.),
-            20.,
+            rect.inset_uniform(inset),
+            size,
             ctx.c.colors().icon_inactive,
         )
         .draw(ctx.c);
@@ -97,7 +113,7 @@ impl EventTarget for StatusbarButton {
     }
 }
 
-impl Node for StatusbarButton {
+impl Node for Button {
     fn layout(&self) -> &Layout {
         &self.layout
     }
@@ -107,18 +123,24 @@ impl Node for StatusbarButton {
     }
 }
 
-impl ElementWithProps for StatusbarButton {
-    type Props = StatusbarButtonProps;
+impl ElementWithProps for Button {
+    type Props = ButtonProps;
 
     fn setup(tree: &mut Tree, ctx: &mut EventContext, props: Self::Props) -> NodeId {
+        let size = match props.style {
+            ButtonStyle::Default => 32.,
+            ButtonStyle::Segmented => 24.,
+        };
+
         tree.add_element(
             ctx,
             Style {
-                size: length(32.),
+                size: length(size),
+                flex_shrink: 0.,
                 ..<_>::default()
             },
             None,
-            |_, _| StatusbarButton {
+            |_, _| Button {
                 layout: <_>::default(),
                 props,
 

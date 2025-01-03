@@ -1,4 +1,5 @@
 use super::{
+    button::{Button, ButtonProps, ButtonStyle},
     node::{Element, ElementWithProps},
     primitives::{
         fancy_box::{BorderOptions, FancyBox, ShadowOptions},
@@ -11,16 +12,13 @@ use crate::app::{
     context::{EventContext, RenderContext},
     EventTarget, Tree,
 };
-use button::{StatusbarButton, StatusbarButtonProps};
 use taffy::{prelude::length, Layout, NodeId, Position, Style};
 
-mod button;
-
-pub struct Statusbar {
+pub struct Actionbar {
     layout: Layout,
 }
 
-impl EventTarget for Statusbar {
+impl EventTarget for Actionbar {
     fn render(&self, ctx: &mut RenderContext) {
         FancyBox::from_node(
             self,
@@ -39,7 +37,7 @@ impl EventTarget for Statusbar {
     }
 }
 
-impl Node for Statusbar {
+impl Node for Actionbar {
     fn layout(&self) -> &Layout {
         &self.layout
     }
@@ -49,7 +47,7 @@ impl Node for Statusbar {
     }
 }
 
-impl Element for Statusbar {
+impl Element for Actionbar {
     fn setup(tree: &mut Tree, ctx: &mut EventContext) -> NodeId {
         tree.add_element(
             ctx,
@@ -62,24 +60,27 @@ impl Element for Statusbar {
                 ..<_>::default()
             },
             Some(vec![
-                StatusbarButton::create(StatusbarButtonProps {
+                Button::create(ButtonProps {
                     tooltip: "Save",
                     icon: Symbol::Save,
-                    on_click: |ctx| ctx.state.save(),
+                    on_click: Box::new(|ctx| ctx.state.save()),
+                    style: ButtonStyle::Default,
                 }),
-                StatusbarButton::create(StatusbarButtonProps {
+                Button::create(ButtonProps {
                     tooltip: "Load",
                     icon: Symbol::Load,
-                    on_click: |ctx| ctx.state.load(),
+                    on_click: Box::new(|ctx| ctx.state.load()),
+                    style: ButtonStyle::Default,
                 }),
                 #[cfg(not(target_arch = "wasm32"))]
-                StatusbarButton::create(StatusbarButtonProps {
+                Button::create(ButtonProps {
                     tooltip: "Screenshot",
                     icon: Symbol::Screenshot,
-                    on_click: |ctx| ctx.state.screenshot(),
+                    on_click: Box::new(|ctx| ctx.state.screenshot()),
+                    style: ButtonStyle::Default,
                 }),
             ]),
-            |_, _| Statusbar {
+            |_, _| Actionbar {
                 layout: <_>::default(),
             },
         )

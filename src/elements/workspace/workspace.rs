@@ -1,5 +1,5 @@
 use super::item::Item;
-use crate::data::connection::Relation;
+use crate::data::connection::{Relation, RelationType};
 use crate::data::entity::EntityType;
 use crate::data::project::ConnectionKey;
 use crate::data::Connection;
@@ -268,11 +268,12 @@ impl EventTarget for Workspace {
                     if old == new {
                         return false;
                     }
-                    
+
                     let from_rect = ctx.project.entities[old].get_rect();
                     let to_rect = ctx.project.entities[new].get_rect();
 
                     ctx.project.connect(Connection::new(
+                        RelationType::Association,
                         Relation::new(old),
                         Relation::new(new),
                         Vec::new(),
@@ -289,7 +290,7 @@ impl EventTarget for Workspace {
                 ctx.state.request_redraw();
                 return true;
             }
-            
+
             // Disconnect entities
             if let Some(connection) = self.hovered_connection {
                 if right {
@@ -408,7 +409,7 @@ impl EventTarget for Workspace {
             self.hovered_entity = entity;
             return true;
         }
-        
+
         // Hovered connection point
         let zoom_adjustment = ctx.c.scale() * self.zoom();
         let point = self.cursor_to_point(ctx.state.cursor) / Workspace::GRID_SIZE;

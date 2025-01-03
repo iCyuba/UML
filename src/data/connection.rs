@@ -13,7 +13,7 @@ pub enum Multiplicity {
     Many,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, Clone, Copy)]
 pub enum RelationType {
     Association,
     OneWayAssociation,
@@ -24,7 +24,6 @@ pub enum RelationType {
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Relation {
-    pub relation: RelationType,
     pub entity: EntityKey,
     pub multiplicity: Multiplicity,
 }
@@ -33,7 +32,6 @@ impl Relation {
     pub fn new(entity: EntityKey) -> Self {
         Self {
             entity,
-            relation: RelationType::Association,
             multiplicity: Multiplicity::One,
         }
     }
@@ -43,6 +41,7 @@ impl Relation {
 pub struct Connection {
     pub key: ConnectionKey,
 
+    pub relation: RelationType,
     pub from: Relation,
     pub to: Relation,
     pub points: Vec<(i32, i32)>,
@@ -53,6 +52,7 @@ pub struct Connection {
 
 impl Connection {
     pub fn new(
+        relation: RelationType,
         from: Relation,
         to: Relation,
         points: Vec<(i32, i32)>,
@@ -61,10 +61,31 @@ impl Connection {
     ) -> Self {
         Self {
             key: Default::default(),
+            relation,
             from,
             to,
             data: ConnectionItemData::new(&points, start, end),
             points,
+        }
+    }
+
+    /// Returns the relation that is not the given entity
+    ///
+    /// If the entity is not part of the connection, it returns the from relation
+    pub fn other(&self, entity: EntityKey) -> &Relation {
+        if self.from.entity == entity {
+            &self.to
+        } else {
+            &self.from
+        }
+    }
+
+    /// Returns the mutable relation that is not the given entity
+    pub fn other_mut(&mut self, entity: EntityKey) -> &mut Relation {
+        if self.from.entity == entity {
+            &mut self.to
+        } else {
+            &mut self.from
         }
     }
 
@@ -169,10 +190,10 @@ impl Connection {
             false
         }
     }
-    
+
     pub fn swap(&mut self) {
         std::mem::swap(&mut self.from, &mut self.to);
-        
+
         self.points.reverse();
     }
 

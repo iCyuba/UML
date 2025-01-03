@@ -4,14 +4,10 @@ use super::project::{ConnectionKey, EntityKey};
 use crate::elements::workspace::entity::EntityItemData;
 use crate::elements::workspace::Workspace;
 use crate::geometry::Rect;
+use indexmap::IndexSet;
 use serde::{Deserialize, Serialize};
-use slotmap::new_key_type;
+use std::fmt::Display;
 use std::fmt::Formatter;
-use std::{collections::HashSet, fmt::Display};
-
-new_key_type! {
-    pub struct InternalTypeKey;
-}
 
 #[derive(Debug, Serialize, Deserialize)]
 pub enum AccessModifier {
@@ -115,7 +111,7 @@ pub struct Entity {
     pub fields: Vec<Field>,
     pub methods: Vec<Method>,
 
-    pub connections: HashSet<ConnectionKey>,
+    pub connections: IndexSet<ConnectionKey>,
 
     /// Position of the entity in the workspace.
     pub position: (i32, i32),
@@ -133,7 +129,7 @@ impl Entity {
             entity_type,
             fields: vec![],
             methods: vec![],
-            connections: HashSet::new(),
+            connections: IndexSet::new(),
             position: pos,
             data: EntityItemData::new(pos),
         }

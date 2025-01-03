@@ -43,15 +43,20 @@ impl Project {
         self.ordered_entities.retain(|&k| k != key);
         let entity = self.entities.remove(key).unwrap();
 
-        for connection in entity.connections {
-            self.connections.remove(connection);
+        for &connection in entity.connections.iter() {
+            let connection = self.connections.remove(connection).unwrap();
+            let other = connection.other(key);
+
+            let other = self.entities.get_mut(other.entity).unwrap();
+
+            other.connections.shift_remove(&connection.key);
         }
     }
 
     pub fn connect(&mut self, connection: Connection) -> ConnectionKey {
         let from = connection.from.entity;
         let to = connection.to.entity;
-        
+
         // Check if connection already exists
         for &key in self.entities[from].connections.iter() {
             let existing = &self.connections[key];
@@ -80,8 +85,8 @@ impl Project {
         let from = connection.from.entity;
         let to = connection.to.entity;
 
-        self.entities[from].connections.remove(&key);
-        self.entities[to].connections.remove(&key);
+        self.entities[from].connections.shift_remove(&key);
+        self.entities[to].connections.shift_remove(&key);
     }
 
     /// Modifies entity based on callback

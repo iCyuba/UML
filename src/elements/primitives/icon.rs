@@ -25,6 +25,12 @@ pub enum Symbol {
     Pen = b'O',
     One = b'P',
     Many = b'Q',
+    Trash = b'R',
+    Association = b'S',
+    Aggregation = b'T',
+    Composition = b'U',
+    Generalization = b'V',
+    Swap = b'W',
 }
 
 impl From<Symbol> for char {

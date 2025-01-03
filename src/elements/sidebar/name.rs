@@ -9,18 +9,18 @@ use crate::{
 
 pub fn sidebar_name() -> Box<CurriedSetup> {
     TextInput::create(TextInputProps {
-        getter: |ctx| {
+        getter: Box::new(|ctx| {
             if let Some(entity) = sidebar_entity!(ctx => get) {
                 entity.name.clone()
             } else {
                 "".to_string()
             }
-        },
-        setter: |ctx, str| {
+        }),
+        setter: Box::new(|ctx, str| {
             if let Some(entity) = sidebar_entity!(ctx => get_mut) {
                 entity.name = str.to_string();
             }
-        },
+        }),
         placeholder: Some("Untitled".to_string()),
         size: 24.,
         font: fonts::jbmono_bold(),

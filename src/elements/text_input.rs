@@ -38,8 +38,8 @@ pub struct TextInputProps {
     pub font: &'static FontResource<'static>,
     pub placeholder: Option<String>,
 
-    pub getter: fn(&GetterContext) -> String,
-    pub setter: fn(&mut EventContext, &str),
+    pub getter: Box<dyn Fn(&GetterContext) -> String>,
+    pub setter: Box<dyn Fn(&mut EventContext, &str)>,
 }
 
 #[derive(AnimatedElement)]
@@ -143,8 +143,9 @@ impl TextInput {
             Text::measure_chars(self.text.chars(), self.props.size, self.props.font);
 
         let node = self.node_id;
-        ctx.state.modify_tree(move |tree| {
+        ctx.state.modify_tree(move |tree, ctx| {
             tree.mark_dirty(node).unwrap();
+            ctx.state.request_redraw();
         });
     }
 
@@ -161,7 +162,11 @@ impl TextInput {
 
     /// Get the byte index of the character at the given index
     fn idx(&self, char: usize) -> usize {
-        self.text.char_indices().nth(char).map(|(idx, _)| idx).unwrap_or(self.text.len())
+        self.text
+            .char_indices()
+            .nth(char)
+            .map(|(idx, _)| idx)
+            .unwrap_or(self.text.len())
     }
 
     /// Get the byte index of the character at the cursor position
