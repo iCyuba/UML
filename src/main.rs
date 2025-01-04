@@ -4,7 +4,6 @@ mod data;
 mod elements;
 mod geometry;
 mod presentation;
-mod sample;
 
 use crate::app::{App, AppUserEvent};
 use winit::event_loop::EventLoop;

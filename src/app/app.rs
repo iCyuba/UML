@@ -10,7 +10,6 @@ use crate::{
     data::{entity::EntityType, Project},
     elements::toolbox_item::Tool,
     geometry::{Point, Vec2},
-    sample::project,
 };
 use ogrim::xml;
 use rfd::FileDialog;
@@ -80,7 +79,7 @@ impl App<'_> {
             .expect("Couldn't create PNG renderer");
 
         let mut state = State::new(event_loop);
-        let mut project = project();
+        let mut project = Project::new(String::new());
 
         // Can't use the macro here, because App doesn't exist yet
         let tree = Tree::new(&mut EventContext {
