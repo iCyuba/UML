@@ -16,6 +16,10 @@ use std::{
     ops::{Deref, DerefMut},
 };
 use taffy::{AvailableSpace, NodeId, Size, Style, TaffyTree};
+use vello::{
+    kurbo::{self, Affine},
+    peniko::BlendMode,
+};
 use winit::{
     event::{KeyEvent, MouseButton},
     window::CursorIcon,
@@ -225,9 +229,17 @@ impl EventTarget for Tree {
 
                 // This is to check if the element modified it's layout
                 layout = *element.layout();
+                let rect = Rect::from(layout);
+
+                // Add scroll offsets
+                if element.scrollable() {
+                    let (x, y) = element.scroll_offset();
+                    layout.location.x -= x;
+                    layout.location.y -= y;
+                }
 
                 // Store the rect for hover detection
-                tree.map.push((Rect::from(layout), node));
+                tree.map.push((rect, node));
             }
 
             for node in tree.children(node).unwrap() {
@@ -245,12 +257,30 @@ impl EventTarget for Tree {
 
     fn render(&self, ctx: &mut RenderContext) {
         fn render_children(node: NodeId, tree: &Tree, ctx: &mut RenderContext) {
+            let mut clip = false;
+
             if let Some(element) = tree.get_node_context(node) {
+                let scale = ctx.c.scale();
                 element.render(ctx);
+
+                if element.scrollable() {
+                    ctx.c.scene().push_layer(
+                        BlendMode::default(),
+                        1.0,
+                        Affine::IDENTITY,
+                        &kurbo::Rect::from(Rect::from(*element.layout()) * scale),
+                    );
+
+                    clip = true;
+                }
             }
 
             for node in tree.children(node).unwrap() {
                 render_children(node, tree, ctx);
+            }
+
+            if clip {
+                ctx.c.scene().pop_layer();
             }
         }
 

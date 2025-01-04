@@ -3,6 +3,7 @@ use super::{
     primitives::{
         fancy_box::{BorderOptions, FancyBox, ShadowOptions},
         icon::Symbol,
+        simple_box::SimpleBox,
         traits::Draw,
     },
     Node,
@@ -10,6 +11,7 @@ use super::{
 use crate::{
     animations::{
         animated_property::AnimatedProperty,
+        delta_animation::DeltaAnimation,
         standard_animation::{Easing, StandardAnimation},
     },
     app::{
@@ -18,6 +20,7 @@ use crate::{
     },
     data::project::EntityKey,
     elements::{node::Element, toolbox_item::Tool},
+    geometry::Rect,
 };
 use category::CategoryProps;
 use connection::SidebarConnection;
@@ -34,7 +37,7 @@ use taffy::{
     prelude::{auto, length, zero},
     Display::Flex,
     FlexDirection::Column,
-    Layout, NodeId, Position, Rect, Size, Style,
+    Layout, NodeId, Position, Size, Style,
 };
 
 mod category;
@@ -71,13 +74,19 @@ pub struct Sidebar {
     layout: Layout,
 
     position: AnimatedProperty<StandardAnimation<f32>>,
+    scroll: AnimatedProperty<DeltaAnimation<f32>>,
 }
 
 impl EventTarget for Sidebar {
     fn update(&mut self, ctx: &mut EventContext) {
         let animate = self.animate();
         let offset = *self.position;
-        self.layout.location.x += offset * 312.; // Offscreen = (300 width + 12 margin)
+        self.layout.location.x += offset * 372.; // Offscreen = (360 width + 12 margin)
+
+        // Clamp the scroll offset
+        let max = self.layout.content_size.height - self.layout.size.height;
+        self.scroll
+            .set(self.scroll.get_target().clamp(0., max.max(0.)));
 
         macro_rules! cached {
             () => {
@@ -108,6 +117,7 @@ impl EventTarget for Sidebar {
         // If the animation is finished, remove the old entity and rerun update
         if cached!().is_some() && offset == 1. {
             cached!() = None;
+            self.scroll.reset(0.);
 
             return self.update(ctx);
         }
@@ -154,6 +164,45 @@ impl EventTarget for Sidebar {
             }),
         )
         .draw(c);
+
+        // Scrollbar
+        let rect = Rect::from(self.layout);
+
+        let height = self.layout.size.height as f64;
+        let co_height = self.layout.content_size.height as f64;
+
+        if co_height <= height {
+            return;
+        }
+
+        let ratio = height / co_height;
+        let scroll = *self.scroll as f64;
+
+        let scrollbar = Rect::new(
+            (rect.end().x - 12., rect.origin.y + scroll * ratio + 16.),
+            (4., height * ratio - 32.),
+        );
+
+        SimpleBox::new(scrollbar, 2., c.colors().border).draw(c);
+    }
+
+    fn on_wheel(
+        &mut self,
+        ctx: &mut EventContext,
+        event: crate::app::event_target::WheelEvent,
+    ) -> bool {
+        let max = self.layout.content_size.height - self.layout.size.height;
+        let target = (*self.scroll - event.delta.y as f32).clamp(0., max.max(0.));
+
+        if event.mouse {
+            self.scroll.set(target);
+        } else {
+            self.scroll.reset(target);
+        }
+
+        ctx.state.request_redraw();
+
+        true
     }
 }
 
@@ -165,6 +214,14 @@ impl Node for Sidebar {
     fn layout_mut(&mut self) -> &mut Layout {
         &mut self.layout
     }
+
+    fn scrollable(&self) -> bool {
+        true
+    }
+
+    fn scroll_offset(&self) -> (f32, f32) {
+        (0., *self.scroll)
+    }
 }
 
 impl Element for Sidebar {
@@ -174,7 +231,7 @@ impl Element for Sidebar {
             Style {
                 display: Flex,
                 position: Position::Absolute,
-                inset: Rect {
+                inset: taffy::Rect {
                     top: length(0.),
                     right: length(0.),
                     bottom: length(0.),
@@ -186,7 +243,7 @@ impl Element for Sidebar {
                 padding: length(16.),
                 gap: length(8.),
                 size: Size {
-                    width: length(300.),
+                    width: length(360.),
                     height: auto(),
                 },
                 ..Default::default()
@@ -247,6 +304,8 @@ impl Element for Sidebar {
                     Duration::from_millis(200),
                     Easing::EaseInOut,
                 )),
+
+                scroll: AnimatedProperty::new(DeltaAnimation::initialized(0., 30.)),
             },
         )
     }

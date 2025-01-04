@@ -8,6 +8,14 @@ pub trait Node: EventTarget {
     fn layout(&self) -> &Layout;
     fn layout_mut(&mut self) -> &mut Layout;
 
+    fn scrollable(&self) -> bool {
+        false
+    }
+
+    fn scroll_offset(&self) -> (f32, f32) {
+        (0., 0.)
+    }
+
     fn measure(
         &self,
         known_dimensions: taffy::Size<Option<f32>>,

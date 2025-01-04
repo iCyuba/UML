@@ -341,10 +341,11 @@ impl Item for Connection {
 
     fn render(&self, c: &mut Canvas, state: &State, ws: &Workspace) {
         let pos = ws.position();
-        let zoom_adjustment = c.scale() * ws.zoom();
-        let scale = zoom_adjustment * Workspace::GRID_SIZE;
+        let scale = c.scale();
+        let zoom_adjustment = ws.zoom();
+        let zoom = zoom_adjustment * Workspace::GRID_SIZE;
 
-        let affine = Affine::scale(scale).then_translate((-pos * c.scale()).into());
+        let affine = Affine::scale(zoom * scale).then_translate((-pos * scale).into());
 
         let line_color = c.colors().text.multiply_alpha(*self.data.opacity);
         let accent_color = c.colors().accent;
@@ -373,8 +374,8 @@ impl Item for Connection {
         self.render_arrow(c, affine, line_color, &stroke);
 
         // Draw icons
-        self.render_icon(c, pos, scale, line_color, false);
-        self.render_icon(c, pos, scale, line_color, true);
+        self.render_icon(c, pos, zoom, line_color, false);
+        self.render_icon(c, pos, zoom, line_color, true);
 
         let mut render_point = |point: Point, accent: Color, border: Color| {
             for (color, radius) in &[(accent, 0.22), (border, 0.20), (accent, 0.14)] {

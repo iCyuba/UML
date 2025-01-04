@@ -105,6 +105,10 @@ impl Item for Entity {
         size.x = size.x.max(name.x);
         size.y += name.y;
 
+        if !self.fields.is_empty() {
+            size.y += 8.; // 8px gap
+        }
+
         // Attributes
         for field in self.fields.iter() {
             let attr = Text::measure(&field.to_string(), 12., fonts::jbmono_regular());
@@ -203,21 +207,22 @@ impl Item for Entity {
         };
 
         // Attributes
-        let mut y = (16. + Workspace::GRID_SIZE / 2.) * zoom; // 8px gap
+        let line = (12. * 1.2 + 8.) * zoom; // 4x margin
+        let mut y = (16. * 1.2 + 8.) * zoom; // 8px gap
         for field in self.fields.iter() {
             render_property(field.to_string(), y);
 
-            y += 20. * zoom;
+            y += line;
         }
 
-        if !self.methods.is_empty() {
+        if !self.fields.is_empty() {
             y += 8. * zoom; // 8px gap
         }
 
         for method in self.methods.iter() {
             render_property(method.to_string(), y);
 
-            y += 20. * zoom;
+            y += line;
         }
     }
 }
