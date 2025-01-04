@@ -6,6 +6,7 @@ use crate::elements::toolbox_item::Tool;
 use crate::elements::tooltip::TooltipState;
 use crate::geometry::Point;
 use std::collections::HashSet;
+use clipboard::{ClipboardContext, ClipboardProvider};
 use taffy::NodeId;
 use winit::event::MouseButton;
 use winit::event_loop::EventLoopProxy;
@@ -23,6 +24,7 @@ pub struct State {
     pub modifiers: ModifiersState,
     pub keys: HashSet<Key>,
     pub mouse_buttons: HashSet<MouseButton>,
+    pub clipboard: ClipboardContext,
 
     // Elements
     pub hovered: Option<NodeId>,
@@ -52,6 +54,7 @@ impl State {
             modifiers: ModifiersState::default(),
             keys: HashSet::new(),
             mouse_buttons: HashSet::new(),
+            clipboard: ClipboardProvider::new().unwrap(),
 
             hovered: None,
             focused: None,
@@ -65,6 +68,22 @@ impl State {
 
             sidebar: <_>::default(),
         }
+    }
+    
+    #[inline]
+    pub fn word_move_modifier(&self) -> bool {
+        #[cfg(target_os = "macos")]
+        return self.modifiers.alt_key();
+
+        #[cfg(target_arch = "wasm32")]
+        return if self.use_super {
+            self.modifiers.alt_key()
+        } else {
+            self.modifiers.control_key()
+        };
+
+        #[cfg(all(not(target_os = "macos"), not(target_arch = "wasm32")))]
+        return self.modifiers.control_key();
     }
 
     #[inline]

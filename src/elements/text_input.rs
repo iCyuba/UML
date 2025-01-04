@@ -28,6 +28,7 @@ use winit::{
     window::CursorIcon,
 };
 
+use clipboard::ClipboardProvider;
 #[cfg(not(target_arch = "wasm32"))]
 use std::time::Instant;
 #[cfg(target_arch = "wasm32")]
@@ -187,6 +188,131 @@ impl TextInput {
     fn cursor_idx(&self) -> usize {
         self.idx(self.cursor)
     }
+
+    /// Get the selected text
+    fn selection_to_string(&self) -> String {
+        let (start, end) = self.selection_range();
+        self.text.chars().skip(start).take(end - start).collect()
+    }
+
+    /// Replace the selected text with something else
+    fn replace_text(&mut self, text: &str) {
+        let (start, end) = self.selection_range();
+
+        if self.selection != 0 {
+            self.cursor = start + text.chars().count();
+            self.selection = 0;
+
+            let start = self.idx(start);
+            let end = self.idx(end);
+
+            self.text.replace_range(start..end, text);
+        } else {
+            if self.cursor < self.text.chars().count() {
+                self.text.insert_str(self.cursor_idx(), text);
+            } else {
+                self.text.push_str(text);
+            }
+
+            self.move_cursor(text.chars().count() as isize);
+        }
+    }
+
+    /// Move the cursor by a given offset
+    fn move_cursor(&mut self, val: isize) {
+        self.cursor = if val.is_negative() {
+            self.cursor.saturating_sub(val.unsigned_abs())
+        } else {
+            self.cursor
+                .saturating_add(val as usize)
+                .min(self.text.chars().count())
+        };
+    }
+
+    /// Returns the category of the given character - different category marks a word boundary
+    fn char_category(c: char) -> u8 {
+        match c {
+            c if c.is_whitespace() => 0, // Whitespace
+            c if c.is_alphanumeric() => 1, // Alphanumeric characters (letters, digits)
+            '.' | ',' | ';' | ':' | '!' | '?' | '"' | '\'' => 2, // Standard punctuation
+            '+' | '=' | '*' | '/' | '&' | '|' | '^' | '%' | '$' | '#' | '@' | '~' => 3, // Symbols and operators
+            '[' | ']' | '(' | ')' | '{' | '}' | '<' | '>' => 4, // Brackets and parentheses
+            '_' | '-' => 5, // Underscore and hyphen
+            _ => 6, // Other characters (e.g., emojis, special symbols)
+        }
+    }
+
+    /// Finds the closest word boundary in the given direction
+    fn word_boundary_offset(&self, pos: usize, left: bool) -> usize {
+        let boundary = |a: u8, b: u8| a != b || a == 0 || b == 0;
+
+        if left {
+            // Iterate backwards to find the closest boundary
+            let mut last_category = None;
+            let iter = self
+                .text
+                .chars()
+                .enumerate()
+                .take(pos)
+                .collect::<Vec<_>>()
+                .into_iter()
+                .rev(); // Reverse iterator
+            let mut last_boundary = 0;
+
+            for (i, c) in iter {
+                let current_category = Self::char_category(c);
+
+                // Skip consecutive characters of the same category (including spaces)
+                if let Some(last_cat) = last_category {
+                    if current_category != last_cat && boundary(last_cat, current_category) {
+                        last_boundary = i + 1;
+                        break;
+                    }
+                }
+
+                last_category = Some(current_category);
+            }
+
+            // Ensure that if we hit whitespace and then a word, we skip over the spaces entirely
+            if Some(0) == last_category {
+                // If the last character was whitespace, keep searching
+                self.word_boundary_offset(last_boundary, left)
+            } else {
+                last_boundary
+            }
+        } else {
+            // Iterate forwards to find the closest boundary, skipping current word and spaces
+            let mut last_category = None;
+            let iter = self.text.chars().enumerate().skip(pos);
+            let mut first_boundary = self.text.len();
+
+            let mut skip_spaces = false; // Flag to skip over spaces after current word
+
+            for (i, c) in iter {
+                let current_category = Self::char_category(c);
+
+                // If we encounter a space and we need to skip it, just continue
+                if current_category == 0 && last_category != Some(0) && last_category.is_some() {
+                    skip_spaces = true;
+                    continue;
+                }
+
+                // Skip consecutive characters of the same category (including spaces)
+                if let Some(last_cat) = last_category {
+                    if skip_spaces
+                        || (current_category != last_cat && boundary(last_cat, current_category))
+                    {
+                        first_boundary = i;
+                        break;
+                    }
+                }
+
+                last_category = Some(current_category);
+            }
+
+            first_boundary
+        }
+    }
 }
 
 impl EventTarget for TextInput {
@@ -309,6 +435,16 @@ impl EventTarget for TextInput {
     fn on_keydown(&mut self, ctx: &mut EventContext, event: KeyEvent) -> bool {
         let (start, end) = self.selection_range();
 
+        let get_offset = |left, pos: usize| {
+            if ctx.state.word_move_modifier() {
+                self.word_boundary_offset(pos, left) as isize - pos as isize
+            } else if left {
+                -1
+            } else {
+                1
+            }
+        };
+
         match event.logical_key {
             Key::Named(NamedKey::Backspace) | Key::Named(NamedKey::Delete)
                 if self.selection != 0 =>
@@ -326,44 +462,29 @@ impl EventTarget for TextInput {
                 self.selection = 0;
             }
 
-            Key::Named(NamedKey::Backspace) => {
-                if self.cursor == 0 {
-                    return false;
-                }
+            Key::Named(NamedKey::Backspace) | Key::Named(NamedKey::Delete) => {
+                let left = event.logical_key == Key::Named(NamedKey::Backspace);
+                let offset = get_offset(left, self.cursor);
 
-                self.text.remove(self.idx(self.cursor - 1));
-                self.cursor -= 1;
-                self.view = self.view.saturating_sub(1);
-            }
-
-            Key::Named(NamedKey::Delete) => {
-                if self.cursor == self.text.chars().count() {
-                    return false;
-                }
-
-                self.text.remove(self.cursor_idx());
+                self.selection = offset;
+                self.replace_text("");
+                self.view = self.view.saturating_sub(offset.unsigned_abs());
             }
 
             Key::Named(NamedKey::ArrowLeft) | Key::Named(NamedKey::ArrowRight) => {
                 let left = event.logical_key == Key::Named(NamedKey::ArrowLeft);
 
                 if ctx.state.modifiers.shift_key() {
-                    let jump = if left { -1 } else { 1 };
-                    self.selection += jump;
+                    let cur = self.cursor as isize;
+                    let jump = get_offset(left, (cur + self.selection) as usize);
 
-                    // This will overflow when below 0
-                    if self.selection() > self.text.chars().count() {
-                        self.selection -= jump;
-                    }
+                    self.selection = (self.selection + jump)
+                        .clamp(-cur, self.text.chars().count() as isize - cur);
                 } else if self.selection != 0 {
                     self.cursor = if left { start } else { end };
                     self.selection = 0;
                 } else {
-                    self.cursor = if left {
-                        self.cursor.saturating_sub(1)
-                    } else {
-                        self.cursor.saturating_add(1).min(self.text.chars().count())
-                    };
+                    self.move_cursor(get_offset(left, self.cursor));
                 }
 
                 self.cursor_opacity.reset(1.);
@@ -374,11 +495,66 @@ impl EventTarget for TextInput {
                 return true;
             }
 
-            Key::Character(ch) if ctx.state.main_modifier() && ch == "a" => {
-                self.select_all();
+            Key::Named(NamedKey::Home)
+            | Key::Named(NamedKey::PageUp)
+            | Key::Named(NamedKey::End)
+            | Key::Named(NamedKey::PageDown) => {
+                let left = event.logical_key == Key::Named(NamedKey::Home)
+                    || event.logical_key == Key::Named(NamedKey::PageUp);
+                let cur = if left { 0 } else { self.text.chars().count() };
+
+                if ctx.state.modifiers.shift_key() {
+                    self.selection = cur as isize - self.cursor as isize;
+                } else {
+                    self.selection = 0;
+                    self.cursor = cur;
+                }
+
+                self.view = cur;
+                self.update_view();
 
                 ctx.state.request_redraw();
                 return true;
+            }
+
+            Key::Character(ch) if ctx.state.main_modifier() => {
+                if ch == "a" {
+                    self.select_all();
+                    return true;
+                }
+
+                if ch == "c" || ch == "x" {
+                    ctx.state
+                        .clipboard
+                        .set_contents(if self.selection != 0 {
+                            self.selection_to_string()
+                        } else {
+                            self.text.clone()
+                        })
+                        .unwrap();
+
+                    if ch == "c" {
+                        return true;
+                    }
+                }
+
+                if ch == "v" || ch == "x" {
+                    let text = if ch == "v" {
+                        ctx.state.clipboard.get_contents().unwrap_or_default()
+                    } else {
+                        String::new()
+                    };
+
+                    self.replace_text(&text);
+
+                    self.reset(ctx);
+                    self.update_view();
+
+                    (self.props.setter)(ctx, &self.text);
+                    ctx.state.request_redraw();
+
+                    return true;
+                }
             }
 
             _ => {
@@ -389,23 +565,7 @@ impl EventTarget for TextInput {
                         return false;
                     }
 
-                    if self.selection != 0 {
-                        self.cursor = start + text.chars().count();
-                        self.selection = 0;
-
-                        let start = self.idx(start);
-                        let end = self.idx(end);
-
-                        self.text.replace_range(start..end, &text);
-                    } else {
-                        if self.cursor < self.text.chars().count() {
-                            self.text.insert_str(self.cursor_idx(), &text);
-                        } else {
-                            self.text.push_str(&text);
-                        }
-
-                        self.cursor += text.chars().count();
-                    }
+                    self.replace_text(&text);
                 }
             }
         }
@@ -488,11 +648,11 @@ impl Node for TextInput {
 
     fn measure(
         &self,
-        _: taffy::Size<Option<f32>>,
-        available_space: taffy::Size<taffy::AvailableSpace>,
+        _: Size<Option<f32>>,
+        available_space: Size<AvailableSpace>,
         _: &Style,
         _: &mut EventContext,
-    ) -> taffy::Size<f32> {
+    ) -> Size<f32> {
         let mut text = &self.text;
         if text.is_empty() && self.props.placeholder.is_some() {
             text = self.props.placeholder.as_ref().unwrap();
