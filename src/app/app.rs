@@ -4,6 +4,7 @@ use super::{
     renderer::{PngRenderer, WindowRenderer},
     EventTarget, Renderer, State, Tree,
 };
+use crate::data::project::TokenVec;
 use crate::{
     app::{context::RenderContext, event_target::WheelEvent},
     data::{entity::EntityType, Project},
@@ -11,7 +12,10 @@ use crate::{
     geometry::{Point, Vec2},
     sample::project,
 };
+use ogrim::xml;
 use rfd::FileDialog;
+use std::fs::File;
+use std::io::Write;
 use std::{cell::RefCell, fmt, fs, rc::Rc};
 use winit::{
     application::ApplicationHandler,
@@ -19,6 +23,8 @@ use winit::{
     event_loop::{ActiveEventLoop, EventLoopProxy},
     window::CursorIcon,
 };
+use zip::write::FileOptions;
+use zip::ZipWriter;
 
 pub enum AppUserEvent {
     #[cfg(target_arch = "wasm32")]
@@ -31,6 +37,7 @@ pub enum AppUserEvent {
     Screenshot,
     Save,
     Load,
+    Export,
     SetTool(Tool),
 }
 
@@ -46,6 +53,7 @@ impl fmt::Debug for AppUserEvent {
             AppUserEvent::ModifyTree(_) => f.write_str("ModifyTree"),
             AppUserEvent::Screenshot => f.write_str("Screenshot"),
             AppUserEvent::Save => f.write_str("Save"),
+            AppUserEvent::Export => f.write_str("Export"),
             AppUserEvent::Load => f.write_str("Load"),
             AppUserEvent::SetTool(tool) => f.debug_tuple("SetTool").field(tool).finish(),
         }
@@ -216,7 +224,7 @@ impl ApplicationHandler<AppUserEvent> for App<'_> {
                 let Some(path) = FileDialog::new()
                     .add_filter("binary", &["bin"])
                     .add_filter("json", &["json"])
-                    .set_file_name(self.project.name.to_lowercase() + ".bin")
+                    .set_file_name(self.project.get_sanitized_name().to_lowercase() + ".bin")
                     .save_file()
                 else {
                     return;
@@ -269,6 +277,64 @@ impl ApplicationHandler<AppUserEvent> for App<'_> {
 
                 self.update_cursor();
                 self.window.request_redraw();
+            }
+            AppUserEvent::Export => {
+                let name = self.project.get_sanitized_name();
+
+                let Some(path) = FileDialog::new()
+                    .add_filter("zip", &["zip"])
+                    .set_file_name(name.clone() + ".zip")
+                    .save_file()
+                else {
+                    return;
+                };
+
+                let file = File::create(&path).unwrap();
+                let mut zip = ZipWriter::new(file);
+
+                let options: FileOptions<()> = FileOptions::default()
+                    .compression_method(zip::CompressionMethod::Deflated)
+                    .unix_permissions(0o755);
+
+                zip.add_directory(&name, options).unwrap();
+
+                // Write project file
+                let proj = xml!(
+                    <?xml version="1.0"?>
+                    <Project Sdk="Microsoft.NET.Sdk">
+                      <PropertyGroup>
+                        <TargetFramework>"net8.0"</>
+                        <ImplicitUsings>"enable"</>
+                        <Nullable>"enable"</>
+                      </>
+                    </>
+                );
+
+                let project_file = format!("{name}/{name}.csproj");
+                zip.start_file(project_file.clone(), options).unwrap();
+                writeln!(zip, "{}", proj.as_str()).unwrap();
+
+                // Write solution file
+                let sln = xml!(
+                    <?xml version="1.0"?>
+                    <Solution>
+                      <Project Path={project_file} />
+                    </>
+                );
+
+                zip.start_file(format!("{name}.slnx"), options).unwrap();
+                writeln!(zip, "{}", sln.as_str()).unwrap();
+
+                // Write entities
+                for (key, entity) in &self.project.entities {
+                    let file_name = format!("{name}/{}.cs", self.project.sanitize(&entity.name));
+                    zip.start_file(file_name, options).unwrap();
+                    let tokens = self.project.entity_to_token(key);
+
+                    writeln!(zip, "{}", TokenVec(tokens)).unwrap();
+                }
+
+                zip.finish().unwrap();
             }
         }
     }

@@ -1,6 +1,6 @@
 #![allow(dead_code)]
 
-use super::project::{ConnectionKey, EntityKey};
+use super::project::{AsToken, ConnectionKey, EntityKey, Keyword, Token};
 use crate::elements::workspace::entity::EntityItemData;
 use crate::elements::workspace::Workspace;
 use crate::geometry::Rect;
@@ -8,6 +8,7 @@ use indexmap::IndexSet;
 use serde::{Deserialize, Serialize};
 use std::fmt::Display;
 use std::fmt::Formatter;
+use std::vec;
 
 #[derive(Debug, Serialize, Deserialize, Clone, Copy, Default)]
 pub enum AccessModifier {
@@ -23,6 +24,16 @@ impl AccessModifier {
             AccessModifier::Public => '+',
             AccessModifier::Protected => '#',
             AccessModifier::Private => '-',
+        }
+    }
+}
+
+impl AsToken for AccessModifier {
+    fn as_token(&self) -> Vec<Token> {
+        match self {
+            AccessModifier::Public => vec![Token::Keyword(Keyword::Public)],
+            AccessModifier::Protected => vec![Token::Keyword(Keyword::Protected)],
+            AccessModifier::Private => vec![Token::Keyword(Keyword::Private)],
         }
     }
 }
@@ -46,12 +57,58 @@ impl Display for Field {
     }
 }
 
+impl AsToken for Field {
+    fn as_token(&self) -> Vec<Token> {
+        [
+            self.modifier.as_token(),
+            vec![
+                Token::Identifier(self.r#type.clone()),
+                Token::Space,
+                Token::Identifier(self.name.clone()),
+                Token::Accessors,
+            ],
+        ]
+        .concat()
+    }
+}
+
 #[derive(Debug, Serialize, Deserialize, Default)]
 pub struct Method {
     pub name: String,
     pub modifier: AccessModifier,
     pub return_type: String,
     pub arguments: Vec<String>,
+}
+
+impl AsToken for Method {
+    fn as_token(&self) -> Vec<Token> {
+        [
+            self.modifier.as_token(),
+            vec![
+                Token::Identifier(self.return_type.clone()),
+                Token::Space,
+                Token::Identifier(if self.name.trim().is_empty() {
+                    "void".to_string()
+                } else {
+                    self.name.clone()
+                }),
+            ],
+            vec![Token::MethodArguments(
+                self.arguments
+                    .iter()
+                    .enumerate()
+                    .map(|(i, arg)| {
+                        (
+                            Token::Identifier(arg.clone()),
+                            Token::Identifier(format!("arg{i}")),
+                        )
+                    })
+                    .collect(),
+            )],
+            vec![Token::Block(vec![Token::NewLine, Token::Placeholder])],
+        ]
+        .concat()
+    }
 }
 
 impl Display for Method {
@@ -77,6 +134,23 @@ pub enum EntityType {
     Interface = 3,
 }
 
+impl AsToken for EntityType {
+    fn as_token(&self) -> Vec<Token> {
+        match self {
+            EntityType::Class => vec![Token::Keyword(Keyword::Class)],
+            EntityType::AbstractClass => vec![
+                Token::Keyword(Keyword::Abstract),
+                Token::Keyword(Keyword::Class),
+            ],
+            EntityType::SealedClass => vec![
+                Token::Keyword(Keyword::Sealed),
+                Token::Keyword(Keyword::Class),
+            ],
+            EntityType::Interface => vec![Token::Keyword(Keyword::Interface)],
+        }
+    }
+}
+
 impl TryFrom<usize> for EntityType {
     type Error = ();
 
@@ -92,7 +166,7 @@ impl TryFrom<usize> for EntityType {
 }
 
 impl Display for EntityType {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         match self {
             EntityType::Class => write!(f, "Class"),
             EntityType::AbstractClass => write!(f, "Abstract class"),

@@ -7,6 +7,7 @@ use super::{
 };
 use serde::{Deserialize, Serialize};
 use slotmap::{new_key_type, SlotMap};
+use std::fmt::Display;
 
 new_key_type! {
     pub struct ConnectionKey;
@@ -195,10 +196,178 @@ impl Project {
     pub fn get_entity_connections(&self, entity: EntityKey) -> Vec<ConnectionKey> {
         self.entities[entity].connections.iter().copied().collect()
     }
+
+    pub fn entity_to_token(&self, entity: EntityKey) -> Vec<Token> {
+        let mut tokens = vec![
+            Token::Keyword(Keyword::Namespace),
+            Token::Identifier(self.get_sanitized_name()),
+            Token::SemiColon,
+            Token::NewLine,
+            Token::NewLine,
+        ];
+
+        let entity = &self.entities[entity];
+        tokens.push(Token::Keyword(Keyword::Public));
+        tokens.append(entity.entity_type.as_token().as_mut());
+        tokens.push(Token::Identifier(entity.name.clone()));
+
+        let mut implements = Vec::new();
+
+        if let Some(parent) = entity.parent {
+            let parent = &self.entities[self.connections[parent].to.entity];
+            implements.push(parent.name.clone());
+        }
+
+        for &connection in entity.implements.iter() {
+            let interface = &self.entities[self.connections[connection].to.entity];
+            implements.push(interface.name.clone());
+        }
+
+        if !implements.is_empty() {
+            tokens.push(Token::Implementation(
+                implements.into_iter().map(Token::Identifier).collect(),
+            ));
+        }
+
+        tokens.push(Token::Block(
+            entity
+                .fields
+                .iter()
+                .flat_map(|field| std::iter::once(Token::NewLine).chain(field.as_token()))
+                .chain(
+                    entity.methods.iter().flat_map(|method| {
+                        std::iter::once(Token::NewLine).chain(method.as_token())
+                    }),
+                )
+                .collect::<Vec<_>>(),
+        ));
+
+        tokens
+    }
+
+    pub fn sanitize(&self, name: &str) -> String {
+        sanitize_filename::sanitize_with_options(
+            name,
+            sanitize_filename::Options {
+                truncate: true,
+                windows: true,
+                replacement: "",
+            },
+        )
+        .trim()
+        .replace(" ", "_")
+    }
+
+    pub fn get_sanitized_name(&self) -> String {
+        self.sanitize(&self.name)
+    }
 }
 
 impl AsRef<Project> for Project {
     fn as_ref(&self) -> &Project {
         self
     }
+}
+
+#[derive(Clone)]
+pub enum Keyword {
+    Public,
+    Private,
+    Protected,
+    Class,
+    Interface,
+    Abstract,
+    Sealed,
+    Namespace,
+}
+
+#[derive(Clone)]
+pub enum Token {
+    Keyword(Keyword),
+    Identifier(String),
+    Block(Vec<Token>),
+    Accessors,
+    MethodArguments(Vec<(Token, Token)>),
+    Placeholder,
+    NewLine,
+    Space,
+    SemiColon,
+    Implementation(Vec<Token>),
+}
+
+pub struct TokenVec(pub Vec<Token>);
+
+impl Display for TokenVec {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        for token in &self.0 {
+            write!(f, "{}", token)?;
+        }
+        Ok(())
+    }
+}
+
+impl Display for Token {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Token::Keyword(keyword) => write!(
+                f,
+                "{} ",
+                match keyword {
+                    Keyword::Public => "public",
+                    Keyword::Private => "private",
+                    Keyword::Protected => "protected",
+                    Keyword::Class => "class",
+                    Keyword::Interface => "interface",
+                    Keyword::Abstract => "abstract",
+                    Keyword::Sealed => "sealed",
+                    Keyword::Namespace => "namespace",
+                }
+            ),
+            Token::Identifier(ident) => write!(f, "{}", ident.trim()),
+            Token::Block(tokens) => {
+                write!(f, " {{")?;
+                write!(
+                    f,
+                    "{}",
+                    tokens
+                        .iter()
+                        .fold(String::new(), |mut output, t| {
+                            output.push_str(&format!("{}", t));
+                            output
+                        })
+                        .replace("\n", "\n\t")
+                )?;
+                write!(f, "\n}}")
+            }
+            Token::Accessors => write!(f, " {{ get; set; }}"),
+            Token::MethodArguments(args) => {
+                write!(f, "(")?;
+                for (i, (r#type, name)) in args.iter().enumerate() {
+                    write!(f, "{} {}", r#type, name)?;
+                    if i < args.len() - 1 {
+                        write!(f, ", ")?;
+                    }
+                }
+                write!(f, ")")
+            }
+            Token::Placeholder => write!(f, "throw new NotImplementedException();"),
+            Token::NewLine => writeln!(f),
+            Token::Space => write!(f, " "),
+            Token::Implementation(tokens) => {
+                write!(f, " : ")?;
+                for (i, token) in tokens.iter().enumerate() {
+                    write!(f, "{}", token)?;
+                    if i < tokens.len() - 1 {
+                        write!(f, ", ")?;
+                    }
+                }
+                Ok(())
+            }
+            Token::SemiColon => write!(f, ";"),
+        }
+    }
+}
+
+pub trait AsToken {
+    fn as_token(&self) -> Vec<Token>;
 }
