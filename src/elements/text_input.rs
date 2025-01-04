@@ -203,10 +203,16 @@ impl TextInput {
             self.cursor = start + text.chars().count();
             self.selection = 0;
 
-            let start = self.idx(start);
-            let end = self.idx(end);
+            let mut start = self.idx(start);
+            let mut end = self.idx(end);
 
-            self.text.replace_range(start..end, text);
+            if start > end {
+                (start, end) = (end, start);
+            }
+
+            let range = start.clamp(0, self.text.len())..end.clamp(0, self.text.len());
+
+            self.text.replace_range(range, text);
         } else {
             if self.cursor < self.text.chars().count() {
                 self.text.insert_str(self.cursor_idx(), text);
@@ -232,12 +238,12 @@ impl TextInput {
     /// Returns the category of the given character - different category marks a word boundary
     fn char_category(c: char) -> u8 {
         match c {
-            c if c.is_whitespace() => 0, // Whitespace
+            c if c.is_whitespace() => 0,                         // Whitespace
             c if c.is_alphanumeric() => 1, // Alphanumeric characters (letters, digits)
             '.' | ',' | ';' | ':' | '!' | '?' | '"' | '\'' => 2, // Standard punctuation
             '+' | '=' | '*' | '/' | '&' | '|' | '^' | '%' | '$' | '#' | '@' | '~' => 3, // Symbols and operators
             '[' | ']' | '(' | ')' | '{' | '}' | '<' | '>' => 4, // Brackets and parentheses
-            '_' | '-' => 5, // Underscore and hyphen
+            '_' | '-' => 5,                                     // Underscore and hyphen
             _ => 6, // Other characters (e.g., emojis, special symbols)
         }
     }

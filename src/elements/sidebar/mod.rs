@@ -97,8 +97,8 @@ impl EventTarget for Sidebar {
         macro_rules! real {
             () => {
                 match ctx.state.tool {
-                    Tool::Relation | Tool::Parent | Tool::Implementation | Tool::Pen => None,
-                    _ => ctx.state.selected_entity,
+                    Tool::Select => ctx.state.selected_entity,
+                    _ => None
                 }
             };
         }
