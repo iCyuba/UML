@@ -1,21 +1,14 @@
-use super::{
-    context::EventContext,
-    ctx,
-    renderer::{PngRenderer, WindowRenderer},
-    EventTarget, Renderer, State, Tree,
-};
-use crate::data::project::TokenVec;
+use super::{context, ctx, renderer, EventTarget, Renderer, State, Tree};
 use crate::{
-    app::{context::RenderContext, event_target::WheelEvent},
-    data::{entity::EntityType, Project},
+    app::event_target::WheelEvent,
+    data::{entity::EntityType, project::TokenVec, Project},
     elements::toolbox_item::Tool,
     geometry::{Point, Vec2},
 };
 use ogrim::xml;
+#[cfg(not(target_arch = "wasm32"))]
 use rfd::FileDialog;
-use std::fs::File;
-use std::io::Write;
-use std::{cell::RefCell, fmt, fs, rc::Rc};
+use std::{cell::RefCell, fmt, io::Write, rc::Rc};
 use winit::{
     application::ApplicationHandler,
     event::{ElementState, WindowEvent},
@@ -28,11 +21,13 @@ use zip::ZipWriter;
 pub enum AppUserEvent {
     #[cfg(target_arch = "wasm32")]
     Scroll(WheelEvent),
+    #[cfg(target_arch = "wasm32")]
+    FileLoaded(Vec<u8>, String),
 
     RequestRedraw,
     RequestCursorUpdate,
     RequestTooltipUpdate,
-    ModifyTree(Box<dyn FnOnce(&mut Tree, &mut EventContext) + 'static>),
+    ModifyTree(Box<dyn FnOnce(&mut Tree, &mut context::EventContext) + 'static>),
     Screenshot,
     Save,
     Load,
@@ -45,6 +40,8 @@ impl fmt::Debug for AppUserEvent {
         match self {
             #[cfg(target_arch = "wasm32")]
             AppUserEvent::Scroll(ev) => f.debug_tuple("Scroll").field(ev).finish(),
+            #[cfg(target_arch = "wasm32")]
+            AppUserEvent::FileLoaded(_, _) => f.write_str("FileLoaded"),
 
             AppUserEvent::RequestRedraw => f.write_str("RequestRedraw"),
             AppUserEvent::RequestCursorUpdate => f.write_str("RequestCursorUpdate"),
@@ -60,8 +57,9 @@ impl fmt::Debug for AppUserEvent {
 }
 
 pub struct App<'s> {
-    pub window: WindowRenderer<'s>,
-    pub png: PngRenderer,
+    pub window: renderer::WindowRenderer<'s>,
+    #[cfg(not(target_arch = "wasm32"))]
+    pub png: renderer::PngRenderer,
 
     pub state: State,
 
@@ -73,8 +71,10 @@ impl App<'_> {
     pub async fn new(event_loop: EventLoopProxy<AppUserEvent>) -> Self {
         let vello_render_context = Rc::new(RefCell::new(vello::util::RenderContext::new()));
 
-        let mut window = WindowRenderer::new(vello_render_context.clone());
-        let png = PngRenderer::new(vello_render_context)
+        let mut window = renderer::WindowRenderer::new(vello_render_context.clone());
+
+        #[cfg(not(target_arch = "wasm32"))]
+        let png = renderer::PngRenderer::new(vello_render_context)
             .await
             .expect("Couldn't create PNG renderer");
 
@@ -82,7 +82,7 @@ impl App<'_> {
         let mut project = Project::new(String::new());
 
         // Can't use the macro here, because App doesn't exist yet
-        let tree = Tree::new(&mut EventContext {
+        let tree = Tree::new(&mut context::EventContext {
             project: &mut project,
             state: &mut state,
             c: window.canvas(),
@@ -90,6 +90,7 @@ impl App<'_> {
 
         App {
             window,
+            #[cfg(not(target_arch = "wasm32"))]
             png,
 
             state,
@@ -110,6 +111,20 @@ impl App<'_> {
         self.window.render().unwrap();
     }
 
+    pub fn load_project(&mut self, data: Vec<u8>, name: &str) {
+        let extension = name.split('.').last().unwrap_or_default();
+
+        let Some(project) = (match extension {
+            "json" => serde_json::from_slice(&data).ok(),
+            _ => postcard::from_bytes(&data).ok(),
+        }) else {
+            return;
+        };
+
+        self.project = project;
+        self.window.request_redraw();
+    }
+
     pub fn update_cursor(&mut self) {
         let cursor = self.tree.cursor(ctx!(self)).unwrap_or(CursorIcon::Default);
         self.window.set_cursor(cursor);
@@ -126,41 +141,12 @@ impl ApplicationHandler<AppUserEvent> for App<'_> {
 
     #[cfg(target_arch = "wasm32")]
     fn resumed(&mut self, _event_loop: &ActiveEventLoop) {
-        use web_sys::wasm_bindgen::closure::Closure;
-        use web_sys::wasm_bindgen::JsCast;
+        use crate::web;
 
-        let window = web_sys::window().unwrap();
-
-        // Set the main modifier key
-        let use_super = window
-            .navigator()
-            .user_agent()
-            .unwrap()
-            .to_lowercase()
-            .contains("mac");
-
-        self.state.use_super = use_super;
-
-        // Setup a better scroll handler
-        let proxy = self.state.event_loop.clone();
-        let closure = Closure::wrap(Box::new(move |event: web_sys::WheelEvent| {
-            proxy
-                .send_event(AppUserEvent::Scroll(WheelEvent {
-                    delta: -Vec2 {
-                        x: event.delta_x(),
-                        y: event.delta_y(),
-                    },
-                    zoom: event.ctrl_key() || (use_super && event.meta_key()),
-                    reverse: false,
-                    mouse: false,
-                }))
-                .unwrap();
-        }) as Box<dyn FnMut(_)>);
-
-        window
-            .add_event_listener_with_callback("wheel", &closure.as_ref().unchecked_ref())
-            .unwrap();
-        closure.forget();
+        // macOS keybind setup + scroll event + file picker
+        self.state.use_super = web::use_super();
+        web::setup_scroll_event(self.state.event_loop.clone());
+        web::setup_file_picker(self.state.event_loop.clone());
     }
 
     fn user_event(&mut self, _event_loop: &ActiveEventLoop, event: AppUserEvent) {
@@ -176,6 +162,10 @@ impl ApplicationHandler<AppUserEvent> for App<'_> {
                 self.tree.on_wheel(ctx!(), ev);
                 self.window.request_redraw();
             }
+            #[cfg(target_arch = "wasm32")]
+            AppUserEvent::FileLoaded(data, name) => {
+                self.load_project(data, &name);
+            }
 
             AppUserEvent::RequestRedraw => self.window.request_redraw(),
             AppUserEvent::RequestCursorUpdate => self.update_cursor(),
@@ -186,10 +176,8 @@ impl ApplicationHandler<AppUserEvent> for App<'_> {
             AppUserEvent::ModifyTree(f) => {
                 f(&mut self.tree, ctx!());
             }
+            #[cfg(not(target_arch = "wasm32"))]
             AppUserEvent::Screenshot => {
-                #[cfg(target_arch = "wasm32")]
-                return; // Unsupported
-
                 let (width, height) = self.window.canvas.size();
                 let scale = self.window.canvas.scale();
 
@@ -200,7 +188,7 @@ impl ApplicationHandler<AppUserEvent> for App<'_> {
                 let canvas = self.png.canvas();
                 canvas.reset();
 
-                self.tree.render(&mut RenderContext {
+                self.tree.render(&mut context::RenderContext {
                     c: canvas,
                     project: &self.project,
                     state: &self.state,
@@ -217,8 +205,13 @@ impl ApplicationHandler<AppUserEvent> for App<'_> {
                     return;
                 };
 
-                _ = fs::write(path, image);
+                _ = std::fs::write(path, image);
             }
+            #[cfg(target_arch = "wasm32")]
+            AppUserEvent::Screenshot => {
+                crate::web::screenshot(self.window.window.as_ref().unwrap());
+            }
+            #[cfg(not(target_arch = "wasm32"))]
             AppUserEvent::Save => {
                 let Some(path) = FileDialog::new()
                     .add_filter("binary", &["bin"])
@@ -236,8 +229,26 @@ impl ApplicationHandler<AppUserEvent> for App<'_> {
                     _ => postcard::to_stdvec(&self.project).unwrap(),
                 };
 
-                _ = fs::write(path, data);
+                _ = std::fs::write(path, data);
             }
+            #[cfg(target_arch = "wasm32")]
+            AppUserEvent::Save => {
+                let json = self.state.modifiers.shift_key();
+
+                let mut name = self.project.get_sanitized_name().to_lowercase();
+                let data = if json {
+                    name += ".json";
+
+                    serde_json::to_vec_pretty(&self.project).unwrap()
+                } else {
+                    name += ".bin";
+
+                    postcard::to_stdvec(&self.project).unwrap()
+                };
+
+                crate::web::download_bytes(&data, &name);
+            }
+            #[cfg(not(target_arch = "wasm32"))]
             AppUserEvent::Load => {
                 let Some(path) = FileDialog::new()
                     .add_filter("binary", &["bin"])
@@ -249,16 +260,13 @@ impl ApplicationHandler<AppUserEvent> for App<'_> {
                     return;
                 };
 
-                let extension = path.extension().and_then(|ext| ext.to_str());
-
-                let Some(data) = fs::read(&path).ok().and_then(|data| match extension {
-                    Some("json") => serde_json::from_slice(&data).ok(),
-                    _ => postcard::from_bytes(&data).ok(),
-                }) else {
-                    return;
-                };
-
-                self.project = data;
+                if let Ok(data) = std::fs::read(&path) {
+                    self.load_project(data, path.file_name().unwrap().to_str().unwrap());
+                }
+            }
+            #[cfg(target_arch = "wasm32")]
+            AppUserEvent::Load => {
+                crate::web::open_file_picker();
             }
             AppUserEvent::SetTool(tool) => {
                 self.state.tool = tool;
@@ -280,16 +288,28 @@ impl ApplicationHandler<AppUserEvent> for App<'_> {
             AppUserEvent::Export => {
                 let name = self.project.get_sanitized_name();
 
-                let Some(path) = FileDialog::new()
-                    .add_filter("zip", &["zip"])
-                    .set_file_name(name.clone() + ".zip")
-                    .save_file()
-                else {
-                    return;
-                };
+                #[allow(unused_mut)]
+                let mut file;
+                let mut zip;
 
-                let file = File::create(&path).unwrap();
-                let mut zip = ZipWriter::new(file);
+                #[cfg(not(target_arch = "wasm32"))]
+                {
+                    let Some(path) = FileDialog::new()
+                        .add_filter("zip", &["zip"])
+                        .set_file_name(name.clone() + ".zip")
+                        .save_file()
+                    else {
+                        return;
+                    };
+
+                    file = std::fs::File::create(&path).unwrap();
+                    zip = ZipWriter::new(file);
+                }
+                #[cfg(target_arch = "wasm32")]
+                {
+                    file = Vec::<u8>::new();
+                    zip = ZipWriter::new(std::io::Cursor::new(&mut file));
+                }
 
                 let options: FileOptions<()> = FileOptions::default()
                     .compression_method(zip::CompressionMethod::Deflated)
@@ -334,6 +354,11 @@ impl ApplicationHandler<AppUserEvent> for App<'_> {
                 }
 
                 zip.finish().unwrap();
+
+                #[cfg(target_arch = "wasm32")]
+                {
+                    crate::web::download_bytes(&file, &(name + ".zip"));
+                }
             }
         }
     }

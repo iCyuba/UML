@@ -11,14 +11,8 @@ use crate::{
         project::{ConnectionKey, EntityKey},
         Entity, Project,
     },
-    elements::{
-        node::Element,
-        primitives::{text::Text, traits::Draw},
-        toolbox_item::Tool,
-        Node,
-    },
+    elements::{node::Element, toolbox_item::Tool, Node},
     geometry::{Point, Rect, Vec2},
-    presentation::fonts,
 };
 use derive_macros::AnimatedElement;
 use taffy::{Layout, NodeId, Position, Style};
@@ -192,20 +186,6 @@ impl EventTarget for Workspace {
         for entity in project.ordered_entities.iter() {
             project.entities[*entity].render(c, state, self);
         }
-
-        // Coords
-        Text::new(
-            &format!(
-                "x: {:.2}, y: {:.2}, zoom: {:.1}",
-                self.position.x, self.position.y, *self.zoom
-            ),
-            Rect::new((10., 10.), (c.size().0 as f64 - 20., 16.)),
-            16.0,
-            fonts::inter_black_italic(),
-            colors.text,
-            true,
-        )
-        .draw(c);
     }
 
     fn cursor(&self, ctx: &GetterContext) -> Option<CursorIcon> {

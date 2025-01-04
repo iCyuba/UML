@@ -34,6 +34,7 @@ pub enum Symbol {
     Field = b'X',
     Method = b'Y',
     Association = b'Z',
+    Export = b'a',
 }
 
 impl From<Symbol> for char {

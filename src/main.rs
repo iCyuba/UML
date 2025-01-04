@@ -6,37 +6,33 @@ mod data;
 mod elements;
 mod geometry;
 mod presentation;
+#[cfg(target_arch = "wasm32")]
+mod web;
 
 use crate::app::{App, AppUserEvent};
+use std::error::Error;
 use winit::event_loop::EventLoop;
 
 #[cfg(not(target_arch = "wasm32"))]
 #[pollster::main]
 async fn main() {
-    let event_loop = EventLoop::<AppUserEvent>::with_user_event()
-        .build()
-        .unwrap();
-
-    let mut app = App::new(event_loop.create_proxy()).await;
-
-    event_loop
-        .run_app(&mut app)
-        .expect("Couldn't run event loop");
+    run().await.unwrap();
 }
 
 #[cfg(target_arch = "wasm32")]
 fn main() {
-    wasm_bindgen_futures::spawn_local(async {
-        let event_loop = EventLoop::<AppUserEvent>::with_user_event()
-            .build()
-            .unwrap();
+    wasm_bindgen_futures::spawn_local(async { run().await.unwrap() });
+}
 
-        let mut app = App::new(event_loop.create_proxy()).await;
+async fn run() -> Result<(), Box<dyn Error>> {
+    let event_loop = EventLoop::<AppUserEvent>::with_user_event().build()?;
 
-        app.window.init(&event_loop).await;
+    let mut app = App::new(event_loop.create_proxy()).await;
 
-        event_loop
-            .run_app(&mut app)
-            .expect("Couldn't run event loop");
-    });
+    #[cfg(target_arch = "wasm32")]
+    app.window.init(&event_loop).await?;
+
+    event_loop.run_app(&mut app)?;
+
+    Ok(())
 }

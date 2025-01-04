@@ -89,9 +89,6 @@ impl Renderer for PngRenderer {
     // Immutably borrows the context to get the device and queue
     // Blocks the current thread until the gpu operations are done
     fn render(&mut self) -> Result<Vec<u8>, Box<dyn std::error::Error>> {
-        #[cfg(target_arch = "wasm32")]
-        panic!("PNG renderer is not supported in the browser");
-
         let context = self.context.borrow();
 
         let device = &context.devices[self.device].device;

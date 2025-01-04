@@ -1,3 +1,4 @@
+use super::{Canvas, Renderer};
 #[cfg(target_arch = "wasm32")]
 use crate::app::AppUserEvent;
 use crate::presentation::Colors;
@@ -17,8 +18,6 @@ use winit::event_loop::ActiveEventLoop;
 #[cfg(target_arch = "wasm32")]
 use winit::event_loop::EventLoop;
 use winit::window::{CursorIcon, Theme, Window, WindowAttributes};
-
-use super::{Canvas, Renderer};
 
 const WIDTH: u32 = 1024;
 const HEIGHT: u32 = 800;
@@ -59,14 +58,8 @@ impl WindowRenderer<'_> {
         }
     }
 
-    #[cfg(not(target_arch = "wasm32"))]
-    pub async fn init(&mut self, event_loop: &ActiveEventLoop) -> Result<(), Box<dyn Error>> {
-        if self.surface.is_some() {
-            return Ok(());
-        }
-
-        // Create a new window
-        let window = Arc::new(event_loop.create_window(Self::window_attributes())?);
+    async fn setup(&mut self) -> Result<(), Box<dyn Error>> {
+        let window = self.window.as_ref().unwrap();
 
         // Create a new surface and renderer
         let size = window.inner_size();
@@ -83,23 +76,40 @@ impl WindowRenderer<'_> {
 
         let renderer = self.create_vello_renderer(&surface);
 
+        // Set the window's scale
+        self.canvas.scale = window.scale_factor();
+
         // Set the user theme
         if let Some(theme) = window.theme() {
             self.update_theme(theme);
         }
 
         // Save
-        self.window = Some(window);
         self.surface = Some(surface);
         self.renderer = Some(renderer);
 
         Ok(())
     }
 
+    #[cfg(not(target_arch = "wasm32"))]
+    pub async fn init(&mut self, event_loop: &ActiveEventLoop) -> Result<(), Box<dyn Error>> {
+        if self.surface.is_some() {
+            return Ok(());
+        }
+
+        // Create a new window
+        let window = event_loop.create_window(Self::window_attributes())?;
+        self.window = Some(Arc::new(window));
+
+        self.setup().await
+    }
+
     #[cfg(target_arch = "wasm32")]
-    pub async fn init(&mut self, event_loop: &EventLoop<AppUserEvent>) {
-        use web_sys::wasm_bindgen::closure::Closure;
-        use web_sys::wasm_bindgen::JsCast;
+    pub async fn init(
+        &mut self,
+        event_loop: &EventLoop<AppUserEvent>,
+    ) -> Result<(), Box<dyn Error>> {
+        use crate::web;
         use winit::platform::web::{WindowAttributesExtWebSys, WindowExtWebSys};
 
         // Create a new window
@@ -110,61 +120,12 @@ impl WindowRenderer<'_> {
         window.canvas().unwrap().focus().unwrap();
 
         // Web setup
-        let web_window = web_sys::window().unwrap();
-        let width = web_window.inner_width().unwrap().as_f64().unwrap();
-        let height = web_window.inner_height().unwrap().as_f64().unwrap();
-        let device_pixel_ratio = web_window.device_pixel_ratio();
+        web::resize(&window);
+        web::setup_resize_event(window.clone());
 
-        let size = PhysicalSize::from_logical::<_, f64>((width, height), device_pixel_ratio);
-        let _ = window.request_inner_size(size);
-
-        let cloned_window = window.clone();
-
-        // JavaScript resize event
-        let resize_cb = Closure::wrap(Box::new(move |_: web_sys::Event| {
-            let web_window = web_sys::window().unwrap();
-
-            let width = web_window.inner_width().unwrap().as_f64().unwrap();
-            let height = web_window.inner_height().unwrap().as_f64().unwrap();
-            let device_pixel_ratio = web_window.device_pixel_ratio();
-
-            let size =
-                PhysicalSize::<u32>::from_logical::<_, f64>((width, height), device_pixel_ratio);
-            let _ = cloned_window.request_inner_size(size);
-        }) as Box<dyn FnMut(_)>);
-
-        web_window
-            .add_event_listener_with_callback("resize", &resize_cb.as_ref().unchecked_ref())
-            .unwrap();
-
-        resize_cb.forget();
-
-        // Create a new surface and renderer
-        let surface = self
-            .context
-            .borrow_mut()
-            .create_surface(
-                window.clone(),
-                size.width,
-                size.height,
-                PresentMode::AutoVsync,
-            )
-            .await
-            .unwrap();
-        let renderer = self.create_vello_renderer(&surface);
-
-        // Set the user theme
-        if let Some(theme) = window.theme() {
-            self.update_theme(theme);
-        }
-
-        // Set the window's scale
-        self.canvas.scale = window.scale_factor();
-
-        // Save
         self.window = Some(window);
-        self.surface = Some(surface);
-        self.renderer = Some(renderer);
+
+        self.setup().await
     }
 
     #[cfg(not(target_arch = "wasm32"))]

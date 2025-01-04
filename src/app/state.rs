@@ -5,8 +5,8 @@ use crate::elements::sidebar::SidebarState;
 use crate::elements::toolbox_item::Tool;
 use crate::elements::tooltip::TooltipState;
 use crate::geometry::Point;
-use std::collections::HashSet;
 use clipboard::{ClipboardContext, ClipboardProvider};
+use std::collections::HashSet;
 use taffy::NodeId;
 use winit::event::MouseButton;
 use winit::event_loop::EventLoopProxy;
@@ -69,7 +69,7 @@ impl State {
             sidebar: <_>::default(),
         }
     }
-    
+
     #[inline]
     pub fn word_move_modifier(&self) -> bool {
         #[cfg(target_os = "macos")]
@@ -140,6 +140,11 @@ impl State {
     #[inline]
     pub fn load(&self) {
         self.send_event(AppUserEvent::Load);
+    }
+
+    #[inline]
+    pub fn export(&self) {
+        self.send_event(AppUserEvent::Export);
     }
 
     #[inline]

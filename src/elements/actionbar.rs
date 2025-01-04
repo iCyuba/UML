@@ -77,11 +77,16 @@ impl Element for Actionbar {
                     on_click: Box::new(|ctx| ctx.state.load()),
                     style: ButtonStyle::Default,
                 }),
-                #[cfg(not(target_arch = "wasm32"))]
                 Button::create(ButtonProps {
                     tooltip: "Screenshot",
                     icon: Symbol::Screenshot,
                     on_click: Box::new(|ctx| ctx.state.screenshot()),
+                    style: ButtonStyle::Default,
+                }),
+                Button::create(ButtonProps {
+                    tooltip: "Export",
+                    icon: Symbol::Export,
+                    on_click: Box::new(|ctx| ctx.state.export()),
                     style: ButtonStyle::Default,
                 }),
                 TextInput::create(TextInputProps {

@@ -1,10 +1,12 @@
 use std::error::Error;
 
 pub mod canvas;
+#[cfg(not(target_arch = "wasm32"))]
 pub mod png;
 pub mod window;
 
 pub use canvas::Canvas;
+#[cfg(not(target_arch = "wasm32"))]
 pub use png::PngRenderer;
 pub use window::WindowRenderer;
 
