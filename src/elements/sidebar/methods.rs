@@ -113,8 +113,12 @@ impl ElementWithProps for SidebarMethod {
                             };
 
                             method.name = name.trim().to_string();
-                            method.arguments =
-                                args.split(',').map(|s| s.trim().to_string()).collect();
+                            method.arguments = if args.trim().is_empty() {
+                                vec![]
+                            } else {
+                                args.split(',').map(|s| s.trim().to_string()).collect()
+                            };
+
                             method.return_type = ret.trim().to_string();
                         }
                     }),

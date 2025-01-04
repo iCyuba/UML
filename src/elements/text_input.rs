@@ -157,6 +157,14 @@ impl TextInput {
         self.measurements =
             Text::measure_chars(self.text.chars(), self.props.size, self.props.font);
 
+        // Make sure the cursor is within bounds
+        let len = self.text.chars().count();
+        self.cursor = self.cursor.min(len);
+        self.selection = self.selection.clamp(
+            -(self.cursor as isize),
+            (len as isize - self.cursor as isize).max(0),
+        );
+
         let node = self.node_id;
         ctx.state.modify_tree(move |tree, ctx| {
             tree.mark_dirty(node).unwrap();
