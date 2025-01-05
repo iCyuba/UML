@@ -122,6 +122,7 @@ impl App<'_> {
         };
 
         self.project = project;
+        self.state.selected_entity = None;
         self.window.request_redraw();
     }
 
