@@ -197,12 +197,21 @@ impl EventTarget for Workspace {
             None
         }
     }
-
+    
     fn on_keydown(&mut self, ctx: &mut EventContext, event: KeyEvent) -> bool {
         let key = event.logical_key;
         if matches!(key, Key::Named(NamedKey::Space)) {
             self.select_hand(ctx.state);
             return true;
+        }
+        
+        if matches!(key, Key::Named(NamedKey::Delete)) && ctx.state.tool == Tool::Select {
+            if let Some(entity) = ctx.state.selected_entity {
+                ctx.project.remove_entity(entity);
+                ctx.state.selected_entity = None;
+                ctx.state.request_redraw();
+                return true;
+            }
         }
 
         false
