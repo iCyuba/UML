@@ -4,6 +4,7 @@ use crate::animations::traits::{Animatable, Interpolate};
 use crate::geometry::{Rect, Vec2};
 #[cfg(not(target_arch = "wasm32"))]
 use std::time::{Duration, Instant};
+use vello::peniko::color::HueDirection;
 use vello::peniko::Color;
 #[cfg(target_arch = "wasm32")]
 use web_time::{Duration, Instant};
@@ -31,14 +32,16 @@ pub struct StandardAnimation<T: Interpolate> {
     initialized: bool,
 }
 
-impl<T: Interpolate> StandardAnimation<T> {
+impl<T: Interpolate + Default> StandardAnimation<T> {
     pub fn new(duration: Duration, easing: Easing) -> Self {
         Self {
             initialized: false,
             ..Self::initialized(Default::default(), duration, easing)
         }
     }
+}
 
+impl<T: Interpolate> StandardAnimation<T> {
     pub fn initialized(initial_value: T, duration: Duration, easing: Easing) -> Self {
         Self {
             start_value: initial_value,
@@ -171,11 +174,6 @@ impl Interpolate for Rect {
 
 impl Interpolate for Color {
     fn interpolate(&self, end_value: &Self, t: f64) -> Self {
-        Color {
-            r: self.r.interpolate(&end_value.r, t),
-            g: self.g.interpolate(&end_value.g, t),
-            b: self.b.interpolate(&end_value.b, t),
-            a: self.a.interpolate(&end_value.a, t),
-        }
+        self.lerp(*end_value, t as f32, HueDirection::default())
     }
 }

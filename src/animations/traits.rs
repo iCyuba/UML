@@ -1,12 +1,12 @@
 use crate::geometry::Vec2;
 use std::ops::{Add, Sub};
 
-pub trait Interpolate: Copy + PartialEq + Default {
+pub trait Interpolate: Copy + PartialEq {
     fn interpolate(&self, end_value: &Self, t: f64) -> Self;
 }
 
 pub trait Animatable {
-    type Value: Copy + PartialEq + Default;
+    type Value: Copy + PartialEq;
 
     fn is_animating(&self) -> bool;
     fn is_initialized(&self) -> bool;

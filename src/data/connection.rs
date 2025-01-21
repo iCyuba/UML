@@ -16,7 +16,7 @@ use serde::{Deserialize, Serialize};
 use std::cmp::PartialEq;
 use std::f64::consts::{FRAC_PI_2, FRAC_PI_4, FRAC_PI_6};
 use vello::kurbo::{Affine, BezPath, Cap, Circle, Join, Stroke};
-use vello::peniko::{Color, Fill};
+use vello::peniko::{color::palette, Color, Fill};
 
 #[derive(Debug, Serialize, Deserialize)]
 pub enum Multiplicity {
@@ -391,7 +391,7 @@ impl Item for Connection {
             // Draw explicit path points
             for point in self.data.path_points.iter() {
                 if let PathPoint::Explicit(point) = point {
-                    render_point(*point, accent_color, Color::WHITE);
+                    render_point(*point, accent_color, palette::css::WHITE);
 
                     if ghost_point == Some(*point) {
                         show_ghost_point = false
@@ -402,7 +402,7 @@ impl Item for Connection {
             // Draw ghost point
             if ws.hovered_connection == Some(self.key) && show_ghost_point {
                 if let Some(ghost_point) = ghost_point {
-                    render_point(ghost_point, Color::DARK_GRAY, Color::WHITE);
+                    render_point(ghost_point, palette::css::DARK_GRAY, palette::css::WHITE);
                 }
             }
         }
