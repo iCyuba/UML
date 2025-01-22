@@ -1,11 +1,11 @@
 #![allow(dead_code)]
 
+use skrifa::charmap::Charmap;
+use skrifa::instance::{Location, Size};
+use skrifa::metrics::GlyphMetrics;
+use skrifa::{AxisCollection, FontRef, MetadataProvider};
 use std::sync::{Arc, OnceLock};
 use vello::peniko::{Blob, Font};
-use vello::skrifa::charmap::Charmap;
-use vello::skrifa::instance::{Location, Size};
-use vello::skrifa::metrics::GlyphMetrics;
-use vello::skrifa::{AxisCollection, FontRef, MetadataProvider};
 
 macro_rules! font {
     ($name:ident, $file:expr, $weight:expr) => {
